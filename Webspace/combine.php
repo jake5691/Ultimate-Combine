@@ -700,7 +700,22 @@ if (!$pageError && !$combineError && $mode === "results") {
             }
             return true;
           }));
+          $selectedPlayerId = filter_var($_GET["player_id"] ?? null, FILTER_VALIDATE_INT);
+          $selectedPlayer = null;
+          if ($selectedPlayerId) {
+            foreach ($filteredPlayers as $player) {
+              if ((int)$player["id"] === (int)$selectedPlayerId) {
+                $selectedPlayer = $player;
+                break;
+              }
+            }
+            if (!$selectedPlayer) {
+              $selectedPlayerId = null;
+            }
+          }
           $overallScores = [];
+          $categoryAverages = [];
+          $categoryTeamAverages = [];
           foreach ($filteredPlayers as $player) {
             $overallScores[(int)$player["id"]] = 0;
           }
@@ -756,10 +771,18 @@ if (!$pageError && !$combineError && $mode === "results") {
             if ($disciplineCount === 0) {
               continue;
             }
+            $teamSum = 0;
+            $teamCount = 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
               $categoryAverage = $categoryTotals[$playerId] / $disciplineCount;
               $overallScores[$playerId] += $categoryAverage;
+              $categoryAverages[$category][$playerId] = $categoryAverage;
+              $teamSum += $categoryAverage;
+              $teamCount++;
+            }
+            if ($teamCount > 0) {
+              $categoryTeamAverages[$category] = $teamSum / $teamCount;
             }
           }
           $overallRankValues = $overallScores;
@@ -834,20 +857,159 @@ if (!$pageError && !$combineError && $mode === "results") {
                 <?php $playerId = (int)$player["id"]; ?>
                 <?php $overallPoints = $overallScores[$playerId] ?? 0; ?>
                 <?php $rankLabel = isset($overallRanks[$playerId]) ? (string)$overallRanks[$playerId] : "-"; ?>
-                <li class="list-item">
-                  <div class="result-name">
-                    <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
-                    <strong>
-                      <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
-                      <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
-                    </strong>
-                  </div>
-                  <span class="badge"><?php echo htmlspecialchars(uc_format_points($overallPoints) . " P", ENT_QUOTES, "UTF-8"); ?></span>
+                <?php
+                  $detailUrl = "combine.php?id=" . (int)$combineId . "&mode=results";
+                  if ($filterGender !== "") {
+                    $detailUrl .= "&gender=" . urlencode($filterGender);
+                  }
+                  if ($filterPosition !== "") {
+                    $detailUrl .= "&position=" . urlencode($filterPosition);
+                  }
+                  $detailUrl .= "&player_id=" . $playerId;
+                ?>
+                <li class="list-item<?php echo ($selectedPlayerId && (int)$selectedPlayerId === $playerId) ? " is-active" : ""; ?>">
+                  <a class="list-link" href="<?php echo htmlspecialchars($detailUrl, ENT_QUOTES, "UTF-8"); ?>">
+                    <div class="result-name">
+                      <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                      <strong>
+                        <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                      </strong>
+                    </div>
+                    <span class="badge"><?php echo htmlspecialchars(uc_format_points($overallPoints) . " P", ENT_QUOTES, "UTF-8"); ?></span>
+                  </a>
                 </li>
               <?php endforeach; ?>
             </ul>
           <?php endif; ?>
         </div>
+        <?php if ($selectedPlayerId && $selectedPlayer): ?>
+          <?php
+            $radarData = [];
+            foreach ($categoryAverages as $category => $playerAverages) {
+              $playerAverage = $playerAverages[$selectedPlayerId] ?? 0;
+              $teamAverage = $categoryTeamAverages[$category] ?? 0;
+              $radarData[] = [
+                "label" => $category,
+                "player" => $playerAverage,
+                "team" => $teamAverage,
+              ];
+            }
+            $resetUrl = "combine.php?id=" . (int)$combineId . "&mode=results";
+            if ($filterGender !== "") {
+              $resetUrl .= "&gender=" . urlencode($filterGender);
+            }
+            if ($filterPosition !== "") {
+              $resetUrl .= "&position=" . urlencode($filterPosition);
+            }
+          ?>
+          <div class="info-card player-detail">
+            <div class="card-header">
+              <h3>
+                Ergebnisse: <?php echo htmlspecialchars($selectedPlayer["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                <?php echo " " . htmlspecialchars($selectedPlayer["last_name"], ENT_QUOTES, "UTF-8"); ?>
+              </h3>
+              <a class="text-link" href="<?php echo htmlspecialchars($resetUrl, ENT_QUOTES, "UTF-8"); ?>">Schließen</a>
+            </div>
+            <?php if (empty($radarData)): ?>
+              <p class="help">Keine Kategorien für die Anzeige.</p>
+            <?php else: ?>
+              <div class="radar-grid">
+                <div class="radar-chart">
+                  <canvas id="radar-chart" width="360" height="360"></canvas>
+                  <div class="radar-legend">
+                    <span class="legend-item legend-player">Spieler</span>
+                    <span class="legend-item legend-team">Team</span>
+                  </div>
+                </div>
+                <div class="radar-details">
+                  <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+                    <div class="category-block">
+                      <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                      <ul class="list">
+                        <?php foreach ($categoryDisciplines as $discipline): ?>
+                          <?php
+                            $discId = (int)$discipline["id"];
+                            $direction = $discipline["rating_direction"] ?? "more";
+                            if ($direction !== "less" && $direction !== "more") {
+                              $direction = "more";
+                            }
+                            $unit = trim((string)($discipline["unit"] ?? ""));
+                            $rankValues = [];
+                            foreach ($filteredPlayers as $player) {
+                              $playerId = (int)$player["id"];
+                              $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+                              $numeric = uc_value_to_float($value);
+                              if ($numeric === null) {
+                                continue;
+                              }
+                              $rankValues[$playerId] = $numeric;
+                            }
+                            if ($direction === "less") {
+                              asort($rankValues, SORT_NUMERIC);
+                            } else {
+                              arsort($rankValues, SORT_NUMERIC);
+                            }
+                            $ranks = [];
+                            $pos = 0;
+                            $rank = 0;
+                            $prev = null;
+                            foreach ($rankValues as $playerId => $val) {
+                              $pos++;
+                              if ($prev === null || $val != $prev) {
+                                $rank = $pos;
+                                $prev = $val;
+                              }
+                              $ranks[$playerId] = $rank;
+                            }
+                            $bestValue = null;
+                            $worstValue = null;
+                            if (!empty($rankValues)) {
+                              $values = array_values($rankValues);
+                              if ($direction === "less") {
+                                $bestValue = min($values);
+                                $worstValue = max($values);
+                              } else {
+                                $bestValue = max($values);
+                                $worstValue = min($values);
+                              }
+                            }
+                            $playerValue = $resultsByDiscipline[$discId][$selectedPlayerId] ?? null;
+                            $display = uc_display_value($playerValue, "-");
+                            if ($display !== "-" && $unit !== "") { $display .= " " . $unit; }
+                            $numericValue = $rankValues[$selectedPlayerId] ?? null;
+                            if ($numericValue === null || $bestValue === null || $worstValue === null) {
+                              $points = 0;
+                            } elseif ($bestValue == $worstValue) {
+                              $points = 2;
+                            } else {
+                              $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+                              $points = 1 + $ratio;
+                            }
+                            $pointsLabel = uc_format_points($points) . " P";
+                            $rankLabel = isset($ranks[$selectedPlayerId]) ? (string)$ranks[$selectedPlayerId] : "-";
+                          ?>
+                          <li class="list-item">
+                            <div>
+                              <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                              <?php if ($display !== "-"): ?>
+                                <span class="meta"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
+                              <?php endif; ?>
+                            </div>
+                            <span class="badge">
+                              <?php echo htmlspecialchars("Platz " . $rankLabel . " · " . $pointsLabel, ENT_QUOTES, "UTF-8"); ?>
+                            </span>
+                          </li>
+                        <?php endforeach; ?>
+                      </ul>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+              <script id="radar-data" type="application/json"><?php echo json_encode($radarData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
         <?php if (empty($assignedDisciplines)): ?>
           <p class="help">Keine Disziplinen zugeordnet.</p>
         <?php else: ?>
@@ -1116,6 +1278,104 @@ if (!$pageError && !$combineError && $mode === "results") {
       disciplineSelect.addEventListener("focus", () => {
         lastValue = disciplineSelect.value;
       });
+    }
+
+    const radarDataEl = document.getElementById("radar-data");
+    const radarCanvas = document.getElementById("radar-chart");
+    if (radarDataEl && radarCanvas) {
+      const data = JSON.parse(radarDataEl.textContent || "[]");
+      if (data.length) {
+        const ctx = radarCanvas.getContext("2d");
+      const dpi = window.devicePixelRatio || 1;
+      const size = Math.min(radarCanvas.width, radarCanvas.height);
+      radarCanvas.width = size * dpi;
+      radarCanvas.height = size * dpi;
+      radarCanvas.style.width = `${size}px`;
+      radarCanvas.style.height = `${size}px`;
+      ctx.scale(dpi, dpi);
+
+      const rootStyles = getComputedStyle(document.documentElement);
+      const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
+      const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
+      const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
+      const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
+
+      const center = size / 2;
+      const radius = center - 60;
+      const labelOffset = 6;
+      const steps = 5;
+      const maxValue = 2;
+      const angleStep = (Math.PI * 2) / data.length;
+
+      ctx.clearRect(0, 0, size, size);
+      ctx.translate(center, center);
+
+      ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
+      ctx.lineWidth = 1;
+      for (let s = 1; s <= steps; s += 1) {
+        const r = (radius / steps) * s;
+        ctx.beginPath();
+        for (let i = 0; i < data.length; i += 1) {
+          const angle = i * angleStep - Math.PI / 2;
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
+      for (let i = 0; i < data.length; i += 1) {
+        const angle = i * angleStep - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        ctx.stroke();
+      }
+
+      const drawShape = (values, stroke, fill) => {
+        ctx.beginPath();
+        values.forEach((value, index) => {
+          const normalized = Math.max(0, Math.min(value / maxValue, 1));
+          const angle = index * angleStep - Math.PI / 2;
+          const x = Math.cos(angle) * radius * normalized;
+          const y = Math.sin(angle) * radius * normalized;
+          if (index === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+      };
+
+      const teamValues = data.map((item) => item.team || 0);
+      const playerValues = data.map((item) => item.player || 0);
+      drawShape(teamValues, accent2, "rgba(44, 42, 74, 0.15)");
+      drawShape(playerValues, accent, "rgba(255, 123, 75, 0.22)");
+
+      ctx.fillStyle = ink;
+      ctx.font = "12px \"Space Grotesk\", sans-serif";
+      data.forEach((item, index) => {
+        const angle = index * angleStep - Math.PI / 2;
+        const x = Math.cos(angle) * (radius + labelOffset);
+        const y = Math.sin(angle) * (radius + labelOffset);
+        ctx.textAlign = x > 5 ? "left" : x < -5 ? "right" : "center";
+        ctx.textBaseline = y > 5 ? "top" : y < -5 ? "bottom" : "middle";
+        ctx.fillStyle = muted;
+        ctx.fillText(item.label, x, y);
+      });
+      }
     }
   </script></body>
 </html>

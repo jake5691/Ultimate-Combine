@@ -319,6 +319,26 @@ body {
   box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
 }
 
+.list-link {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.list-link .result-name,
+.list-link .badge {
+  white-space: nowrap;
+}
+
+.list-item.is-active {
+  outline: 2px solid var(--accent);
+}
+
 .meta {
   color: var(--muted);
   font-size: 0.85rem;
@@ -447,6 +467,22 @@ body {
   gap: 10px;
 }
 
+.category-block + .category-block {
+  margin-top: 10px;
+}
+
+.category-block .list {
+  margin-top: 10;
+}
+
+.info-card > .list {
+  margin-top: 0;
+}
+
+.player-detail .list {
+  margin-top: 0;
+}
+
 .category-title {
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -518,6 +554,82 @@ body {
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.85rem;
+}
+
+.radar-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(240px, 360px) 1fr;
+  align-items: start;
+}
+
+.player-detail .category-block {
+  gap: 6px;
+}
+
+.player-detail .category-block + .category-block {
+  margin-top: 6px;
+}
+
+.player-detail .list {
+  gap: 6px;
+}
+
+.radar-chart {
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.radar-chart canvas {
+  width: 100%;
+  height: auto;
+}
+
+.radar-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-player::before {
+  background: var(--accent);
+}
+
+.legend-player {
+  color: var(--accent);
+}
+
+.legend-team::before {
+  background: var(--accent-2);
+}
+
+.legend-team {
+  color: var(--accent-2);
+}
+
+@media (max-width: 900px) {
+  .radar-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .result-value {
   display: flex;
