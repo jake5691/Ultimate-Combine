@@ -210,6 +210,16 @@ body {
   font-size: 1rem;
 }
 
+.field textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid #ded3c5;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 96px;
+}
+
 .field select {
   border-radius: var(--radius-sm);
   border: 1px solid #ded3c5;
@@ -294,6 +304,12 @@ body {
   border-radius: 999px;
   font-weight: 700;
   font-size: 0.85rem;
+}
+
+.detail {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 6px;
 }
 
 .drawer {

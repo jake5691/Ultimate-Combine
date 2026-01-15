@@ -17,10 +17,15 @@ if (!$teamId) {
 
 $playerFeedback = null;
 $combineFeedback = null;
+$disciplineFeedback = null;
 $validGenders = [
   "m" => "Maennlich",
   "w" => "Weiblich",
   "d" => "Divers",
+];
+$validDirections = [
+  "more" => "Mehr ist besser",
+  "less" => "Weniger ist besser",
 ];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
@@ -79,10 +84,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $combineFeedback = "Combine wurde angelegt.";
     }
   }
+
+  if ($action === "create_discipline") {
+    $disciplineName = trim($_POST["discipline_name"] ?? "");
+    $description = trim($_POST["description"] ?? "");
+    $unit = trim($_POST["unit"] ?? "");
+    $category = trim($_POST["category"] ?? "");
+    $direction = $_POST["rating_direction"] ?? "";
+
+    if (
+      $disciplineName === "" ||
+      $description === "" ||
+      $unit === "" ||
+      $category === "" ||
+      !isset($validDirections[$direction])
+    ) {
+      $disciplineFeedback = "Bitte alle Felder fuer die Disziplin ausfuellen.";
+    } else {
+      $stmt = $pdo->prepare(
+        "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction)
+         VALUES (:team_id, :discipline_name, :description, :unit, :category, :rating_direction)"
+      );
+      $stmt->execute([
+        ":team_id" => $teamId,
+        ":discipline_name" => $disciplineName,
+        ":description" => $description,
+        ":unit" => $unit,
+        ":category" => $category,
+        ":rating_direction" => $direction,
+      ]);
+      $disciplineFeedback = "Disziplin wurde angelegt.";
+    }
+  }
 }
 
 $players = [];
 $combines = [];
+$disciplines = [];
 
 if (!$pageError) {
   $stmt = $pdo->prepare(
@@ -102,6 +140,15 @@ if (!$pageError) {
   );
   $stmt->execute([":team_id" => $teamId]);
   $combines = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
+    "SELECT discipline_name, description, unit, category, rating_direction, created_at
+     FROM disciplines
+     WHERE team_id = :team_id
+     ORDER BY created_at DESC"
+  );
+  $stmt->execute([":team_id" => $teamId]);
+  $disciplines = $stmt->fetchAll();
 }
 ?>
 <!doctype html>
@@ -189,6 +236,41 @@ if (!$pageError) {
       </div>
     </section>
 
+    <section class="auth-card">
+      <h2>Disziplin anlegen</h2>
+      <form class="form" method="post" action="">
+        <input type="hidden" name="action" value="create_discipline">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" name="discipline_name" required>
+        </label>
+        <label class="field">
+          <span>Beschreibung</span>
+          <textarea name="description" rows="3" required></textarea>
+        </label>
+        <label class="field">
+          <span>Einheit</span>
+          <input type="text" name="unit" placeholder="z. B. Sekunden, Meter" required>
+        </label>
+        <label class="field">
+          <span>Kategorie</span>
+          <input type="text" name="category" placeholder="z. B. Sprint, Sprung" required>
+        </label>
+        <label class="field">
+          <span>Bewertung</span>
+          <select name="rating_direction" required>
+            <option value="">Bitte waehlen</option>
+            <option value="more">Mehr ist besser</option>
+            <option value="less">Weniger ist besser</option>
+          </select>
+        </label>
+        <button class="primary-button" type="submit">Disziplin speichern</button>
+        <?php if ($disciplineFeedback): ?>
+          <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+      </form>
+    </section>
+
     <section class="info">
       <h2>Bestehende Daten</h2>
       <div class="info-grid">
@@ -228,6 +310,30 @@ if (!$pageError) {
                     <?php if (!empty($combine["event_date"])): ?>
                       <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
+                  </div>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        </div>
+        <div class="info-card">
+          <h3>Disziplinen</h3>
+          <?php if (empty($disciplines)): ?>
+            <p class="help">Noch keine Disziplinen angelegt.</p>
+          <?php else: ?>
+            <ul class="list">
+              <?php foreach ($disciplines as $discipline): ?>
+                <li class="list-item">
+                  <div>
+                    <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                    <span class="meta">
+                      <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                      &middot;
+                      <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                      &middot;
+                      <?php echo htmlspecialchars($validDirections[$discipline["rating_direction"]] ?? $discipline["rating_direction"], ENT_QUOTES, "UTF-8"); ?>
+                    </span>
+                    <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
                   </div>
                 </li>
               <?php endforeach; ?>

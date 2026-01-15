@@ -92,6 +92,22 @@ function uc_ensure_schema(PDO $pdo): void {
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS disciplines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NOT NULL,
+      discipline_name VARCHAR(120) NOT NULL,
+      description TEXT NOT NULL,
+      unit VARCHAR(60) NOT NULL,
+      category VARCHAR(80) NOT NULL,
+      rating_direction VARCHAR(12) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_disciplines_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
 }
 
 $envPath = dirname(__DIR__) . "/.secrets/.env";
