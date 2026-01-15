@@ -82,6 +82,22 @@ $conflicts = [];
 $needsConfirmation = false;
 $saveNotice = null;
 $startError = null;
+$filterGender = "";
+$filterPosition = "";
+$genderOptions = [
+  "m" => "Männlich",
+  "w" => "Weiblich",
+  "d" => "Divers",
+];
+
+$filterGender = $_GET["gender"] ?? "";
+if (!isset($genderOptions[$filterGender])) {
+  $filterGender = "";
+}
+$filterPosition = $_GET["position"] ?? "";
+if (!in_array($filterPosition, ["handler", "cutter"], true)) {
+  $filterPosition = "";
+}
 
 $formCombineName = "";
 $formEventDate = "";
@@ -116,7 +132,7 @@ if (!$pageError) {
   }
 
   $stmt = $pdo->prepare(
-    "SELECT id, first_name, last_name, jersey_number, gender
+    "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter
      FROM players
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -671,6 +687,167 @@ if (!$pageError && !$combineError && $mode === "results") {
     <?php if (!$pageError && !$combineError && $mode === "results"): ?>
       <section class="info">
         <h2>Ergebnisse</h2>
+        <?php
+          $filteredPlayers = array_values(array_filter($assignedPlayers, function ($player) use ($filterGender, $filterPosition) {
+            if ($filterGender !== "" && ($player["gender"] ?? "") !== $filterGender) {
+              return false;
+            }
+            if ($filterPosition === "handler" && empty($player["position_handler"])) {
+              return false;
+            }
+            if ($filterPosition === "cutter" && empty($player["position_cutter"])) {
+              return false;
+            }
+            return true;
+          }));
+          $overallScores = [];
+          foreach ($filteredPlayers as $player) {
+            $overallScores[(int)$player["id"]] = 0;
+          }
+          foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+            $disciplineCount = 0;
+            $categoryTotals = [];
+            foreach ($filteredPlayers as $player) {
+              $categoryTotals[(int)$player["id"]] = 0;
+            }
+            foreach ($categoryDisciplines as $discipline) {
+              $discId = (int)$discipline["id"];
+              $direction = $discipline["rating_direction"] ?? "more";
+              if ($direction !== "less" && $direction !== "more") {
+                $direction = "more";
+              }
+              $rankValues = [];
+              foreach ($filteredPlayers as $player) {
+                $playerId = (int)$player["id"];
+                $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+                $numeric = uc_value_to_float($value);
+                if ($numeric === null) {
+                  continue;
+                }
+                $rankValues[$playerId] = $numeric;
+              }
+              $bestValue = null;
+              $worstValue = null;
+              if (!empty($rankValues)) {
+                $disciplineCount++;
+                $values = array_values($rankValues);
+                if ($direction === "less") {
+                  $bestValue = min($values);
+                  $worstValue = max($values);
+                } else {
+                  $bestValue = max($values);
+                  $worstValue = min($values);
+                }
+              }
+              foreach ($filteredPlayers as $player) {
+                $playerId = (int)$player["id"];
+                $numericValue = $rankValues[$playerId] ?? null;
+                if ($numericValue === null || $bestValue === null || $worstValue === null) {
+                  $points = 0;
+                } elseif ($bestValue == $worstValue) {
+                  $points = 2;
+                } else {
+                  $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+                  $points = 1 + $ratio;
+                }
+                $categoryTotals[$playerId] += $points;
+              }
+            }
+            if ($disciplineCount === 0) {
+              continue;
+            }
+            foreach ($filteredPlayers as $player) {
+              $playerId = (int)$player["id"];
+              $categoryAverage = $categoryTotals[$playerId] / $disciplineCount;
+              $overallScores[$playerId] += $categoryAverage;
+            }
+          }
+          $overallRankValues = $overallScores;
+          arsort($overallRankValues, SORT_NUMERIC);
+          $overallRanks = [];
+          $pos = 0;
+          $rank = 0;
+          $prev = null;
+          foreach ($overallRankValues as $playerId => $val) {
+            $pos++;
+            if ($prev === null || $val != $prev) {
+              $rank = $pos;
+              $prev = $val;
+            }
+            $overallRanks[$playerId] = $rank;
+          }
+        ?>
+        <div class="info-card">
+          <h3>Filter</h3>
+          <form class="form" method="get" action="combine.php">
+            <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
+            <input type="hidden" name="mode" value="results">
+            <label class="field">
+              <span>Geschlecht</span>
+              <select name="gender">
+                <option value="">Alle</option>
+                <?php foreach ($genderOptions as $key => $label): ?>
+                  <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $filterGender === $key ? " selected" : ""; ?>>
+                    <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label class="field">
+              <span>Spielposition</span>
+              <select name="position">
+                <option value="">Alle</option>
+                <option value="handler"<?php echo $filterPosition === "handler" ? " selected" : ""; ?>>Handler</option>
+                <option value="cutter"<?php echo $filterPosition === "cutter" ? " selected" : ""; ?>>Cutter</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Filter anwenden</button>
+              <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
+                <a class="text-link" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=results">Zurücksetzen</a>
+              <?php endif; ?>
+            </div>
+          </form>
+        </div>
+        <div class="info-card">
+          <h3>Overall Ranking</h3>
+          <?php if (empty($filteredPlayers)): ?>
+            <p class="help">Keine Spieler für den gewählten Filter.</p>
+          <?php else: ?>
+            <?php
+              $overallOrderedPlayers = $filteredPlayers;
+              usort($overallOrderedPlayers, function ($a, $b) use ($overallScores) {
+                $scoreA = $overallScores[(int)$a["id"]] ?? 0;
+                $scoreB = $overallScores[(int)$b["id"]] ?? 0;
+                if ($scoreA == $scoreB) {
+                  $lastCompare = strcmp((string)$a["last_name"], (string)$b["last_name"]);
+                  if ($lastCompare === 0) {
+                    return strcmp((string)$a["first_name"], (string)$b["first_name"]);
+                  }
+                  return $lastCompare;
+                }
+                return $scoreA < $scoreB ? 1 : -1;
+              });
+            ?>
+            <ul class="list">
+              <?php foreach ($overallOrderedPlayers as $player): ?>
+                <?php $playerId = (int)$player["id"]; ?>
+                <?php $overallPoints = $overallScores[$playerId] ?? 0; ?>
+                <?php $rankLabel = isset($overallRanks[$playerId]) ? (string)$overallRanks[$playerId] : "-"; ?>
+                <li class="list-item">
+                  <div class="result-name">
+                    <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                    <strong>
+                      <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                      <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                    </strong>
+                  </div>
+                  <span class="badge"><?php echo htmlspecialchars(uc_format_points($overallPoints) . " P", ENT_QUOTES, "UTF-8"); ?></span>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        </div>
         <?php if (empty($assignedDisciplines)): ?>
           <p class="help">Keine Disziplinen zugeordnet.</p>
         <?php else: ?>
@@ -686,7 +863,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                   }
                   $unit = trim((string)($discipline["unit"] ?? ""));
                   $rankValues = [];
-                  foreach ($assignedPlayers as $player) {
+                  foreach ($filteredPlayers as $player) {
                     $playerId = (int)$player["id"];
                     $value = $resultsByDiscipline[$discId][$playerId] ?? null;
                     $numeric = uc_value_to_float($value);
@@ -727,21 +904,21 @@ if (!$pageError && !$combineError && $mode === "results") {
                 ?>
                 <div class="info-card">
                   <h4><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></h4>
-                  <?php if (empty($assignedPlayers)): ?>
-                    <p class="help">Keine Spieler zugeordnet.</p>
+                  <?php if (empty($filteredPlayers)): ?>
+                    <p class="help">Keine Spieler für den gewählten Filter.</p>
                   <?php else: ?>
                     <?php
                       $orderedPlayers = [];
                       $rankedIds = array_keys($rankValues);
                       foreach ($rankedIds as $playerId) {
-                        foreach ($assignedPlayers as $player) {
+                        foreach ($filteredPlayers as $player) {
                           if ((int)$player["id"] === (int)$playerId) {
                             $orderedPlayers[] = $player;
                             break;
                           }
                         }
                       }
-                      foreach ($assignedPlayers as $player) {
+                      foreach ($filteredPlayers as $player) {
                         if (!in_array((int)$player["id"], $rankedIds, true)) {
                           $orderedPlayers[] = $player;
                         }
