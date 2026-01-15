@@ -19,7 +19,7 @@ $playerFeedback = null;
 $combineFeedback = null;
 $disciplineFeedback = null;
 $validGenders = [
-  "m" => "Maennlich",
+  "m" => "Männlich",
   "w" => "Weiblich",
   "d" => "Divers",
 ];
@@ -44,44 +44,85 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $jerseyRaw = trim($_POST["jersey_number"] ?? "");
     $gender = $_POST["gender"] ?? "";
 
-    $jerseyNumber = filter_var($jerseyRaw, FILTER_VALIDATE_INT);
+    $jerseyNumber = $jerseyRaw === "" ? null : filter_var($jerseyRaw, FILTER_VALIDATE_INT);
 
     if ($firstName === "" || $lastName === "" || $jerseyNumber === false || !isset($validGenders[$gender])) {
-      $playerFeedback = "Bitte alle Felder fuer den Spieler korrekt ausfuellen.";
+      $playerFeedback = "Bitte alle Pflichtfelder fuer den Spieler korrekt ausfuellen.";
     } else {
       $stmt = $pdo->prepare(
-        "INSERT INTO players (team_id, first_name, last_name, jersey_number, gender)
-         VALUES (:team_id, :first_name, :last_name, :jersey_number, :gender)"
+        "SELECT 1
+         FROM players
+         WHERE team_id = :team_id
+           AND first_name = :first_name
+           AND last_name = :last_name
+           AND gender = :gender
+           AND ((:jersey_number IS NULL AND jersey_number IS NULL) OR jersey_number = :jersey_number)
+         LIMIT 1"
       );
       $stmt->execute([
         ":team_id" => $teamId,
         ":first_name" => $firstName,
         ":last_name" => $lastName,
-        ":jersey_number" => $jerseyNumber,
         ":gender" => $gender,
+        ":jersey_number" => $jerseyNumber,
       ]);
-      $playerFeedback = "Spieler wurde angelegt.";
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $playerFeedback = "Dieser Spieler existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "INSERT INTO players (team_id, first_name, last_name, jersey_number, gender)
+           VALUES (:team_id, :first_name, :last_name, :jersey_number, :gender)"
+        );
+        $stmt->execute([
+          ":team_id" => $teamId,
+          ":first_name" => $firstName,
+          ":last_name" => $lastName,
+          ":jersey_number" => $jerseyNumber,
+          ":gender" => $gender,
+        ]);
+        $playerFeedback = "Spieler wurde angelegt.";
+      }
     }
   }
 
   if ($action === "create_combine") {
     $combineName = trim($_POST["combine_name"] ?? "");
     $eventDate = trim($_POST["event_date"] ?? "");
-    $eventDate = $eventDate !== "" ? $eventDate : null;
 
-    if ($combineName === "") {
-      $combineFeedback = "Bitte einen Namen fuer das Combine angeben.";
+    if ($combineName === "" || $eventDate === "") {
+      $combineFeedback = "Bitte Name und Datum fuer das Combine angeben.";
     } else {
       $stmt = $pdo->prepare(
-        "INSERT INTO combines (team_id, combine_name, event_date)
-         VALUES (:team_id, :combine_name, :event_date)"
+        "SELECT 1
+         FROM combines
+         WHERE team_id = :team_id
+           AND combine_name = :combine_name
+           AND event_date = :event_date
+         LIMIT 1"
       );
       $stmt->execute([
         ":team_id" => $teamId,
         ":combine_name" => $combineName,
         ":event_date" => $eventDate,
       ]);
-      $combineFeedback = "Combine wurde angelegt.";
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $combineFeedback = "Dieses Combine existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "INSERT INTO combines (team_id, combine_name, event_date)
+           VALUES (:team_id, :combine_name, :event_date)"
+        );
+        $stmt->execute([
+          ":team_id" => $teamId,
+          ":combine_name" => $combineName,
+          ":event_date" => $eventDate,
+        ]);
+        $combineFeedback = "Combine wurde angelegt.";
+      }
     }
   }
 
@@ -102,18 +143,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $disciplineFeedback = "Bitte alle Felder fuer die Disziplin ausfuellen.";
     } else {
       $stmt = $pdo->prepare(
-        "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction)
-         VALUES (:team_id, :discipline_name, :description, :unit, :category, :rating_direction)"
+        "SELECT 1
+         FROM disciplines
+         WHERE team_id = :team_id
+           AND discipline_name = :discipline_name
+         LIMIT 1"
       );
       $stmt->execute([
         ":team_id" => $teamId,
         ":discipline_name" => $disciplineName,
-        ":description" => $description,
-        ":unit" => $unit,
-        ":category" => $category,
-        ":rating_direction" => $direction,
       ]);
-      $disciplineFeedback = "Disziplin wurde angelegt.";
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $disciplineFeedback = "Diese Disziplin existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction)
+           VALUES (:team_id, :discipline_name, :description, :unit, :category, :rating_direction)"
+        );
+        $stmt->execute([
+          ":team_id" => $teamId,
+          ":discipline_name" => $disciplineName,
+          ":description" => $description,
+          ":unit" => $unit,
+          ":category" => $category,
+          ":rating_direction" => $direction,
+        ]);
+        $disciplineFeedback = "Disziplin wurde angelegt.";
+      }
     }
   }
 }
@@ -177,98 +235,10 @@ if (!$pageError) {
   <main class="team">
     <section class="auth-card">
       <h1>Team-Übersicht</h1>
-      <p class="lead">Verwalte Spieler und Combines für dein Team.</p>
+      <p class="lead">Verwalte Spieler, Disziplinen und Combines für dein Team.</p>
       <?php if ($pageError): ?>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
-    </section>
-
-    <section class="team-grid">
-      <div class="auth-card">
-        <h2>Spieler anlegen</h2>
-        <form class="form" method="post" action="">
-          <input type="hidden" name="action" value="create_player">
-          <label class="field">
-            <span>Vorname</span>
-            <input type="text" name="first_name" required>
-          </label>
-          <label class="field">
-            <span>Nachname</span>
-            <input type="text" name="last_name" required>
-          </label>
-          <label class="field">
-            <span>Trikotnummer</span>
-            <input type="number" name="jersey_number" min="0" required>
-          </label>
-          <label class="field">
-            <span>Geschlecht</span>
-            <select name="gender" required>
-              <option value="">Bitte wählen</option>
-              <option value="m">Männlich</option>
-              <option value="w">Weiblich</option>
-              <option value="d">Divers</option>
-            </select>
-          </label>
-          <button class="primary-button" type="submit">Spieler speichern</button>
-          <?php if ($playerFeedback): ?>
-            <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
-          <?php endif; ?>
-        </form>
-      </div>
-
-      <div class="auth-card">
-        <h2>Combine anlegen</h2>
-        <form class="form" method="post" action="">
-          <input type="hidden" name="action" value="create_combine">
-          <label class="field">
-            <span>Name</span>
-            <input type="text" name="combine_name" required>
-          </label>
-          <label class="field">
-            <span>Datum</span>
-            <input type="date" name="event_date">
-          </label>
-          <button class="primary-button" type="submit">Combine speichern</button>
-          <?php if ($combineFeedback): ?>
-            <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
-          <?php endif; ?>
-        </form>
-      </div>
-    </section>
-
-    <section class="auth-card">
-      <h2>Disziplin anlegen</h2>
-      <form class="form" method="post" action="">
-        <input type="hidden" name="action" value="create_discipline">
-        <label class="field">
-          <span>Name</span>
-          <input type="text" name="discipline_name" required>
-        </label>
-        <label class="field">
-          <span>Beschreibung</span>
-          <textarea name="description" rows="3" required></textarea>
-        </label>
-        <label class="field">
-          <span>Einheit</span>
-          <input type="text" name="unit" placeholder="z. B. Sekunden, Meter" required>
-        </label>
-        <label class="field">
-          <span>Kategorie</span>
-          <input type="text" name="category" placeholder="z. B. Sprint, Sprung" required>
-        </label>
-        <label class="field">
-          <span>Bewertung</span>
-          <select name="rating_direction" required>
-            <option value="">Bitte waehlen</option>
-            <option value="more">Mehr ist besser</option>
-            <option value="less">Weniger ist besser</option>
-          </select>
-        </label>
-        <button class="primary-button" type="submit">Disziplin speichern</button>
-        <?php if ($disciplineFeedback): ?>
-          <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
-        <?php endif; ?>
-      </form>
     </section>
 
     <section class="info">
@@ -307,9 +277,7 @@ if (!$pageError) {
                 <li class="list-item">
                   <div>
                     <strong><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                    <?php if (!empty($combine["event_date"])): ?>
-                      <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
-                    <?php endif; ?>
+                    <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </li>
               <?php endforeach; ?>
@@ -342,6 +310,95 @@ if (!$pageError) {
         </div>
       </div>
     </section>
+
+    <section class="team-grid">
+      <div class="auth-card">
+        <h2>Spieler anlegen</h2>
+        <form class="form" method="post" action="">
+          <input type="hidden" name="action" value="create_player">
+          <label class="field">
+            <span>Vorname</span>
+            <input type="text" name="first_name" required>
+          </label>
+          <label class="field">
+            <span>Nachname</span>
+            <input type="text" name="last_name" required>
+          </label>
+          <label class="field">
+            <span>Trikotnummer</span>
+            <input type="number" name="jersey_number" min="0">
+          </label>
+          <label class="field">
+            <span>Geschlecht</span>
+            <select name="gender" required>
+              <option value="">Bitte wählen</option>
+              <option value="m">Männlich</option>
+              <option value="w">Weiblich</option>
+              <option value="d">Divers</option>
+            </select>
+          </label>
+          <button class="primary-button" type="submit">Spieler speichern</button>
+          <?php if ($playerFeedback): ?>
+            <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
+        </form>
+      </div>
+
+      <div class="auth-card">
+        <h2>Combine anlegen</h2>
+        <form class="form" method="post" action="">
+          <input type="hidden" name="action" value="create_combine">
+          <label class="field">
+            <span>Name</span>
+            <input type="text" name="combine_name" required>
+          </label>
+          <label class="field">
+            <span>Datum</span>
+            <input type="date" name="event_date" required>
+          </label>
+          <button class="primary-button" type="submit">Combine speichern</button>
+          <?php if ($combineFeedback): ?>
+            <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
+        </form>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <h2>Disziplin anlegen</h2>
+      <form class="form" method="post" action="">
+        <input type="hidden" name="action" value="create_discipline">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" name="discipline_name" required>
+        </label>
+        <label class="field">
+          <span>Beschreibung</span>
+          <textarea name="description" rows="3" required></textarea>
+        </label>
+        <label class="field">
+          <span>Einheit</span>
+          <input type="text" name="unit" placeholder="z. B. Sekunden, Meter" required>
+        </label>
+        <label class="field">
+          <span>Kategorie</span>
+          <input type="text" name="category" placeholder="z. B. Sprint, Sprung" required>
+        </label>
+        <label class="field">
+          <span>Bewertung</span>
+          <select name="rating_direction" required>
+            <option value="">Bitte wählen</option>
+            <option value="more">Mehr ist besser</option>
+            <option value="less">Weniger ist besser</option>
+          </select>
+        </label>
+        <button class="primary-button" type="submit">Disziplin speichern</button>
+        <?php if ($disciplineFeedback): ?>
+          <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+      </form>
+    </section>
+
   </main>
 </body>
 </html>
