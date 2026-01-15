@@ -142,6 +142,14 @@ body {
   margin: 0 auto 80px;
 }
 
+.team {
+  display: grid;
+  gap: 32px;
+  padding: 20px;
+  max-width: 1100px;
+  margin: 0 auto 80px;
+}
+
 .auth-card {
   background: var(--surface);
   border-radius: var(--radius);
@@ -202,6 +210,14 @@ body {
   font-size: 1rem;
 }
 
+.field select {
+  border-radius: var(--radius-sm);
+  border: 1px solid #ded3c5;
+  padding: 14px 16px;
+  font-size: 1rem;
+  background: #fff;
+}
+
 .primary-button {
   border: none;
   background: var(--accent);
@@ -240,6 +256,44 @@ body {
   background: var(--bg-strong);
   border-radius: var(--radius-sm);
   padding: 18px;
+}
+
+.team-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.list {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.list-item {
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-left: 8px;
+}
+
+.badge {
+  background: var(--accent);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .drawer {
@@ -298,6 +352,10 @@ body {
   .auth {
     grid-template-columns: 1.2fr 1fr;
     align-items: start;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .info-grid {

@@ -1,0 +1,104 @@
+<?php
+session_start();
+
+function uc_load_env(string $path): array {
+  if (!is_readable($path)) {
+    return [];
+  }
+
+  $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  $env = [];
+
+  foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === "" || strncmp($line, "#", 1) === 0) {
+      continue;
+    }
+
+    $parts = explode("=", $line, 2);
+    $key = trim($parts[0]);
+    $value = isset($parts[1]) ? trim($parts[1]) : "";
+
+    if ($key !== "") {
+      $env[$key] = $value;
+    }
+  }
+
+  return $env;
+}
+
+function uc_get_pdo(array $env, ?string &$error): ?PDO {
+  if (empty($env)) {
+    $error = "Datenbankkonfiguration fehlt.";
+    return null;
+  }
+
+  try {
+    $dsn = sprintf(
+      "mysql:host=%s;dbname=%s;charset=utf8mb4",
+      $env["DB_HOST"] ?? "",
+      $env["DB_NAME"] ?? ""
+    );
+    return new PDO(
+      $dsn,
+      $env["DB_USER"] ?? "",
+      $env["DB_PASSWORD"] ?? "",
+      [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+      ]
+    );
+  } catch (Throwable $e) {
+    $error = "Datenbankverbindung fehlgeschlagen.";
+    return null;
+  }
+}
+
+function uc_ensure_schema(PDO $pdo): void {
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS teams (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_name VARCHAR(120) NOT NULL UNIQUE,
+      team_key_hash VARCHAR(255) NOT NULL,
+      contact VARCHAR(160) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS players (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NOT NULL,
+      first_name VARCHAR(80) NOT NULL,
+      last_name VARCHAR(120) NOT NULL,
+      jersey_number INT NULL,
+      gender VARCHAR(12) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_players_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS combines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NOT NULL,
+      combine_name VARCHAR(120) NOT NULL,
+      event_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_combines_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+}
+
+$envPath = dirname(__DIR__) . "/.secrets/.env";
+$env = uc_load_env($envPath);
+$dbError = null;
+$pdo = uc_get_pdo($env, $dbError);
+
+if ($pdo) {
+  uc_ensure_schema($pdo);
+}
