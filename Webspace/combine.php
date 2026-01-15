@@ -164,9 +164,11 @@ if (!$pageError) {
   ksort($assignedDisciplinesByCategory, SORT_NATURAL | SORT_FLAG_CASE);
   $orderedPlayers = $assignedPlayers;
   $activeDisciplineDescription = "";
+  $activeDisciplineUnit = "";
   foreach ($assignedDisciplines as $discipline) {
     if ((int)$discipline["id"] === (int)$activeDisciplineId) {
       $activeDisciplineDescription = $discipline["description"] ?? "";
+      $activeDisciplineUnit = $discipline["unit"] ?? "";
       break;
     }
   }
@@ -398,9 +400,11 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
     }
 
     $activeDisciplineDescription = "";
+    $activeDisciplineUnit = "";
     foreach ($assignedDisciplines as $discipline) {
       if ((int)$discipline["id"] === (int)$activeDisciplineId) {
         $activeDisciplineDescription = $discipline["description"] ?? "";
+        $activeDisciplineUnit = $discipline["unit"] ?? "";
         break;
       }
     }
@@ -634,7 +638,12 @@ if (!$pageError && !$combineError && $mode === "results") {
                     <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
                     <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                   </span>
-                  <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
+                  <span class="result-value">
+                    <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
+                    <?php if (!empty($activeDisciplineUnit)): ?>
+                      <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></span>
+                    <?php endif; ?>
+                  </span>
                   <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
                 </label>
               <?php endforeach; ?>

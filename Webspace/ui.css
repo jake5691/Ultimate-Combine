@@ -467,7 +467,7 @@ body {
 
 .result-item {
   display: grid;
-  grid-template-columns: 1fr 160px;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -518,4 +518,18 @@ body {
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.85rem;
+}
+.result-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unit-tag {
+  background: var(--bg-strong);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

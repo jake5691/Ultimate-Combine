@@ -465,7 +465,6 @@ if (!$pageError) {
       <button class="pill-button" type="submit">Logout</button>
     </form>
     <div class="brand">
-      <span class="brand-mark">UC</span>
       <span class="brand-text">Ultimate Combine</span>
     </div>
     <span class="pill-button"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
