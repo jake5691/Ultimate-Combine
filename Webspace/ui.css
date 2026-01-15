@@ -453,3 +453,69 @@ body {
   letter-spacing: 0.12em;
   color: var(--muted);
 }
+.action-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.result-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.result-item {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+}
+
+.result-input {
+  border-radius: var(--radius-sm);
+  border: 1px solid #ded3c5;
+  padding: 10px 12px;
+  font-size: 1rem;
+}
+
+.conflict-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+
+.conflict-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+  font-size: 0.95rem;
+}
+.result-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.result-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rank-pill {
+  background: var(--accent-2);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
