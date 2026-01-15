@@ -101,6 +101,8 @@ if (!in_array($filterPosition, ["handler", "cutter"], true)) {
 
 $formCombineName = "";
 $formEventDate = "";
+$formCombineLocation = "";
+$formCombineNotes = "";
 $formPlayerIds = [];
 $formDisciplineIds = [];
 
@@ -117,7 +119,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 
 if (!$pageError) {
   $stmt = $pdo->prepare(
-    "SELECT id, combine_name, event_date
+    "SELECT id, combine_name, event_date, combine_location, combine_notes
      FROM combines
      WHERE id = :id AND team_id = :team_id"
   );
@@ -202,6 +204,8 @@ if (!$pageError) {
 
   $formCombineName = $combine["combine_name"] ?? "";
   $formEventDate = $combine["event_date"] ?? "";
+  $formCombineLocation = $combine["combine_location"] ?? "";
+  $formCombineNotes = $combine["combine_notes"] ?? "";
   $formPlayerIds = $assignedPlayerIds;
   $formDisciplineIds = $assignedDisciplineIds;
 }
@@ -212,6 +216,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   if ($action === "update_combine" && !$combineError) {
     $combineName = trim($_POST["combine_name"] ?? "");
     $eventDate = trim($_POST["event_date"] ?? "");
+    $combineLocation = trim($_POST["combine_location"] ?? "");
+    $combineNotes = trim($_POST["combine_notes"] ?? "");
     $selectedPlayers = (array)($_POST["players"] ?? []);
     $selectedDisciplines = (array)($_POST["disciplines"] ?? []);
 
@@ -249,12 +255,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $stmt = $pdo->prepare(
           "UPDATE combines
            SET combine_name = :combine_name,
-               event_date = :event_date
+               event_date = :event_date,
+               combine_location = :combine_location,
+               combine_notes = :combine_notes
            WHERE id = :id AND team_id = :team_id"
         );
         $stmt->execute([
           ":combine_name" => $combineName,
           ":event_date" => $eventDate,
+          ":combine_location" => $combineLocation !== "" ? $combineLocation : null,
+          ":combine_notes" => $combineNotes !== "" ? $combineNotes : null,
           ":id" => $combineId,
           ":team_id" => $teamId,
         ]);
@@ -304,6 +314,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 
     $formCombineName = $combineName;
     $formEventDate = $eventDate;
+    $formCombineLocation = $combineLocation;
+    $formCombineNotes = $combineNotes;
     $formPlayerIds = $selectedPlayers;
     $formDisciplineIds = $selectedDisciplines;
   }
@@ -523,6 +535,12 @@ if (!$pageError && !$combineError && $mode === "results") {
           <?php endif; ?>
         </div>
         <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
+        <?php if (!empty($combine["combine_location"])): ?>
+          <p class="lead">Ort: <?php echo htmlspecialchars($combine["combine_location"], ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+        <?php if (!empty($combine["combine_notes"])): ?>
+          <p class="help"><?php echo htmlspecialchars($combine["combine_notes"], ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
         <?php if (!$editMode): ?>
           <div class="action-row">
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>">Setup</a>
@@ -536,7 +554,7 @@ if (!$pageError && !$combineError && $mode === "results") {
     <?php if (!$pageError && !$combineError && $mode === "view"): ?>
       <section class="info">
         <h2>Übersicht</h2>
-        <div class="info-grid">
+        <div class="info-grid info-grid--two">
           <div class="info-card">
             <h3>Spieler</h3>
             <?php if (empty($assignedPlayerIds)): ?>
@@ -1192,6 +1210,14 @@ if (!$pageError && !$combineError && $mode === "results") {
           <label class="field">
             <span>Datum</span>
             <input type="date" name="event_date" value="<?php echo htmlspecialchars($formEventDate, ENT_QUOTES, "UTF-8"); ?>" required>
+          </label>
+          <label class="field">
+            <span>Ort</span>
+            <input type="text" name="combine_location" value="<?php echo htmlspecialchars($formCombineLocation, ENT_QUOTES, "UTF-8"); ?>">
+          </label>
+          <label class="field">
+            <span>Notizen</span>
+            <textarea name="combine_notes" rows="3"><?php echo htmlspecialchars($formCombineNotes, ENT_QUOTES, "UTF-8"); ?></textarea>
           </label>
 
           <div class="field">

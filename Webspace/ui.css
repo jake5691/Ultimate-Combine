@@ -280,6 +280,17 @@ body {
 .info-grid {
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .info-card {
@@ -424,6 +435,10 @@ body {
 
   .info-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .info-grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

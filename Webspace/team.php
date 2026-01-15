@@ -99,6 +99,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   if ($action === "create_combine") {
     $combineName = trim($_POST["combine_name"] ?? "");
     $eventDate = trim($_POST["event_date"] ?? "");
+    $combineLocation = trim($_POST["combine_location"] ?? "");
+    $combineNotes = trim($_POST["combine_notes"] ?? "");
 
     if ($combineName === "" || $eventDate === "") {
       $combineFeedback = "Bitte Name und Datum fuer das Combine angeben.";
@@ -122,13 +124,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $combineFeedback = "Dieses Combine existiert bereits.";
       } else {
         $stmt = $pdo->prepare(
-          "INSERT INTO combines (team_id, combine_name, event_date)
-           VALUES (:team_id, :combine_name, :event_date)"
+          "INSERT INTO combines (team_id, combine_name, event_date, combine_location, combine_notes)
+           VALUES (:team_id, :combine_name, :event_date, :combine_location, :combine_notes)"
         );
         $stmt->execute([
           ":team_id" => $teamId,
           ":combine_name" => $combineName,
           ":event_date" => $eventDate,
+          ":combine_location" => $combineLocation !== "" ? $combineLocation : null,
+          ":combine_notes" => $combineNotes !== "" ? $combineNotes : null,
         ]);
         $combineFeedback = "Combine wurde angelegt.";
       }
@@ -254,6 +258,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
     $combineName = trim($_POST["combine_name"] ?? "");
     $eventDate = trim($_POST["event_date"] ?? "");
+    $combineLocation = trim($_POST["combine_location"] ?? "");
+    $combineNotes = trim($_POST["combine_notes"] ?? "");
 
     if (!$editId || $combineName === "" || $eventDate === "") {
       $combineFeedback = "Bitte Name und Datum fuer das Combine angeben.";
@@ -281,12 +287,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $stmt = $pdo->prepare(
           "UPDATE combines
            SET combine_name = :combine_name,
-               event_date = :event_date
+               event_date = :event_date,
+               combine_location = :combine_location,
+               combine_notes = :combine_notes
            WHERE id = :id AND team_id = :team_id"
         );
         $stmt->execute([
           ":combine_name" => $combineName,
           ":event_date" => $eventDate,
+          ":combine_location" => $combineLocation !== "" ? $combineLocation : null,
+          ":combine_notes" => $combineNotes !== "" ? $combineNotes : null,
           ":id" => $editId,
           ":team_id" => $teamId,
         ]);
@@ -377,7 +387,7 @@ if (!$pageError) {
       $editRecord = $stmt->fetch();
     } elseif ($editType === "combine") {
       $stmt = $pdo->prepare(
-        "SELECT id, combine_name, event_date
+        "SELECT id, combine_name, event_date, combine_location, combine_notes
          FROM combines
          WHERE id = :id AND team_id = :team_id"
       );
@@ -416,7 +426,7 @@ if (!$pageError) {
   $players = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT id, combine_name, event_date, created_at
+    "SELECT id, combine_name, event_date, combine_location, combine_notes, created_at
      FROM combines
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -631,6 +641,14 @@ if (!$pageError) {
             <span>Datum</span>
             <input type="date" name="event_date" required>
           </label>
+          <label class="field">
+            <span>Ort</span>
+            <input type="text" name="combine_location" placeholder="z. B. Sportplatz Nord">
+          </label>
+          <label class="field">
+            <span>Notizen</span>
+            <textarea name="combine_notes" rows="3" placeholder="Optional"></textarea>
+          </label>
           <button class="primary-button" type="submit">Combine speichern</button>
           <?php if ($combineFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -755,6 +773,14 @@ if (!$pageError) {
             <label class="field">
               <span>Datum</span>
               <input type="date" name="event_date" value="<?php echo htmlspecialchars($editRecord["event_date"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Ort</span>
+              <input type="text" name="combine_location" value="<?php echo htmlspecialchars($editRecord["combine_location"] ?? "", ENT_QUOTES, "UTF-8"); ?>">
+            </label>
+            <label class="field">
+              <span>Notizen</span>
+              <textarea name="combine_notes" rows="3"><?php echo htmlspecialchars($editRecord["combine_notes"] ?? "", ENT_QUOTES, "UTF-8"); ?></textarea>
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>

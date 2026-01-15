@@ -86,12 +86,30 @@ function uc_ensure_schema(PDO $pdo): void {
       team_id INT NOT NULL,
       combine_name VARCHAR(120) NOT NULL,
       event_date DATE NOT NULL,
+      combine_location VARCHAR(160) NULL,
+      combine_notes TEXT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_combines_team
         FOREIGN KEY (team_id) REFERENCES teams(id)
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $columns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'combines'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+
+  if (!in_array("combine_location", $columns, true)) {
+    $pdo->exec("ALTER TABLE combines ADD COLUMN combine_location VARCHAR(160) NULL AFTER event_date");
+  }
+  if (!in_array("combine_notes", $columns, true)) {
+    $pdo->exec("ALTER TABLE combines ADD COLUMN combine_notes TEXT NULL AFTER combine_location");
+  }
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS disciplines (
