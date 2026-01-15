@@ -24,6 +24,17 @@ function uc_display_value($value, $empty = "") {
   return str_replace(".", ",", (string)$value);
 }
 
+function uc_format_points($points) {
+  if ($points === null) {
+    return "0";
+  }
+  $rounded = round($points, 2);
+  if (abs($rounded - round($rounded)) < 0.005) {
+    return (string)(int)round($rounded);
+  }
+  return number_format($rounded, 2, ",", "");
+}
+
 if (!$pdo) {
   $pageError = $dbError ?? "Datenbank ist nicht erreichbar.";
 } else {
@@ -560,7 +571,7 @@ if (!$pageError && !$combineError && $mode === "results") {
 
     <?php if (!$pageError && !$combineError && $mode === "start"): ?>
       <section class="auth-card">
-        <h2>Start</h2>
+        <h2>Eintragen</h2>
         <?php if ($startError): ?>
           <p class="help"><?php echo htmlspecialchars($startError, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
@@ -701,6 +712,18 @@ if (!$pageError && !$combineError && $mode === "results") {
                     }
                     $ranks[$playerId] = $rank;
                   }
+                  $bestValue = null;
+                  $worstValue = null;
+                  if (!empty($rankValues)) {
+                    $values = array_values($rankValues);
+                    if ($direction === "less") {
+                      $bestValue = min($values);
+                      $worstValue = max($values);
+                    } else {
+                      $bestValue = max($values);
+                      $worstValue = min($values);
+                    }
+                  }
                 ?>
                 <div class="info-card">
                   <h4><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></h4>
@@ -730,16 +753,34 @@ if (!$pageError && !$combineError && $mode === "results") {
                         <?php $value = $resultsByDiscipline[$discId][$playerId] ?? null; ?>
                         <?php $display = uc_display_value($value, "-"); ?>
                         <?php if ($display !== "-" && $unit !== "") { $display .= " " . $unit; } ?>
+                        <?php
+                          $numericValue = $rankValues[$playerId] ?? null;
+                          if ($numericValue === null || $bestValue === null || $worstValue === null) {
+                            $points = 0;
+                          } elseif ($bestValue == $worstValue) {
+                            $points = 2;
+                          } else {
+                            $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+                            $points = 1 + $ratio;
+                          }
+                          $pointsLabel = uc_format_points($points) . " P";
+                        ?>
                         <?php $rankLabel = isset($ranks[$playerId]) ? (string)$ranks[$playerId] : "-"; ?>
                         <li class="list-item">
                           <div class="result-name">
-                            <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                            <span class="rank-pill">
+                              Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?>
+                              &middot;
+                              <?php echo htmlspecialchars($pointsLabel, ENT_QUOTES, "UTF-8"); ?>
+                            </span>
                             <strong>
                               <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
                               <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                             </strong>
                           </div>
-                          <span class="badge"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
+                          <span class="badge">
+                            <?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?>
+                          </span>
                         </li>
                       <?php endforeach; ?>
                     </ul>
