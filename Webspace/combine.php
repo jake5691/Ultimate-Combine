@@ -468,7 +468,6 @@ if (!$pageError && !$combineError && $mode === "results") {
   <header class="topbar">
     <a class="pill-button" href="team.php">Zurück</a>
     <div class="brand">
-      <span class="brand-mark">UC</span>
       <span class="brand-text">Ultimate Combine</span>
     </div>
     <form method="post" action="">
@@ -496,7 +495,7 @@ if (!$pageError && !$combineError && $mode === "results") {
         <?php if (!$editMode): ?>
           <div class="action-row">
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>">Setup</a>
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start">Start</a>
+            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start">Eintragen</a>
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=results">Ergebnisse</a>
           </div>
         <?php endif; ?>
@@ -640,7 +639,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                 </label>
               <?php endforeach; ?>
             </div>
-            <button class="primary-button" type="submit">Save</button>
+            <button class="primary-button" type="submit">Speichern</button>
             <?php if ($saveNotice): ?>
               <p class="help"><?php echo htmlspecialchars($saveNotice, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>

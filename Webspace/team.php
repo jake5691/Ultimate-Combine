@@ -47,6 +47,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $lastName = trim($_POST["last_name"] ?? "");
     $jerseyRaw = trim($_POST["jersey_number"] ?? "");
     $gender = $_POST["gender"] ?? "";
+    $positions = (array)($_POST["positions"] ?? []);
+    $isHandler = in_array("handler", $positions, true) ? 1 : 0;
+    $isCutter = in_array("cutter", $positions, true) ? 1 : 0;
 
     $jerseyNumber = $jerseyRaw === "" ? null : filter_var($jerseyRaw, FILTER_VALIDATE_INT);
 
@@ -76,15 +79,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $playerFeedback = "Dieser Spieler existiert bereits.";
       } else {
         $stmt = $pdo->prepare(
-          "INSERT INTO players (team_id, first_name, last_name, jersey_number, gender)
-           VALUES (:team_id, :first_name, :last_name, :jersey_number, :gender)"
+          "INSERT INTO players (team_id, first_name, last_name, jersey_number, gender, position_handler, position_cutter)
+           VALUES (:team_id, :first_name, :last_name, :jersey_number, :gender, :position_handler, :position_cutter)"
         );
         $stmt->execute([
           ":team_id" => $teamId,
           ":first_name" => $firstName,
           ":last_name" => $lastName,
           ":jersey_number" => $jerseyNumber,
-          ":gender" => $gender,
+        ":gender" => $gender,
+        ":position_handler" => $isHandler,
+        ":position_cutter" => $isCutter,
         ]);
         $playerFeedback = "Spieler wurde angelegt.";
       }
@@ -144,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $category === "" ||
       !isset($validDirections[$direction])
     ) {
-      $disciplineFeedback = "Bitte alle Felder fuer die Disziplin ausfuellen.";
+      $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
     } else {
       $stmt = $pdo->prepare(
         "SELECT 1
@@ -186,6 +191,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $lastName = trim($_POST["last_name"] ?? "");
     $jerseyRaw = trim($_POST["jersey_number"] ?? "");
     $gender = $_POST["gender"] ?? "";
+    $positions = (array)($_POST["positions"] ?? []);
+    $isHandler = in_array("handler", $positions, true) ? 1 : 0;
+    $isCutter = in_array("cutter", $positions, true) ? 1 : 0;
 
     $jerseyNumber = $jerseyRaw === "" ? null : filter_var($jerseyRaw, FILTER_VALIDATE_INT);
 
@@ -221,7 +229,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
            SET first_name = :first_name,
                last_name = :last_name,
                jersey_number = :jersey_number,
-               gender = :gender
+               gender = :gender,
+               position_handler = :position_handler,
+               position_cutter = :position_cutter
            WHERE id = :id AND team_id = :team_id"
         );
         $stmt->execute([
@@ -229,6 +239,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":last_name" => $lastName,
           ":jersey_number" => $jerseyNumber,
           ":gender" => $gender,
+          ":position_handler" => $isHandler,
+          ":position_cutter" => $isCutter,
           ":id" => $editId,
           ":team_id" => $teamId,
         ]);
@@ -354,7 +366,7 @@ if (!$pageError) {
   if ($editType && $editId) {
     if ($editType === "player") {
       $stmt = $pdo->prepare(
-        "SELECT id, first_name, last_name, jersey_number, gender
+        "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter
          FROM players
          WHERE id = :id AND team_id = :team_id"
       );
@@ -395,7 +407,7 @@ if (!$pageError) {
   }
 
   $stmt = $pdo->prepare(
-    "SELECT id, first_name, last_name, jersey_number, gender, created_at
+    "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
      FROM players
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -588,6 +600,19 @@ if (!$pageError) {
               <option value="d">Divers</option>
             </select>
           </label>
+          <div class="field">
+            <span>Position</span>
+            <div class="check-grid">
+              <label class="check-item">
+                <input type="checkbox" name="positions[]" value="handler">
+                <span>Handler</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" name="positions[]" value="cutter">
+                <span>Cutter</span>
+              </label>
+            </div>
+          </div>
           <button class="primary-button" type="submit">Spieler speichern</button>
           <?php if ($playerFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -699,6 +724,19 @@ if (!$pageError) {
                 <?php endforeach; ?>
               </select>
             </label>
+            <div class="field">
+              <span>Position</span>
+              <div class="check-grid">
+                <label class="check-item">
+                  <input type="checkbox" name="positions[]" value="handler"<?php echo !empty($editRecord["position_handler"]) ? " checked" : ""; ?>>
+                  <span>Handler</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" name="positions[]" value="cutter"<?php echo !empty($editRecord["position_cutter"]) ? " checked" : ""; ?>>
+                  <span>Cutter</span>
+                </label>
+              </div>
+            </div>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
               <a class="text-link" href="team.php">Abbrechen</a>
