@@ -27,6 +27,10 @@ $validDirections = [
   "more" => "Mehr ist besser",
   "less" => "Weniger ist besser",
 ];
+$editType = $_GET["edit"] ?? null;
+$editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
+$editRecord = null;
+$editError = null;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   $action = $_POST["action"] ?? "";
@@ -174,6 +178,170 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       }
     }
   }
+
+  if ($action === "update_player") {
+    $editType = "player";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    $firstName = trim($_POST["first_name"] ?? "");
+    $lastName = trim($_POST["last_name"] ?? "");
+    $jerseyRaw = trim($_POST["jersey_number"] ?? "");
+    $gender = $_POST["gender"] ?? "";
+
+    $jerseyNumber = $jerseyRaw === "" ? null : filter_var($jerseyRaw, FILTER_VALIDATE_INT);
+
+    if (!$editId || $firstName === "" || $lastName === "" || $jerseyNumber === false || !isset($validGenders[$gender])) {
+      $playerFeedback = "Bitte alle Pflichtfelder fuer den Spieler korrekt ausfuellen.";
+    } else {
+      $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM players
+         WHERE team_id = :team_id
+           AND first_name = :first_name
+           AND last_name = :last_name
+           AND gender = :gender
+           AND ((:jersey_number IS NULL AND jersey_number IS NULL) OR jersey_number = :jersey_number)
+           AND id <> :id
+         LIMIT 1"
+      );
+      $stmt->execute([
+        ":team_id" => $teamId,
+        ":first_name" => $firstName,
+        ":last_name" => $lastName,
+        ":gender" => $gender,
+        ":jersey_number" => $jerseyNumber,
+        ":id" => $editId,
+      ]);
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $playerFeedback = "Dieser Spieler existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "UPDATE players
+           SET first_name = :first_name,
+               last_name = :last_name,
+               jersey_number = :jersey_number,
+               gender = :gender
+           WHERE id = :id AND team_id = :team_id"
+        );
+        $stmt->execute([
+          ":first_name" => $firstName,
+          ":last_name" => $lastName,
+          ":jersey_number" => $jerseyNumber,
+          ":gender" => $gender,
+          ":id" => $editId,
+          ":team_id" => $teamId,
+        ]);
+        $playerFeedback = "Spieler wurde aktualisiert.";
+      }
+    }
+  }
+
+  if ($action === "update_combine") {
+    $editType = "combine";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    $combineName = trim($_POST["combine_name"] ?? "");
+    $eventDate = trim($_POST["event_date"] ?? "");
+
+    if (!$editId || $combineName === "" || $eventDate === "") {
+      $combineFeedback = "Bitte Name und Datum fuer das Combine angeben.";
+    } else {
+      $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM combines
+         WHERE team_id = :team_id
+           AND combine_name = :combine_name
+           AND event_date = :event_date
+           AND id <> :id
+         LIMIT 1"
+      );
+      $stmt->execute([
+        ":team_id" => $teamId,
+        ":combine_name" => $combineName,
+        ":event_date" => $eventDate,
+        ":id" => $editId,
+      ]);
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $combineFeedback = "Dieses Combine existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "UPDATE combines
+           SET combine_name = :combine_name,
+               event_date = :event_date
+           WHERE id = :id AND team_id = :team_id"
+        );
+        $stmt->execute([
+          ":combine_name" => $combineName,
+          ":event_date" => $eventDate,
+          ":id" => $editId,
+          ":team_id" => $teamId,
+        ]);
+        $combineFeedback = "Combine wurde aktualisiert.";
+      }
+    }
+  }
+
+  if ($action === "update_discipline") {
+    $editType = "discipline";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    $disciplineName = trim($_POST["discipline_name"] ?? "");
+    $description = trim($_POST["description"] ?? "");
+    $unit = trim($_POST["unit"] ?? "");
+    $category = trim($_POST["category"] ?? "");
+    $direction = $_POST["rating_direction"] ?? "";
+
+    if (
+      !$editId ||
+      $disciplineName === "" ||
+      $description === "" ||
+      $unit === "" ||
+      $category === "" ||
+      !isset($validDirections[$direction])
+    ) {
+      $disciplineFeedback = "Bitte alle Felder fuer die Disziplin ausfuellen.";
+    } else {
+      $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM disciplines
+         WHERE team_id = :team_id
+           AND discipline_name = :discipline_name
+           AND id <> :id
+         LIMIT 1"
+      );
+      $stmt->execute([
+        ":team_id" => $teamId,
+        ":discipline_name" => $disciplineName,
+        ":id" => $editId,
+      ]);
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $disciplineFeedback = "Diese Disziplin existiert bereits.";
+      } else {
+        $stmt = $pdo->prepare(
+          "UPDATE disciplines
+           SET discipline_name = :discipline_name,
+               description = :description,
+               unit = :unit,
+               category = :category,
+               rating_direction = :rating_direction
+           WHERE id = :id AND team_id = :team_id"
+        );
+        $stmt->execute([
+          ":discipline_name" => $disciplineName,
+          ":description" => $description,
+          ":unit" => $unit,
+          ":category" => $category,
+          ":rating_direction" => $direction,
+          ":id" => $editId,
+          ":team_id" => $teamId,
+        ]);
+        $disciplineFeedback = "Disziplin wurde aktualisiert.";
+      }
+    }
+  }
 }
 
 $players = [];
@@ -181,8 +349,51 @@ $combines = [];
 $disciplines = [];
 
 if (!$pageError) {
+  if ($editType && $editId) {
+    if ($editType === "player") {
+      $stmt = $pdo->prepare(
+        "SELECT id, first_name, last_name, jersey_number, gender
+         FROM players
+         WHERE id = :id AND team_id = :team_id"
+      );
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $editRecord = $stmt->fetch();
+    } elseif ($editType === "combine") {
+      $stmt = $pdo->prepare(
+        "SELECT id, combine_name, event_date
+         FROM combines
+         WHERE id = :id AND team_id = :team_id"
+      );
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $editRecord = $stmt->fetch();
+    } elseif ($editType === "discipline") {
+      $stmt = $pdo->prepare(
+        "SELECT id, discipline_name, description, unit, category, rating_direction
+         FROM disciplines
+         WHERE id = :id AND team_id = :team_id"
+      );
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $editRecord = $stmt->fetch();
+    } else {
+      $editError = "Unbekannter Eintrag.";
+    }
+
+    if ($editType && !$editRecord && !$editError) {
+      $editError = "Eintrag wurde nicht gefunden.";
+    }
+  }
+
   $stmt = $pdo->prepare(
-    "SELECT first_name, last_name, jersey_number, gender, created_at
+    "SELECT id, first_name, last_name, jersey_number, gender, created_at
      FROM players
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -191,7 +402,7 @@ if (!$pageError) {
   $players = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT combine_name, event_date, created_at
+    "SELECT id, combine_name, event_date, created_at
      FROM combines
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -200,7 +411,7 @@ if (!$pageError) {
   $combines = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT discipline_name, description, unit, category, rating_direction, created_at
+    "SELECT id, discipline_name, description, unit, category, rating_direction, created_at
      FROM disciplines
      WHERE team_id = :team_id
      ORDER BY created_at DESC"
@@ -245,7 +456,10 @@ if (!$pageError) {
       <h2>Bestehende Daten</h2>
       <div class="info-grid">
         <div class="info-card">
-          <h3>Spieler</h3>
+          <div class="card-header">
+            <h3>Spieler</h3>
+            <button class="icon-button small js-toggle" type="button" data-target="create-player" aria-expanded="false" aria-controls="create-player">+</button>
+          </div>
           <?php if (empty($players)): ?>
             <p class="help">Noch keine Spieler angelegt.</p>
           <?php else: ?>
@@ -253,8 +467,12 @@ if (!$pageError) {
               <?php foreach ($players as $player): ?>
                 <li class="list-item">
                   <div>
-                    <strong><?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                    <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                    <strong>
+                      <a class="text-link" href="?edit=player&id=<?php echo (int)$player["id"]; ?>#edit">
+                        <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                      </a>
+                    </strong>
                     <span class="meta">
                       <?php echo htmlspecialchars($validGenders[$player["gender"]] ?? $player["gender"], ENT_QUOTES, "UTF-8"); ?>
                     </span>
@@ -268,7 +486,10 @@ if (!$pageError) {
           <?php endif; ?>
         </div>
         <div class="info-card">
-          <h3>Combines</h3>
+          <div class="card-header">
+            <h3>Combines</h3>
+            <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
+          </div>
           <?php if (empty($combines)): ?>
             <p class="help">Noch keine Combines angelegt.</p>
           <?php else: ?>
@@ -276,7 +497,11 @@ if (!$pageError) {
               <?php foreach ($combines as $combine): ?>
                 <li class="list-item">
                   <div>
-                    <strong><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                    <strong>
+                      <a class="text-link" href="?edit=combine&id=<?php echo (int)$combine["id"]; ?>#edit">
+                        <?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?>
+                      </a>
+                    </strong>
                     <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </li>
@@ -285,7 +510,10 @@ if (!$pageError) {
           <?php endif; ?>
         </div>
         <div class="info-card">
-          <h3>Disziplinen</h3>
+          <div class="card-header">
+            <h3>Disziplinen</h3>
+            <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
+          </div>
           <?php if (empty($disciplines)): ?>
             <p class="help">Noch keine Disziplinen angelegt.</p>
           <?php else: ?>
@@ -293,7 +521,11 @@ if (!$pageError) {
               <?php foreach ($disciplines as $discipline): ?>
                 <li class="list-item">
                   <div>
-                    <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                    <strong>
+                      <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                      </a>
+                    </strong>
                     <span class="meta">
                       <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                       &middot;
@@ -312,7 +544,7 @@ if (!$pageError) {
     </section>
 
     <section class="team-grid">
-      <div class="auth-card">
+      <div class="auth-card is-hidden" id="create-player">
         <h2>Spieler anlegen</h2>
         <form class="form" method="post" action="">
           <input type="hidden" name="action" value="create_player">
@@ -344,7 +576,7 @@ if (!$pageError) {
         </form>
       </div>
 
-      <div class="auth-card">
+      <div class="auth-card is-hidden" id="create-combine">
         <h2>Combine anlegen</h2>
         <form class="form" method="post" action="">
           <input type="hidden" name="action" value="create_combine">
@@ -364,7 +596,7 @@ if (!$pageError) {
       </div>
     </section>
 
-    <section class="auth-card">
+    <section class="auth-card is-hidden" id="create-discipline">
       <h2>Disziplin anlegen</h2>
       <form class="form" method="post" action="">
         <input type="hidden" name="action" value="create_discipline">
@@ -399,6 +631,136 @@ if (!$pageError) {
       </form>
     </section>
 
+    <?php if ($editType && $editId): ?>
+      <section class="auth-card" id="edit">
+        <h2>
+          <?php
+          if ($editType === "player") {
+            echo "Spieler bearbeiten";
+          } elseif ($editType === "combine") {
+            echo "Combine bearbeiten";
+          } elseif ($editType === "discipline") {
+            echo "Disziplin bearbeiten";
+          } else {
+            echo "Eintrag bearbeiten";
+          }
+          ?>
+        </h2>
+        <?php if ($editError): ?>
+          <p class="help"><?php echo htmlspecialchars($editError, ENT_QUOTES, "UTF-8"); ?></p>
+        <?php elseif ($editType === "player" && $editRecord): ?>
+          <form class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_player">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            <label class="field">
+              <span>Vorname</span>
+              <input type="text" name="first_name" value="<?php echo htmlspecialchars($editRecord["first_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Nachname</span>
+              <input type="text" name="last_name" value="<?php echo htmlspecialchars($editRecord["last_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Trikotnummer</span>
+              <input type="number" name="jersey_number" min="0" value="<?php echo $editRecord["jersey_number"] !== null ? (int)$editRecord["jersey_number"] : ""; ?>">
+            </label>
+            <label class="field">
+              <span>Geschlecht</span>
+              <select name="gender" required>
+                <option value="">Bitte waehlen</option>
+                <?php foreach ($validGenders as $key => $label): ?>
+                  <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $editRecord["gender"] === $key ? " selected" : ""; ?>>
+                    <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Speichern</button>
+              <a class="text-link" href="team.php">Abbrechen</a>
+            </div>
+            <?php if ($playerFeedback && $editType === "player"): ?>
+              <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+            <?php endif; ?>
+          </form>
+        <?php elseif ($editType === "combine" && $editRecord): ?>
+          <form class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_combine">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            <label class="field">
+              <span>Name</span>
+              <input type="text" name="combine_name" value="<?php echo htmlspecialchars($editRecord["combine_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Datum</span>
+              <input type="date" name="event_date" value="<?php echo htmlspecialchars($editRecord["event_date"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Speichern</button>
+              <a class="text-link" href="team.php">Abbrechen</a>
+            </div>
+            <?php if ($combineFeedback && $editType === "combine"): ?>
+              <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+            <?php endif; ?>
+          </form>
+        <?php elseif ($editType === "discipline" && $editRecord): ?>
+          <form class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_discipline">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            <label class="field">
+              <span>Name</span>
+              <input type="text" name="discipline_name" value="<?php echo htmlspecialchars($editRecord["discipline_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Beschreibung</span>
+              <textarea name="description" rows="3" required><?php echo htmlspecialchars($editRecord["description"], ENT_QUOTES, "UTF-8"); ?></textarea>
+            </label>
+            <label class="field">
+              <span>Einheit</span>
+              <input type="text" name="unit" value="<?php echo htmlspecialchars($editRecord["unit"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Kategorie</span>
+              <input type="text" name="category" value="<?php echo htmlspecialchars($editRecord["category"], ENT_QUOTES, "UTF-8"); ?>" required>
+            </label>
+            <label class="field">
+              <span>Bewertung</span>
+              <select name="rating_direction" required>
+                <option value="">Bitte waehlen</option>
+                <?php foreach ($validDirections as $key => $label): ?>
+                  <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $editRecord["rating_direction"] === $key ? " selected" : ""; ?>>
+                    <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Speichern</button>
+              <a class="text-link" href="team.php">Abbrechen</a>
+            </div>
+            <?php if ($disciplineFeedback && $editType === "discipline"): ?>
+              <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+            <?php endif; ?>
+          </form>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
+
   </main>
+  <script>
+    const toggles = document.querySelectorAll(".js-toggle");
+    toggles.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.dataset.target;
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const isHidden = target.classList.toggle("is-hidden");
+        btn.setAttribute("aria-expanded", String(!isHidden));
+        if (!isHidden) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+  </script>
 </body>
 </html>

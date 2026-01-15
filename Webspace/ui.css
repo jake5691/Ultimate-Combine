@@ -78,6 +78,14 @@ body {
   cursor: pointer;
 }
 
+.icon-button.small {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .icon-lines,
 .icon-close {
   position: relative;
@@ -244,6 +252,18 @@ body {
   font-size: 0.95rem;
 }
 
+.text-link {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .is-hidden {
   display: none;
 }
@@ -266,6 +286,14 @@ body {
   background: var(--bg-strong);
   border-radius: var(--radius-sm);
   padding: 18px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .team-grid {
