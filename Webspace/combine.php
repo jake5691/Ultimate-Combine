@@ -872,6 +872,19 @@ if (!$pageError && !$combineError && $mode === "results") {
                     }
                     $rankValues[$playerId] = $numeric;
                   }
+                  $topValue = null;
+                  $topPlayerIds = [];
+                  $averageValue = null;
+                  if (!empty($rankValues)) {
+                    $values = array_values($rankValues);
+                    $averageValue = array_sum($values) / count($values);
+                    $topValue = $direction === "less" ? min($values) : max($values);
+                    foreach ($rankValues as $playerId => $numeric) {
+                      if ($numeric == $topValue) {
+                        $topPlayerIds[] = $playerId;
+                      }
+                    }
+                  }
                   if ($direction === "less") {
                     asort($rankValues, SORT_NUMERIC);
                   } else {
@@ -903,65 +916,100 @@ if (!$pageError && !$combineError && $mode === "results") {
                   }
                 ?>
                 <div class="info-card">
-                  <h4><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></h4>
-                  <?php if (empty($filteredPlayers)): ?>
-                    <p class="help">Keine Spieler für den gewählten Filter.</p>
-                  <?php else: ?>
-                    <?php
-                      $orderedPlayers = [];
-                      $rankedIds = array_keys($rankValues);
-                      foreach ($rankedIds as $playerId) {
-                        foreach ($filteredPlayers as $player) {
-                          if ((int)$player["id"] === (int)$playerId) {
-                            $orderedPlayers[] = $player;
-                            break;
-                          }
-                        }
-                      }
-                      foreach ($filteredPlayers as $player) {
-                        if (!in_array((int)$player["id"], $rankedIds, true)) {
-                          $orderedPlayers[] = $player;
-                        }
-                      }
-                    ?>
-                    <ul class="list">
-                      <?php foreach ($orderedPlayers as $player): ?>
-                        <?php $playerId = (int)$player["id"]; ?>
-                        <?php $value = $resultsByDiscipline[$discId][$playerId] ?? null; ?>
-                        <?php $display = uc_display_value($value, "-"); ?>
-                        <?php if ($display !== "-" && $unit !== "") { $display .= " " . $unit; } ?>
+                  <details>
+                    <summary>
+                      <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                      <span class="meta">
                         <?php
-                          $numericValue = $rankValues[$playerId] ?? null;
-                          if ($numericValue === null || $bestValue === null || $worstValue === null) {
-                            $points = 0;
-                          } elseif ($bestValue == $worstValue) {
-                            $points = 2;
-                          } else {
-                            $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
-                            $points = 1 + $ratio;
-                          }
-                          $pointsLabel = uc_format_points($points) . " P";
+                          $topLabel = $topValue === null ? "-" : uc_display_value($topValue, "-");
+                          if ($topLabel !== "-" && $unit !== "") { $topLabel .= " " . $unit; }
+                          $avgLabel = $averageValue === null
+                            ? "-"
+                            : uc_display_value(number_format($averageValue, 2, ".", ""), "-");
+                          if ($avgLabel !== "-" && $unit !== "") { $avgLabel .= " " . $unit; }
                         ?>
-                        <?php $rankLabel = isset($ranks[$playerId]) ? (string)$ranks[$playerId] : "-"; ?>
-                        <li class="list-item">
-                          <div class="result-name">
-                            <span class="rank-pill">
-                              Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?>
-                              &middot;
-                              <?php echo htmlspecialchars($pointsLabel, ENT_QUOTES, "UTF-8"); ?>
+                        Top: <?php echo htmlspecialchars($topLabel, ENT_QUOTES, "UTF-8"); ?>
+                        &middot;
+                        Ø: <?php echo htmlspecialchars($avgLabel, ENT_QUOTES, "UTF-8"); ?>
+                      </span>
+                      <?php if (!empty($topPlayerIds)): ?>
+                        <?php
+                          $topNames = [];
+                          foreach ($topPlayerIds as $topPlayerId) {
+                            foreach ($filteredPlayers as $player) {
+                              if ((int)$player["id"] === (int)$topPlayerId) {
+                                $topNames[] = $player["first_name"] . " " . $player["last_name"];
+                                break;
+                              }
+                            }
+                          }
+                        ?>
+                        <div class="detail">
+                          Top: <?php echo htmlspecialchars(implode(", ", $topNames), ENT_QUOTES, "UTF-8"); ?>
+                        </div>
+                      <?php else: ?>
+                        <div class="detail">Top: -</div>
+                      <?php endif; ?>
+                    </summary>
+                    <?php if (empty($filteredPlayers)): ?>
+                      <p class="help">Keine Spieler für den gewählten Filter.</p>
+                    <?php else: ?>
+                      <?php
+                        $orderedPlayers = [];
+                        $rankedIds = array_keys($rankValues);
+                        foreach ($rankedIds as $playerId) {
+                          foreach ($filteredPlayers as $player) {
+                            if ((int)$player["id"] === (int)$playerId) {
+                              $orderedPlayers[] = $player;
+                              break;
+                            }
+                          }
+                        }
+                        foreach ($filteredPlayers as $player) {
+                          if (!in_array((int)$player["id"], $rankedIds, true)) {
+                            $orderedPlayers[] = $player;
+                          }
+                        }
+                      ?>
+                      <ul class="list">
+                        <?php foreach ($orderedPlayers as $player): ?>
+                          <?php $playerId = (int)$player["id"]; ?>
+                          <?php $value = $resultsByDiscipline[$discId][$playerId] ?? null; ?>
+                          <?php $display = uc_display_value($value, "-"); ?>
+                          <?php if ($display !== "-" && $unit !== "") { $display .= " " . $unit; } ?>
+                          <?php
+                            $numericValue = $rankValues[$playerId] ?? null;
+                            if ($numericValue === null || $bestValue === null || $worstValue === null) {
+                              $points = 0;
+                            } elseif ($bestValue == $worstValue) {
+                              $points = 2;
+                            } else {
+                              $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+                              $points = 1 + $ratio;
+                            }
+                            $pointsLabel = uc_format_points($points) . " P";
+                          ?>
+                          <?php $rankLabel = isset($ranks[$playerId]) ? (string)$ranks[$playerId] : "-"; ?>
+                          <li class="list-item">
+                            <div class="result-name">
+                              <span class="rank-pill">
+                                Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?>
+                                &middot;
+                                <?php echo htmlspecialchars($pointsLabel, ENT_QUOTES, "UTF-8"); ?>
+                              </span>
+                              <strong>
+                                <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                                <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                              </strong>
+                            </div>
+                            <span class="badge">
+                              <?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?>
                             </span>
-                            <strong>
-                              <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
-                              <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
-                            </strong>
-                          </div>
-                          <span class="badge">
-                            <?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?>
-                          </span>
-                        </li>
-                      <?php endforeach; ?>
-                    </ul>
-                  <?php endif; ?>
+                          </li>
+                        <?php endforeach; ?>
+                      </ul>
+                    <?php endif; ?>
+                  </details>
                 </div>
               <?php endforeach; ?>
             </div>
