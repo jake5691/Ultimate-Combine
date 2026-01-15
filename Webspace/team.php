@@ -498,7 +498,7 @@ if (!$pageError) {
                 <li class="list-item">
                   <div>
                     <strong>
-                      <a class="text-link" href="?edit=combine&id=<?php echo (int)$combine["id"]; ?>#edit">
+                      <a class="text-link" href="combine.php?id=<?php echo (int)$combine["id"]; ?>">
                         <?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?>
                       </a>
                     </strong>

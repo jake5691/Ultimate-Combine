@@ -108,6 +108,38 @@ function uc_ensure_schema(PDO $pdo): void {
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS combine_players (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      combine_id INT NOT NULL,
+      player_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_combine_player (combine_id, player_id),
+      CONSTRAINT fk_combine_players_combine
+        FOREIGN KEY (combine_id) REFERENCES combines(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_combine_players_player
+        FOREIGN KEY (player_id) REFERENCES players(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS combine_disciplines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      combine_id INT NOT NULL,
+      discipline_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_combine_discipline (combine_id, discipline_id),
+      CONSTRAINT fk_combine_disciplines_combine
+        FOREIGN KEY (combine_id) REFERENCES combines(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_combine_disciplines_discipline
+        FOREIGN KEY (discipline_id) REFERENCES disciplines(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
 }
 
 $envPath = dirname(__DIR__) . "/.secrets/.env";
