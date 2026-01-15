@@ -442,3 +442,14 @@ body {
   height: 18px;
   accent-color: var(--accent);
 }
+.category-block {
+  display: grid;
+  gap: 10px;
+}
+
+.category-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}

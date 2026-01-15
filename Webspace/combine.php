@@ -29,6 +29,7 @@ $players = [];
 $disciplines = [];
 $assignedPlayerIds = [];
 $assignedDisciplineIds = [];
+$assignedDisciplinesByCategory = [];
 $formCombineName = "";
 $formEventDate = "";
 $formPlayerIds = [];
@@ -80,11 +81,12 @@ if (!$pageError) {
   $disciplines = $stmt->fetchAll();
 
   if (!$combineError) {
-    $stmt = $pdo->prepare(
-      "SELECT player_id
-       FROM combine_players
-       WHERE combine_id = :combine_id"
-    );
+    try {
+      $stmt = $pdo->prepare(
+        "SELECT player_id
+         FROM combine_players
+         WHERE combine_id = :combine_id"
+      );
     $stmt->execute([":combine_id" => $combineId]);
     $assignedPlayerIds = array_map("intval", array_column($stmt->fetchAll(), "player_id"));
 
@@ -95,6 +97,23 @@ if (!$pageError) {
     );
     $stmt->execute([":combine_id" => $combineId]);
     $assignedDisciplineIds = array_map("intval", array_column($stmt->fetchAll(), "discipline_id"));
+
+    $assignedDisciplinesByCategory = [];
+    foreach ($disciplines as $discipline) {
+      $discId = (int)$discipline["id"];
+      if (!in_array($discId, $assignedDisciplineIds, true)) {
+        continue;
+      }
+      $category = trim((string)$discipline["category"]);
+      if ($category === "") {
+        $category = "Ohne Kategorie";
+      }
+      $assignedDisciplinesByCategory[$category][] = $discipline;
+    }
+    ksort($assignedDisciplinesByCategory, SORT_NATURAL | SORT_FLAG_CASE);
+    } catch (Throwable $e) {
+      $combineError = "Zuordnungen konnten nicht geladen werden.";
+    }
   }
 
   $formCombineName = $combine["combine_name"] ?? "";
@@ -292,22 +311,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             <?php if (empty($assignedDisciplineIds)): ?>
               <p class="help">Keine Disziplinen zugeordnet.</p>
             <?php else: ?>
-              <ul class="list">
-                <?php foreach ($disciplines as $discipline): ?>
-                  <?php if (in_array((int)$discipline["id"], $assignedDisciplineIds, true)): ?>
-                    <li class="list-item">
-                      <div>
-                        <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                        <span class="meta">
-                          <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
-                          &middot;
-                          <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
-                        </span>
-                      </div>
-                    </li>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              </ul>
+              <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+                <div class="category-block">
+                  <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                  <ul class="list">
+                    <?php foreach ($categoryDisciplines as $discipline): ?>
+                      <li class="list-item">
+                        <div>
+                          <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                          <span class="meta">
+                            <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                          </span>
+                        </div>
+                      </li>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+              <?php endforeach; ?>
             <?php endif; ?>
           </div>
         </div>

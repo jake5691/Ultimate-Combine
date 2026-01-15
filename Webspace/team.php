@@ -347,6 +347,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 $players = [];
 $combines = [];
 $disciplines = [];
+$disciplineCategories = [];
+$disciplinesByCategory = [];
 
 if (!$pageError) {
   if ($editType && $editId) {
@@ -418,6 +420,20 @@ if (!$pageError) {
   );
   $stmt->execute([":team_id" => $teamId]);
   $disciplines = $stmt->fetchAll();
+
+  $disciplineCategories = [];
+  $disciplinesByCategory = [];
+  foreach ($disciplines as $discipline) {
+    $category = trim((string)$discipline["category"]);
+    if ($category === "") {
+      $category = "Ohne Kategorie";
+    }
+    $disciplinesByCategory[$category][] = $discipline;
+    $disciplineCategories[] = $category;
+  }
+  $disciplineCategories = array_values(array_unique($disciplineCategories));
+  sort($disciplineCategories, SORT_NATURAL | SORT_FLAG_CASE);
+  ksort($disciplinesByCategory, SORT_NATURAL | SORT_FLAG_CASE);
 }
 ?>
 <!doctype html>
@@ -517,27 +533,30 @@ if (!$pageError) {
           <?php if (empty($disciplines)): ?>
             <p class="help">Noch keine Disziplinen angelegt.</p>
           <?php else: ?>
-            <ul class="list">
-              <?php foreach ($disciplines as $discipline): ?>
-                <li class="list-item">
-                  <div>
-                    <strong>
-                      <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
-                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
-                      </a>
-                    </strong>
-                    <span class="meta">
-                      <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
-                      &middot;
-                      <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
-                      &middot;
-                      <?php echo htmlspecialchars($validDirections[$discipline["rating_direction"]] ?? $discipline["rating_direction"], ENT_QUOTES, "UTF-8"); ?>
-                    </span>
-                    <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
-                  </div>
-                </li>
-              <?php endforeach; ?>
-            </ul>
+            <?php foreach ($disciplinesByCategory as $category => $categoryDisciplines): ?>
+              <div class="category-block">
+                <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                <ul class="list">
+                  <?php foreach ($categoryDisciplines as $discipline): ?>
+                    <li class="list-item">
+                      <div>
+                        <strong>
+                          <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                            <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                          </a>
+                        </strong>
+                        <span class="meta">
+                          <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                          &middot;
+                          <?php echo htmlspecialchars($validDirections[$discipline["rating_direction"]] ?? $discipline["rating_direction"], ENT_QUOTES, "UTF-8"); ?>
+                        </span>
+                        <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
+                      </div>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            <?php endforeach; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -614,8 +633,13 @@ if (!$pageError) {
         </label>
         <label class="field">
           <span>Kategorie</span>
-          <input type="text" name="category" placeholder="z. B. Sprint, Sprung" required>
+          <input type="text" name="category" list="discipline-categories" placeholder="z. B. Sprint, Sprung" required>
         </label>
+        <datalist id="discipline-categories">
+          <?php foreach ($disciplineCategories as $category): ?>
+            <option value="<?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>"></option>
+          <?php endforeach; ?>
+        </datalist>
         <label class="field">
           <span>Bewertung</span>
           <select name="rating_direction" required>
@@ -721,7 +745,7 @@ if (!$pageError) {
             </label>
             <label class="field">
               <span>Kategorie</span>
-              <input type="text" name="category" value="<?php echo htmlspecialchars($editRecord["category"], ENT_QUOTES, "UTF-8"); ?>" required>
+              <input type="text" name="category" list="discipline-categories" value="<?php echo htmlspecialchars($editRecord["category"], ENT_QUOTES, "UTF-8"); ?>" required>
             </label>
             <label class="field">
               <span>Bewertung</span>
