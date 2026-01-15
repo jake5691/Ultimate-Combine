@@ -1329,8 +1329,10 @@ if (!$pageError && !$combineError && $mode === "results") {
       const center = size / 2;
       const radius = center - 60;
       const labelOffset = 6;
-      const steps = 5;
       const maxValue = 2;
+      const midValue = 1;
+      const midRatio = 0.4;
+      const upperRings = 3;
       const angleStep = (Math.PI * 2) / data.length;
 
       ctx.clearRect(0, 0, size, size);
@@ -1338,8 +1340,13 @@ if (!$pageError && !$combineError && $mode === "results") {
 
       ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
       ctx.lineWidth = 1;
-      for (let s = 1; s <= steps; s += 1) {
-        const r = (radius / steps) * s;
+      const rings = [midRatio];
+      for (let i = 1; i <= upperRings; i += 1) {
+        rings.push(midRatio + (i / (upperRings + 1)) * (1 - midRatio));
+      }
+      rings.push(1);
+      rings.forEach((ratio) => {
+        const r = radius * ratio;
         ctx.beginPath();
         for (let i = 0; i < data.length; i += 1) {
           const angle = i * angleStep - Math.PI / 2;
@@ -1353,7 +1360,7 @@ if (!$pageError && !$combineError && $mode === "results") {
         }
         ctx.closePath();
         ctx.stroke();
-      }
+      });
 
       ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
       for (let i = 0; i < data.length; i += 1) {
@@ -1364,10 +1371,17 @@ if (!$pageError && !$combineError && $mode === "results") {
         ctx.stroke();
       }
 
+      const normalizeValue = (value) => {
+        if (value <= midValue) {
+          return (value / midValue) * midRatio;
+        }
+        return midRatio + ((value - midValue) / (maxValue - midValue)) * (1 - midRatio);
+      };
+
       const drawShape = (values, stroke, fill) => {
         ctx.beginPath();
         values.forEach((value, index) => {
-          const normalized = Math.max(0, Math.min(value / maxValue, 1));
+          const normalized = Math.max(0, Math.min(normalizeValue(value), 1));
           const angle = index * angleStep - Math.PI / 2;
           const x = Math.cos(angle) * radius * normalized;
           const y = Math.sin(angle) * radius * normalized;
