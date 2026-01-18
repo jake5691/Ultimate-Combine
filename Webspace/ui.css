@@ -22,7 +22,10 @@
 
 body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #fff5e3 0%, #f1e7dc 40%, #efe3d6 100%);
+  background:
+    linear-gradient(180deg, rgba(247, 244, 239, 0.94), rgba(247, 244, 239, 0.88)),
+    url("assets/FrisbeeCatch.png") center/cover no-repeat fixed,
+    radial-gradient(circle at top, #fff5e3 0%, #f1e7dc 40%, #efe3d6 100%);
   color: var(--ink);
   min-height: 100vh;
 }
