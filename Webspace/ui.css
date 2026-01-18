@@ -48,6 +48,15 @@ body {
   gap: 16px;
 }
 
+.topbar.is-simple {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.topbar.is-simple .brand {
+  justify-content: center;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -67,6 +76,10 @@ body {
 
 .brand-text {
   letter-spacing: 0.03em;
+}
+
+.topbar .brand-text {
+  font-size: clamp(1.3rem, 1.4vw + 1rem, 2rem);
 }
 
 .icon-button {
@@ -153,6 +166,10 @@ body {
   margin: 0 auto 80px;
 }
 
+.auth.is-wide {
+  max-width: 1100px;
+}
+
 .team {
   display: grid;
   gap: 32px;
@@ -173,6 +190,7 @@ body {
 .auth-card h1 {
   font-size: clamp(1.8rem, 2vw + 1.2rem, 2.5rem);
 }
+
 
 .lead {
   color: var(--muted);
@@ -496,6 +514,15 @@ body {
   .auth {
     grid-template-columns: 1.2fr 1fr;
     align-items: start;
+  }
+
+  .auth.is-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .auth.is-wide .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
   }
 
   .team-grid {
