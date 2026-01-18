@@ -38,6 +38,9 @@ $formatTooltip = static function (string $text): string {
 $formatLabel = static function (string $text): string {
   return htmlspecialchars(str_replace("\n", " ", $text), ENT_QUOTES, "UTF-8");
 };
+$teamContact = "";
+$teamKeyHash = "";
+$teamEditFeedback = null;
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
 $editRecord = null;
@@ -195,6 +198,84 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":rating_direction" => $direction,
         ]);
         $disciplineFeedback = "Disziplin wurde angelegt.";
+      }
+    }
+  }
+
+  if ($action === "update_team") {
+    $teamNameInput = trim($_POST["team_name"] ?? "");
+    $teamContactInput = trim($_POST["contact"] ?? "");
+    $oldKey = trim($_POST["team_key_old"] ?? "");
+    $newKey = trim($_POST["team_key_new"] ?? "");
+    $newKeyRepeat = trim($_POST["team_key_repeat"] ?? "");
+    $changeKey = ($_POST["change_key"] ?? "0") === "1";
+    $currentKeyHash = $teamKeyHash;
+    if ($changeKey) {
+      $stmt = $pdo->prepare(
+        "SELECT team_key_hash
+         FROM teams
+         WHERE id = :team_id"
+      );
+      $stmt->execute([":team_id" => $teamId]);
+      $currentKeyHash = $stmt->fetchColumn() ?: "";
+    }
+
+    if ($teamNameInput === "" || $teamContactInput === "") {
+      $teamEditFeedback = "Bitte alle Felder für das Team ausfüllen.";
+    } elseif (!filter_var($teamContactInput, FILTER_VALIDATE_EMAIL)) {
+      $teamEditFeedback = "Bitte eine gültige E-Mail-Adresse angeben.";
+    } elseif ($changeKey && ($oldKey === "" || $newKey === "" || $newKeyRepeat === "")) {
+      $teamEditFeedback = "Bitte alle Felder für das Schluesselwort ausfüllen.";
+    } elseif ($changeKey && $newKey !== $newKeyRepeat) {
+      $teamEditFeedback = "Das neue Schlüsselwort stimmt nicht überein.";
+    } elseif ($changeKey && (!$currentKeyHash || !password_verify($oldKey, $currentKeyHash))) {
+      $teamEditFeedback = "Das aktuelle Schlüsselwort ist falsch.";
+    } else {
+      $stmt = $pdo->prepare(
+        "SELECT 1 FROM teams WHERE team_name = :team_name AND id <> :id"
+      );
+      $stmt->execute([
+        ":team_name" => $teamNameInput,
+        ":id" => $teamId,
+      ]);
+      $exists = (bool)$stmt->fetchColumn();
+
+      if ($exists) {
+        $teamEditFeedback = "Dieser Teamname ist bereits vergeben.";
+      } else {
+        if ($changeKey) {
+          $stmt = $pdo->prepare(
+            "UPDATE teams
+             SET team_name = :team_name,
+                 contact = :contact,
+                 team_key_hash = :team_key_hash
+             WHERE id = :id"
+          );
+          $newKeyHash = password_hash($newKey, PASSWORD_DEFAULT);
+          $stmt->execute([
+            ":team_name" => $teamNameInput,
+            ":contact" => $teamContactInput,
+            ":team_key_hash" => $newKeyHash,
+            ":id" => $teamId,
+          ]);
+          $teamKeyHash = $newKeyHash;
+        } else {
+          $stmt = $pdo->prepare(
+            "UPDATE teams
+             SET team_name = :team_name,
+                 contact = :contact
+             WHERE id = :id"
+          );
+          $stmt->execute([
+            ":team_name" => $teamNameInput,
+            ":contact" => $teamContactInput,
+            ":id" => $teamId,
+          ]);
+        }
+        $teamEditFeedback = "Team wurde aktualisiert.";
+        $teamName = $teamNameInput;
+        $teamContact = $teamContactInput;
+        $_SESSION["team_name"] = $teamNameInput;
       }
     }
   }
@@ -384,6 +465,22 @@ $disciplineCategories = [];
 $disciplinesByCategory = [];
 
 if (!$pageError) {
+  $stmt = $pdo->prepare(
+    "SELECT team_name, contact, team_key_hash
+     FROM teams
+     WHERE id = :team_id"
+  );
+  $stmt->execute([":team_id" => $teamId]);
+  $teamRow = $stmt->fetch();
+  if ($teamRow) {
+    $teamName = $teamRow["team_name"] ?? $teamName;
+    $teamContact = $teamRow["contact"] ?? "";
+    $teamKeyHash = $teamRow["team_key_hash"] ?? "";
+    $_SESSION["team_name"] = $teamName;
+  } else {
+    $pageError = "Team wurde nicht gefunden.";
+  }
+
   if ($editType && $editId) {
     if ($editType === "player") {
       $stmt = $pdo->prepare(
@@ -493,11 +590,52 @@ if (!$pageError) {
 
   <main class="team">
     <section class="auth-card">
-      <h1>Team-Übersicht</h1>
+      <div class="section-header">
+        <h1><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?>-Übersicht</h1>
+        <button class="pill-button js-toggle" type="button" data-target="edit-team" aria-expanded="false" aria-controls="edit-team">Bearbeiten</button>
+      </div>
       <p class="lead">Verwalte Spieler, Disziplinen und Combines für dein Team.</p>
       <?php if ($pageError): ?>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
+    </section>
+
+    <section class="auth-card<?php echo $teamEditFeedback ? "" : " is-hidden"; ?>" id="edit-team">
+      <h2>Team bearbeiten</h2>
+      <form class="form" method="post" action="">
+        <input type="hidden" name="action" value="update_team">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" name="team_name" value="<?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?>" required>
+        </label>
+        <label class="field">
+          <span>Kontakt</span>
+          <input type="email" name="contact" value="<?php echo htmlspecialchars($teamContact, ENT_QUOTES, "UTF-8"); ?>" required>
+        </label>
+        <input type="hidden" name="change_key" value="0">
+        <button class="pill-button js-toggle-key" type="button" aria-expanded="false">Schlüsselwort ändern</button>
+        <div class="key-fields is-hidden">
+          <label class="field">
+            <span>Aktuelles Schlüsselwort</span>
+            <input type="password" name="team_key_old" autocomplete="current-password">
+          </label>
+          <label class="field">
+            <span>Neues Schlüsselwort</span>
+            <input type="password" name="team_key_new" autocomplete="new-password">
+          </label>
+          <label class="field">
+            <span>Neues Schlüsselwort wiederholen</span>
+            <input type="password" name="team_key_repeat" autocomplete="new-password">
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="primary-button" type="submit">Speichern</button>
+          <a class="text-link" href="team.php">Abbrechen</a>
+        </div>
+        <?php if ($teamEditFeedback): ?>
+          <p class="help"><?php echo htmlspecialchars($teamEditFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+      </form>
     </section>
 
     <section class="info">
@@ -898,6 +1036,29 @@ if (!$pageError) {
         closeAllInfos();
       }
     });
+
+    const keyToggle = document.querySelector(".js-toggle-key");
+    if (keyToggle) {
+      const keyFields = document.querySelector(".key-fields");
+      const keyInputs = keyFields ? keyFields.querySelectorAll("input") : [];
+      const changeKeyInput = document.querySelector("input[name='change_key']");
+
+      keyToggle.addEventListener("click", () => {
+        if (!keyFields || !changeKeyInput) return;
+        const isHidden = keyFields.classList.toggle("is-hidden");
+        const isOpen = !isHidden;
+        keyToggle.setAttribute("aria-expanded", String(isOpen));
+        changeKeyInput.value = isOpen ? "1" : "0";
+        keyInputs.forEach((input) => {
+          if (isOpen) {
+            input.setAttribute("required", "required");
+          } else {
+            input.removeAttribute("required");
+            input.value = "";
+          }
+        });
+      });
+    }
   </script>
 </body>
 </html>

@@ -255,6 +255,15 @@ body {
   font-size: 0.95rem;
 }
 
+.help.error {
+  color: #b33227;
+}
+
+.input-error {
+  border-color: #b33227;
+  box-shadow: 0 0 0 3px rgba(179, 50, 39, 0.15);
+}
+
 .text-link {
   color: var(--accent-2);
   text-decoration: underline;
@@ -308,6 +317,14 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .card-actions {
