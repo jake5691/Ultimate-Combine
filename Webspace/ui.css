@@ -65,6 +65,14 @@ body {
   font-size: 1.1rem;
 }
 
+.brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 10px 20px rgba(31, 26, 20, 0.15);
+}
+
 .brand-mark {
   background: var(--accent);
   color: #fff;

@@ -503,6 +503,7 @@ if (!$pageError && !$combineError && $mode === "results") {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ultimate Combine - Combine</title>
+  <link rel="icon" type="image/png" href="assets/FrisbeeCatch.png">
   <link rel="stylesheet" href="ui.css">
 </head>
 <body>
@@ -511,6 +512,7 @@ if (!$pageError && !$combineError && $mode === "results") {
   <header class="topbar">
     <a class="pill-button" href="team.php">Zurück</a>
     <div class="brand">
+      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
       <span class="brand-sep">•</span>
       <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>

@@ -572,6 +572,7 @@ if (!$pageError) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ultimate Combine – Team</title>
+  <link rel="icon" type="image/png" href="assets/FrisbeeCatch.png">
   <link rel="stylesheet" href="ui.css">
 </head>
 <body>
@@ -583,6 +584,7 @@ if (!$pageError) {
       <button class="pill-button" type="submit">Logout</button>
     </form>
     <div class="brand">
+      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
     </div>
     <span class="pill-button"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>

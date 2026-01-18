@@ -89,6 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ultimate Combine – Login</title>
+  <link rel="icon" type="image/png" href="assets/FrisbeeCatch.png">
   <link rel="stylesheet" href="ui.css">
 </head>
 <body>
@@ -96,6 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   <header class="topbar is-simple">
     <div class="brand">
+      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
     </div>
   </header>
