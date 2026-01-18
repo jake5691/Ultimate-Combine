@@ -71,6 +71,8 @@ function uc_ensure_schema(PDO $pdo): void {
       team_id INT NOT NULL,
       first_name VARCHAR(80) NOT NULL,
       last_name VARCHAR(120) NOT NULL,
+      position_cutter TINYINT(1) NOT NULL,
+      position_handler TINYINT(1) NOT NULL,
       jersey_number INT NULL,
       gender VARCHAR(12) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
