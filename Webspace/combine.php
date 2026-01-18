@@ -512,6 +512,8 @@ if (!$pageError && !$combineError && $mode === "results") {
     <a class="pill-button" href="team.php">Zurück</a>
     <div class="brand">
       <span class="brand-text">Ultimate Combine</span>
+      <span class="brand-sep">•</span>
+      <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">

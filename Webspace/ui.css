@@ -78,7 +78,21 @@ body {
   letter-spacing: 0.03em;
 }
 
+.brand-sep {
+  color: var(--muted);
+}
+
+.brand-team {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: inherit;
+}
+
 .topbar .brand-text {
+  font-size: clamp(1.3rem, 1.4vw + 1rem, 2rem);
+}
+
+.topbar .brand-team {
   font-size: clamp(1.3rem, 1.4vw + 1rem, 2rem);
 }
 
