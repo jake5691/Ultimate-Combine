@@ -28,10 +28,16 @@ $validDirections = [
   "less" => "Weniger ist besser",
 ];
 $infoTexts = [
-  "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen. Klick auf einen Spieler um diesen zu bearbeiten.",
-  "combines" => "Combines sind einzelne Leistungsbewertungsevents. Pro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden. Es können mehrere Combines pro Team angelegt werden. Klick auf ein Combine um Details zu sehen und Ergebnisse zu erfassen.",
-  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.). Jede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser). Disziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines. Klicke auf eine Disziplin um diese zu bearbeiten.",
+  "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen.\nKlicke auf einen Spieler, um diesen zu bearbeiten.",
+  "combines" => "Combines sind einzelne Leistungsbewertungsevents.\nPro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden.\nEs können mehrere Combines pro Team angelegt werden.\nKlicke auf ein Combine, um Details zu sehen und Ergebnisse zu erfassen.",
+  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten.",
 ];
+$formatTooltip = static function (string $text): string {
+  return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
+};
+$formatLabel = static function (string $text): string {
+  return htmlspecialchars(str_replace("\n", " ", $text), ENT_QUOTES, "UTF-8");
+};
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
 $editRecord = null;
@@ -501,7 +507,7 @@ if (!$pageError) {
           <div class="card-header">
             <h3>Spieler</h3>
             <div class="card-actions">
-              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["players"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["players"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["players"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["players"]); ?>">i</button>
               <button class="icon-button small js-toggle" type="button" data-target="create-player" aria-expanded="false" aria-controls="create-player">+</button>
             </div>
           </div>
@@ -534,7 +540,7 @@ if (!$pageError) {
           <div class="card-header">
             <h3>Combines</h3>
             <div class="card-actions">
-              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["combines"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["combines"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["combines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["combines"]); ?>">i</button>
               <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
             </div>
           </div>
@@ -561,7 +567,7 @@ if (!$pageError) {
           <div class="card-header">
             <h3>Disziplinen</h3>
             <div class="card-actions">
-              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["disciplines"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["disciplines"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["disciplines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["disciplines"]); ?>">i</button>
               <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
             </div>
           </div>
