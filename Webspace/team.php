@@ -27,6 +27,11 @@ $validDirections = [
   "more" => "Mehr ist besser",
   "less" => "Weniger ist besser",
 ];
+$infoTexts = [
+  "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen. Klick auf einen Spieler um diesen zu bearbeiten.",
+  "combines" => "Combines sind einzelne Leistungsbewertungsevents. Pro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden. Es können mehrere Combines pro Team angelegt werden. Klick auf ein Combine um Details zu sehen und Ergebnisse zu erfassen.",
+  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.). Jede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser). Disziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines. Klicke auf eine Disziplin um diese zu bearbeiten.",
+];
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
 $editRecord = null;
@@ -495,7 +500,10 @@ if (!$pageError) {
         <div class="info-card">
           <div class="card-header">
             <h3>Spieler</h3>
-            <button class="icon-button small js-toggle" type="button" data-target="create-player" aria-expanded="false" aria-controls="create-player">+</button>
+            <div class="card-actions">
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["players"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["players"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="icon-button small js-toggle" type="button" data-target="create-player" aria-expanded="false" aria-controls="create-player">+</button>
+            </div>
           </div>
           <?php if (empty($players)): ?>
             <p class="help">Noch keine Spieler angelegt.</p>
@@ -525,7 +533,10 @@ if (!$pageError) {
         <div class="info-card">
           <div class="card-header">
             <h3>Combines</h3>
-            <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
+            <div class="card-actions">
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["combines"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["combines"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
+            </div>
           </div>
           <?php if (empty($combines)): ?>
             <p class="help">Noch keine Combines angelegt.</p>
@@ -549,7 +560,10 @@ if (!$pageError) {
         <div class="info-card">
           <div class="card-header">
             <h3>Disziplinen</h3>
-            <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
+            <div class="card-actions">
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo htmlspecialchars($infoTexts["disciplines"], ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars($infoTexts["disciplines"], ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
+            </div>
           </div>
           <?php if (empty($disciplines)): ?>
             <p class="help">Noch keine Disziplinen angelegt.</p>
@@ -847,6 +861,36 @@ if (!$pageError) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
+    });
+
+    const infoButtons = document.querySelectorAll(".js-info");
+    const closeAllInfos = (except) => {
+      infoButtons.forEach((btn) => {
+        if (btn === except) return;
+        btn.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+      });
+    };
+
+    infoButtons.forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = btn.classList.toggle("is-open");
+        btn.setAttribute("aria-expanded", String(isOpen));
+        if (isOpen) {
+          closeAllInfos(btn);
+        }
+      });
+    });
+
+    document.addEventListener("click", () => {
+      closeAllInfos();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeAllInfos();
+      }
     });
   </script>
 </body>
