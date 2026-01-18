@@ -178,6 +178,10 @@ body {
   padding: 10px 16px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .auth {

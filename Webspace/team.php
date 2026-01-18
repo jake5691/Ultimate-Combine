@@ -586,8 +586,10 @@ if (!$pageError) {
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
+      <span class="brand-sep">•</span>
+      <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
     </div>
-    <span class="pill-button"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
+    <span></span>
   </header>
 
   <main class="team">

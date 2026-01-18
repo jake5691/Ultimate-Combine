@@ -510,7 +510,7 @@ if (!$pageError && !$combineError && $mode === "results") {
   <div class="bg-grid"></div>
 
   <header class="topbar">
-    <a class="pill-button" href="team.php">Zurück</a>
+    <button class="pill-button" type="button" onclick="window.location.href='team.php'">Zurück</button>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
