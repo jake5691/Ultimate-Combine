@@ -10,6 +10,11 @@ if (!$pdo) {
 $teamId = $_SESSION["team_id"] ?? null;
 $teamName = $_SESSION["team_name"] ?? "";
 
+if (!empty($_SESSION["is_admin"])) {
+  header("Location: admin.php");
+  exit;
+}
+
 if (!$teamId) {
   header("Location: index.php");
   exit;
@@ -461,6 +466,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 $players = [];
 $combines = [];
 $disciplines = [];
+$units = [];
 $disciplineCategories = [];
 $disciplinesByCategory = [];
 
@@ -550,6 +556,14 @@ if (!$pageError) {
   );
   $stmt->execute([":team_id" => $teamId]);
   $disciplines = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
+    "SELECT unit_name, unit_abbreviation
+     FROM units
+     ORDER BY unit_name ASC"
+  );
+  $stmt->execute();
+  $units = $stmt->fetchAll();
 
   $disciplineCategories = [];
   $disciplinesByCategory = [];
@@ -837,7 +851,7 @@ if (!$pageError) {
         </label>
         <label class="field">
           <span>Einheit</span>
-          <input type="text" name="unit" placeholder="z. B. Sekunden, Meter" required>
+          <input type="text" name="unit" list="unit-options" placeholder="z. B. Meter (m)" required>
         </label>
         <label class="field">
           <span>Kategorie</span>
@@ -846,6 +860,19 @@ if (!$pageError) {
         <datalist id="discipline-categories">
           <?php foreach ($disciplineCategories as $category): ?>
             <option value="<?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>"></option>
+          <?php endforeach; ?>
+        </datalist>
+        <datalist id="unit-options">
+          <?php foreach ($units as $unit): ?>
+            <?php
+              $unitName = trim((string)($unit["unit_name"] ?? ""));
+              $unitAbbr = trim((string)($unit["unit_abbreviation"] ?? ""));
+              $unitLabel = $unitName;
+              if ($unitAbbr !== "") {
+                $unitLabel .= " (" . $unitAbbr . ")";
+              }
+            ?>
+            <option value="<?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>"></option>
           <?php endforeach; ?>
         </datalist>
         <label class="field">
@@ -970,7 +997,7 @@ if (!$pageError) {
             </label>
             <label class="field">
               <span>Einheit</span>
-              <input type="text" name="unit" value="<?php echo htmlspecialchars($editRecord["unit"], ENT_QUOTES, "UTF-8"); ?>" required>
+              <input type="text" name="unit" list="unit-options" value="<?php echo htmlspecialchars($editRecord["unit"], ENT_QUOTES, "UTF-8"); ?>" required>
             </label>
             <label class="field">
               <span>Kategorie</span>

@@ -35,6 +35,20 @@ function uc_format_points($points) {
   return number_format($rounded, 2, ",", "");
 }
 
+function uc_format_unit($unit, array $unitMap): string {
+  $unit = trim((string)$unit);
+  if ($unit === "") {
+    return "";
+  }
+  if (isset($unitMap[$unit])) {
+    return $unitMap[$unit];
+  }
+  if (preg_match('/\(([^)]+)\)\s*$/', $unit, $matches)) {
+    return trim($matches[1]);
+  }
+  return $unit;
+}
+
 if (!$pdo) {
   $pageError = $dbError ?? "Datenbank ist nicht erreichbar.";
 } else {
@@ -43,6 +57,11 @@ if (!$pdo) {
 
 $teamId = $_SESSION["team_id"] ?? null;
 $teamName = $_SESSION["team_name"] ?? "";
+
+if (!empty($_SESSION["is_admin"])) {
+  header("Location: admin.php");
+  exit;
+}
 
 if (!$teamId) {
   header("Location: index.php");
@@ -71,6 +90,8 @@ $combineFeedback = null;
 $combineError = null;
 $players = [];
 $disciplines = [];
+$units = [];
+$unitAbbrMap = [];
 $assignedPlayerIds = [];
 $assignedDisciplineIds = [];
 $assignedDisciplinesByCategory = [];
@@ -151,6 +172,24 @@ if (!$pageError) {
   $stmt->execute([":team_id" => $teamId]);
   $disciplines = $stmt->fetchAll();
 
+  $stmt = $pdo->prepare(
+    "SELECT unit_name, unit_abbreviation
+     FROM units
+     ORDER BY unit_name ASC"
+  );
+  $stmt->execute();
+  $units = $stmt->fetchAll();
+  foreach ($units as $unitRow) {
+    $unitName = trim((string)($unitRow["unit_name"] ?? ""));
+    $unitAbbr = trim((string)($unitRow["unit_abbreviation"] ?? ""));
+    if ($unitName === "" || $unitAbbr === "") {
+      continue;
+    }
+    $unitAbbrMap[$unitName] = $unitAbbr;
+    $unitAbbrMap[$unitAbbr] = $unitAbbr;
+    $unitAbbrMap[$unitName . " (" . $unitAbbr . ")"] = $unitAbbr;
+  }
+
   if (!$combineError) {
     try {
       $stmt = $pdo->prepare(
@@ -197,7 +236,7 @@ if (!$pageError) {
   foreach ($assignedDisciplines as $discipline) {
     if ((int)$discipline["id"] === (int)$activeDisciplineId) {
       $activeDisciplineDescription = $discipline["description"] ?? "";
-      $activeDisciplineUnit = $discipline["unit"] ?? "";
+      $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
       break;
     }
   }
@@ -443,7 +482,7 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
     foreach ($assignedDisciplines as $discipline) {
       if ((int)$discipline["id"] === (int)$activeDisciplineId) {
         $activeDisciplineDescription = $discipline["description"] ?? "";
-        $activeDisciplineUnit = $discipline["unit"] ?? "";
+        $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
         break;
       }
     }
@@ -598,7 +637,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                       <li class="list-item">
                         <div>
                           <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                          <span class="meta"><?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?></span>
+                          <span class="meta"><?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?></span>
                         </div>
                       </li>
                     <?php endforeach; ?>
@@ -960,7 +999,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                             if ($direction !== "less" && $direction !== "more") {
                               $direction = "more";
                             }
-                            $unit = trim((string)($discipline["unit"] ?? ""));
+                            $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
                             $rankValues = [];
                             foreach ($filteredPlayers as $player) {
                               $playerId = (int)$player["id"];
@@ -1049,7 +1088,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                   if ($direction !== "less" && $direction !== "more") {
                     $direction = "more";
                   }
-                  $unit = trim((string)($discipline["unit"] ?? ""));
+                  $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
                   $rankValues = [];
                   foreach ($filteredPlayers as $player) {
                     $playerId = (int)$player["id"];
@@ -1264,7 +1303,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                       <span class="meta">
                         <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                         &middot;
-                        <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                        <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
                       </span>
                     </span>
                   </label>

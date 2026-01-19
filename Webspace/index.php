@@ -21,7 +21,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       $registerTeam = $team;
       $registerContact = $contact;
 
-      if ($team === "" || $key === "" || $contact === "") {
+      if (strtolower($team) === "admin") {
+        $feedback = "Dieser Teamname ist reserviert.";
+      } elseif ($team === "" || $key === "" || $contact === "") {
         $feedback = "Bitte Teamname, Schlüsselwort und Kontakt angeben.";
       } elseif (!filter_var($contact, FILTER_VALIDATE_EMAIL)) {
         $feedback = "Bitte eine gültige E-Mail-Adresse angeben.";
@@ -63,6 +65,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
       if ($team === "" || $key === "") {
         $feedback = "Bitte Teamname und Schlüsselwort angeben.";
+      } elseif (strtolower($team) === "admin") {
+        $stmt = $pdo->prepare(
+          "SELECT id, username, password_hash
+           FROM admins
+           WHERE username = :username
+           LIMIT 1"
+        );
+        $stmt->execute([":username" => $team]);
+        $row = $stmt->fetch();
+        if ($row && password_verify($key, $row["password_hash"])) {
+          session_regenerate_id(true);
+          $_SESSION["is_admin"] = true;
+          unset($_SESSION["team_id"], $_SESSION["team_name"]);
+          header("Location: admin.php");
+          exit;
+        }
+        $feedback = "Admin-Zugang ist falsch.";
       } else {
         $stmt = $pdo->prepare(
           "SELECT id, team_name, team_key_hash FROM teams WHERE team_name = :team_name"
@@ -71,6 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $row = $stmt->fetch();
 
         if ($row && password_verify($key, $row["team_key_hash"])) {
+          $_SESSION["is_admin"] = false;
           $_SESSION["team_id"] = (int)$row["id"];
           $_SESSION["team_name"] = $row["team_name"];
           header("Location: team.php");
