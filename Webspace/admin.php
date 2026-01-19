@@ -13,6 +13,7 @@ if (empty($_SESSION["is_admin"])) {
 }
 
 $adminFeedback = null;
+$adminError = null;
 $units = [];
 $teams = [];
 
@@ -24,11 +25,112 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     header("Location: index.php");
     exit;
   }
+
+  if ($action === "create_unit") {
+    $unitName = trim($_POST["unit_name"] ?? "");
+    $unitAbbr = trim($_POST["unit_abbreviation"] ?? "");
+    if ($unitName === "" || $unitAbbr === "") {
+      $adminError = "Bitte Name und Kürzel für die Einheit angeben.";
+    } else {
+      $stmt = $pdo->prepare(
+        "INSERT INTO units (unit_name, unit_abbreviation)
+         VALUES (:unit_name, :unit_abbreviation)"
+      );
+      $stmt->execute([
+        ":unit_name" => $unitName,
+        ":unit_abbreviation" => $unitAbbr,
+      ]);
+      $adminFeedback = "Einheit wurde angelegt.";
+    }
+  }
+
+  if ($action === "update_unit") {
+    $unitId = filter_var($_POST["unit_id"] ?? null, FILTER_VALIDATE_INT);
+    $unitName = trim($_POST["unit_name"] ?? "");
+    $unitAbbr = trim($_POST["unit_abbreviation"] ?? "");
+    if (!$unitId || $unitName === "" || $unitAbbr === "") {
+      $adminError = "Bitte Name und Kürzel für die Einheit angeben.";
+    } else {
+      $stmt = $pdo->prepare(
+        "UPDATE units
+         SET unit_name = :unit_name,
+             unit_abbreviation = :unit_abbreviation
+         WHERE id = :id"
+      );
+      $stmt->execute([
+        ":unit_name" => $unitName,
+        ":unit_abbreviation" => $unitAbbr,
+        ":id" => $unitId,
+      ]);
+      $adminFeedback = "Einheit wurde aktualisiert.";
+    }
+  }
+
+  if ($action === "update_units" && !empty($_POST["delete_unit_id"])) {
+    $unitId = filter_var($_POST["delete_unit_id"], FILTER_VALIDATE_INT);
+    if (!$unitId) {
+      $adminError = "Einheit konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM units WHERE id = :id");
+      $stmt->execute([":id" => $unitId]);
+      $adminFeedback = "Einheit wurde gelöscht.";
+    }
+  }
+
+  if ($action === "update_units" && empty($_POST["delete_unit_id"])) {
+    $unitIds = (array)($_POST["unit_id"] ?? []);
+    $unitNames = (array)($_POST["unit_name"] ?? []);
+    $unitAbbrs = (array)($_POST["unit_abbreviation"] ?? []);
+    $hasError = false;
+
+    foreach ($unitIds as $index => $unitIdRaw) {
+      $unitId = filter_var($unitIdRaw, FILTER_VALIDATE_INT);
+      $unitName = trim((string)($unitNames[$index] ?? ""));
+      $unitAbbr = trim((string)($unitAbbrs[$index] ?? ""));
+      if (!$unitId || $unitName === "" || $unitAbbr === "") {
+        $hasError = true;
+        break;
+      }
+    }
+
+    if ($hasError) {
+      $adminError = "Bitte Name und Kürzel für alle Einheiten angeben.";
+    } else {
+      $stmt = $pdo->prepare(
+        "UPDATE units
+         SET unit_name = :unit_name,
+             unit_abbreviation = :unit_abbreviation
+         WHERE id = :id"
+      );
+      foreach ($unitIds as $index => $unitIdRaw) {
+        $unitId = (int)$unitIdRaw;
+        $unitName = trim((string)($unitNames[$index] ?? ""));
+        $unitAbbr = trim((string)($unitAbbrs[$index] ?? ""));
+        $stmt->execute([
+          ":unit_name" => $unitName,
+          ":unit_abbreviation" => $unitAbbr,
+          ":id" => $unitId,
+        ]);
+      }
+      $adminFeedback = "Einheiten wurden aktualisiert.";
+    }
+  }
+
+  if ($action === "delete_unit") {
+    $unitId = filter_var($_POST["unit_id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$unitId) {
+      $adminError = "Einheit konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM units WHERE id = :id");
+      $stmt->execute([":id" => $unitId]);
+      $adminFeedback = "Einheit wurde gelöscht.";
+    }
+  }
 }
 
 if (!$pageError) {
   $stmt = $pdo->prepare(
-    "SELECT unit_name, unit_abbreviation, created_at
+    "SELECT id, unit_name, unit_abbreviation, created_at
      FROM units
      ORDER BY unit_name ASC"
   );
@@ -88,14 +190,45 @@ if (!$pageError) {
       <?php if ($pageError): ?>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
+      <?php if ($adminError): ?>
+        <p class="help"><?php echo htmlspecialchars($adminError, ENT_QUOTES, "UTF-8"); ?></p>
+      <?php elseif ($adminFeedback): ?>
+        <p class="help"><?php echo htmlspecialchars($adminFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+      <?php endif; ?>
     </section>
 
     <section class="info">
-      <h2>Einheiten</h2>
+      <div class="card-header">
+        <h2>Einheiten</h2>
+        <div class="card-actions" id="units-actions-view">
+          <button class="pill-button" type="button" data-edit-units>Bearbeiten</button>
+          <button class="icon-button small js-toggle" type="button" data-target="add-unit" aria-expanded="false" aria-controls="add-unit">+</button>
+        </div>
+        <div class="card-actions is-hidden" id="units-actions-edit">
+          <button class="pill-button" type="button" data-edit-units-cancel>Abbrechen</button>
+          <button class="primary-button" type="submit" form="unit-edit-form">Speichern</button>
+        </div>
+      </div>
+
+      <div id="add-unit" class="is-hidden">
+        <form class="form" method="post" action="">
+          <input type="hidden" name="action" value="create_unit">
+          <label class="field">
+            <span>Name</span>
+            <input type="text" name="unit_name" placeholder="z. B. Meter" required>
+          </label>
+          <label class="field">
+            <span>Kürzel</span>
+            <input type="text" name="unit_abbreviation" placeholder="z. B. m" required>
+          </label>
+          <button class="primary-button" type="submit">Einheit anlegen</button>
+        </form>
+      </div>
+
       <?php if (empty($units)): ?>
         <p class="help">Noch keine Einheiten hinterlegt.</p>
       <?php else: ?>
-        <ul class="list">
+        <ul class="list" id="units-overview">
           <?php foreach ($units as $unit): ?>
             <li class="list-item">
               <div>
@@ -106,6 +239,34 @@ if (!$pageError) {
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
+
+      <div id="edit-units" class="is-hidden">
+        <?php if (!empty($units)): ?>
+          <form id="unit-edit-form" class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_units">
+            <ul class="list">
+              <?php foreach ($units as $unit): ?>
+                <li class="list-item list-item--edit">
+                  <div>
+                    <div class="form inline-form">
+                      <input type="hidden" name="unit_id[]" value="<?php echo (int)$unit["id"]; ?>">
+                      <label class="field">
+                        <span>Name</span>
+                        <input type="text" name="unit_name[]" value="<?php echo htmlspecialchars($unit["unit_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+                      </label>
+                      <label class="field">
+                        <span>Kürzel</span>
+                        <input type="text" name="unit_abbreviation[]" value="<?php echo htmlspecialchars($unit["unit_abbreviation"], ENT_QUOTES, "UTF-8"); ?>" required>
+                      </label>
+                    </div>
+                  </div>
+                  <button class="pill-button" type="submit" name="delete_unit_id" value="<?php echo (int)$unit["id"]; ?>" formnovalidate>Löschen</button>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          </form>
+        <?php endif; ?>
+      </div>
     </section>
 
     <section class="info">
@@ -138,5 +299,46 @@ if (!$pageError) {
       <?php endif; ?>
     </section>
   </main>
+  <script>
+    const toggles = document.querySelectorAll(".js-toggle");
+    toggles.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.dataset.target;
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const isHidden = target.classList.toggle("is-hidden");
+        btn.setAttribute("aria-expanded", String(!isHidden));
+        if (!isHidden) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+
+    const editButton = document.querySelector("[data-edit-units]");
+    const cancelButton = document.querySelector("[data-edit-units-cancel]");
+    const editPanel = document.getElementById("edit-units");
+    const overviewList = document.getElementById("units-overview");
+    const addUnitPanel = document.getElementById("add-unit");
+    const viewActions = document.getElementById("units-actions-view");
+    const editActions = document.getElementById("units-actions-edit");
+
+    const setEditMode = (isEdit) => {
+      const show = isEdit ? "true" : "false";
+      if (editPanel) editPanel.classList.toggle("is-hidden", !isEdit);
+      if (overviewList) overviewList.classList.toggle("is-hidden", isEdit);
+      if (addUnitPanel) addUnitPanel.classList.toggle("is-hidden", true);
+      if (viewActions) viewActions.classList.toggle("is-hidden", isEdit);
+      if (editActions) editActions.classList.toggle("is-hidden", !isEdit);
+      if (editButton) editButton.setAttribute("aria-expanded", show);
+      if (cancelButton) cancelButton.setAttribute("aria-expanded", show);
+    };
+
+    if (editButton) {
+      editButton.addEventListener("click", () => setEditMode(true));
+    }
+    if (cancelButton) {
+      cancelButton.addEventListener("click", () => setEditMode(false));
+    }
+  </script>
 </body>
 </html>

@@ -321,7 +321,7 @@ body {
 }
 
 .is-hidden {
-  display: none;
+  display: none !important;
 }
 
 .info {
@@ -450,6 +450,15 @@ body {
   justify-content: space-between;
   gap: 12px;
   box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+}
+
+.list-item--edit {
+  align-items: flex-start;
+}
+
+.inline-form {
+  display: grid;
+  gap: 10px;
 }
 
 .list-link {
