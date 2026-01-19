@@ -130,6 +130,15 @@ function uc_ensure_schema(PDO $pdo): void {
   );
 
   $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS units (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      unit_name VARCHAR(80) NOT NULL,
+      unit_abbreviation VARCHAR(24) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combine_players (
       id INT AUTO_INCREMENT PRIMARY KEY,
       combine_id INT NOT NULL,
