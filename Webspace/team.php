@@ -294,7 +294,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $jerseyNumber = $jerseyRaw === "" ? null : filter_var($jerseyRaw, FILTER_VALIDATE_INT);
 
     if (!$editId || $firstName === "" || $lastName === "" || $jerseyNumber === false || !isset($validGenders[$gender])) {
-      $playerFeedback = "Bitte alle Pflichtfelder fuer den Spieler korrekt ausfuellen.";
+      $playerFeedback = "Bitte alle Pflichtfelder für den Spieler korrekt ausfüllen.";
     } else {
       $stmt = $pdo->prepare(
         "SELECT 1
@@ -414,7 +414,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $category === "" ||
       !isset($validDirections[$direction])
     ) {
-      $disciplineFeedback = "Bitte alle Felder fuer die Disziplin ausfuellen.";
+      $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
     } else {
       $stmt = $pdo->prepare(
         "SELECT 1
