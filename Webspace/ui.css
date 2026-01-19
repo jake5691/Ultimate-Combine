@@ -622,6 +622,16 @@ body {
   height: 18px;
   accent-color: var(--accent);
 }
+
+.check-item input[type="number"] {
+  width: 96px;
+  height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #ded3c5;
+  border-radius: 12px;
+  font-size: 1rem;
+  background: #fff;
+}
 .category-block {
   display: grid;
   gap: 10px;

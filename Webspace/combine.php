@@ -94,11 +94,15 @@ $units = [];
 $unitAbbrMap = [];
 $assignedPlayerIds = [];
 $assignedDisciplineIds = [];
-$assignedDisciplinesByCategory = [];
-$assignedPlayers = [];
-$assignedDisciplines = [];
-$resultsByDiscipline = [];
-$resultValues = [];
+  $assignedDisciplinesByCategory = [];
+  $assignedPlayers = [];
+  $assignedDisciplines = [];
+  $combineDisciplineWeights = [];
+  $combineCategoryWeights = [];
+  $resultsByDiscipline = [];
+  $resultValues = [];
+  $formDisciplineWeights = [];
+  $formCategoryWeights = [];
 $conflicts = [];
 $needsConfirmation = false;
 $saveNotice = null;
@@ -201,12 +205,39 @@ if (!$pageError) {
       $assignedPlayerIds = array_map("intval", array_column($stmt->fetchAll(), "player_id"));
 
       $stmt = $pdo->prepare(
-        "SELECT discipline_id
+        "SELECT discipline_id, weight
          FROM combine_disciplines
          WHERE combine_id = :combine_id"
       );
       $stmt->execute([":combine_id" => $combineId]);
-      $assignedDisciplineIds = array_map("intval", array_column($stmt->fetchAll(), "discipline_id"));
+      $combineDisciplineRows = $stmt->fetchAll();
+      $assignedDisciplineIds = array_map("intval", array_column($combineDisciplineRows, "discipline_id"));
+      foreach ($combineDisciplineRows as $row) {
+        $discId = (int)$row["discipline_id"];
+        $weight = (float)($row["weight"] ?? 1);
+        if ($weight <= 0) {
+          $weight = 1;
+        }
+        $combineDisciplineWeights[$discId] = $weight;
+      }
+
+      $stmt = $pdo->prepare(
+        "SELECT category, weight
+         FROM combine_category_weights
+         WHERE combine_id = :combine_id"
+      );
+      $stmt->execute([":combine_id" => $combineId]);
+      foreach ($stmt->fetchAll() as $row) {
+        $categoryKey = trim((string)($row["category"] ?? ""));
+        if ($categoryKey === "") {
+          continue;
+        }
+        $weight = (float)($row["weight"] ?? 1);
+        if ($weight <= 0) {
+          $weight = 1;
+        }
+        $combineCategoryWeights[$categoryKey] = $weight;
+      }
     } catch (Throwable $e) {
       $combineError = "Zuordnungen konnten nicht geladen werden.";
     }
@@ -247,6 +278,8 @@ if (!$pageError) {
   $formCombineNotes = $combine["combine_notes"] ?? "";
   $formPlayerIds = $assignedPlayerIds;
   $formDisciplineIds = $assignedDisciplineIds;
+  $formDisciplineWeights = $combineDisciplineWeights;
+  $formCategoryWeights = $combineCategoryWeights;
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
@@ -259,6 +292,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $combineNotes = trim($_POST["combine_notes"] ?? "");
     $selectedPlayers = (array)($_POST["players"] ?? []);
     $selectedDisciplines = (array)($_POST["disciplines"] ?? []);
+    $disciplineWeightsInput = (array)($_POST["discipline_weight"] ?? []);
+    $categoryNamesInput = (array)($_POST["category_name"] ?? []);
+    $categoryWeightsInput = (array)($_POST["category_weight"] ?? []);
 
     $selectedPlayers = array_values(array_unique(array_filter(array_map(function ($value) {
       $id = filter_var($value, FILTER_VALIDATE_INT);
@@ -276,8 +312,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
 
     $disciplineMap = [];
+    $disciplineById = [];
     foreach ($disciplines as $discipline) {
       $disciplineMap[(int)$discipline["id"]] = true;
+      $disciplineById[(int)$discipline["id"]] = $discipline;
     }
 
     $invalidPlayers = array_diff($selectedPlayers, array_keys($playerMap));
@@ -329,13 +367,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 
         if (!empty($selectedDisciplines)) {
           $stmt = $pdo->prepare(
-            "INSERT INTO combine_disciplines (combine_id, discipline_id)
-             VALUES (:combine_id, :discipline_id)"
+            "INSERT INTO combine_disciplines (combine_id, discipline_id, weight)
+             VALUES (:combine_id, :discipline_id, :weight)"
           );
           foreach ($selectedDisciplines as $disciplineId) {
+            $weight = isset($disciplineWeightsInput[$disciplineId])
+              ? (float)str_replace(",", ".", (string)$disciplineWeightsInput[$disciplineId])
+              : 1.0;
+            if ($weight <= 0) {
+              $weight = 1.0;
+            }
             $stmt->execute([
               ":combine_id" => $combineId,
               ":discipline_id" => $disciplineId,
+              ":weight" => $weight,
+            ]);
+          }
+        }
+
+        $stmt = $pdo->prepare("DELETE FROM combine_category_weights WHERE combine_id = :combine_id");
+        $stmt->execute([":combine_id" => $combineId]);
+
+        $categoryWeights = [];
+        foreach ($categoryNamesInput as $index => $categoryNameRaw) {
+          $categoryName = trim((string)$categoryNameRaw);
+          if ($categoryName === "") {
+            continue;
+          }
+          $weight = isset($categoryWeightsInput[$index])
+            ? (float)str_replace(",", ".", (string)$categoryWeightsInput[$index])
+            : 1.0;
+          if ($weight <= 0) {
+            $weight = 1.0;
+          }
+          $categoryWeights[$categoryName] = $weight;
+        }
+
+        $selectedCategories = [];
+        foreach ($selectedDisciplines as $disciplineId) {
+          $category = trim((string)($disciplineById[$disciplineId]["category"] ?? ""));
+          if ($category === "") {
+            $category = "Ohne Kategorie";
+          }
+          $selectedCategories[$category] = true;
+        }
+
+        if (!empty($selectedCategories)) {
+          $stmt = $pdo->prepare(
+            "INSERT INTO combine_category_weights (combine_id, category, weight)
+             VALUES (:combine_id, :category, :weight)"
+          );
+          foreach (array_keys($selectedCategories) as $category) {
+            $weight = $categoryWeights[$category] ?? 1.0;
+            $stmt->execute([
+              ":combine_id" => $combineId,
+              ":category" => $category,
+              ":weight" => $weight,
             ]);
           }
         }
@@ -357,6 +444,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $formCombineNotes = $combineNotes;
     $formPlayerIds = $selectedPlayers;
     $formDisciplineIds = $selectedDisciplines;
+    $formDisciplineWeights = $disciplineWeightsInput;
+    $formCategoryWeights = [];
+    foreach ($categoryNamesInput as $index => $categoryNameRaw) {
+      $categoryName = trim((string)$categoryNameRaw);
+      if ($categoryName === "") {
+        continue;
+      }
+      $formCategoryWeights[$categoryName] = $categoryWeightsInput[$index] ?? "1";
+    }
   }
 
   if (($action === "save_results" || $action === "confirm_save_results") && !$combineError) {
@@ -781,17 +877,29 @@ if (!$pageError && !$combineError && $mode === "results") {
           $overallScores = [];
           $categoryAverages = [];
           $categoryTeamAverages = [];
+          $categoryWeights = [];
+          $categoryWeights = [];
           foreach ($filteredPlayers as $player) {
             $overallScores[(int)$player["id"]] = 0;
           }
           foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+            $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+            if ($categoryWeight <= 0) {
+              $categoryWeight = 1.0;
+            }
+            $categoryWeights[$category] = $categoryWeight;
             $disciplineCount = 0;
+            $disciplineWeightSum = 0.0;
             $categoryTotals = [];
             foreach ($filteredPlayers as $player) {
               $categoryTotals[(int)$player["id"]] = 0;
             }
             foreach ($categoryDisciplines as $discipline) {
               $discId = (int)$discipline["id"];
+              $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+              if ($disciplineWeight <= 0) {
+                $disciplineWeight = 1.0;
+              }
               $direction = $discipline["rating_direction"] ?? "more";
               if ($direction !== "less" && $direction !== "more") {
                 $direction = "more";
@@ -810,6 +918,7 @@ if (!$pageError && !$combineError && $mode === "results") {
               $worstValue = null;
               if (!empty($rankValues)) {
                 $disciplineCount++;
+                $disciplineWeightSum += $disciplineWeight;
                 $values = array_values($rankValues);
                 if ($direction === "less") {
                   $bestValue = min($values);
@@ -830,18 +939,18 @@ if (!$pageError && !$combineError && $mode === "results") {
                   $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
                   $points = 1 + $ratio;
                 }
-                $categoryTotals[$playerId] += $points;
+                $categoryTotals[$playerId] += $points * $disciplineWeight;
               }
             }
-            if ($disciplineCount === 0) {
+            if ($disciplineCount === 0 || $disciplineWeightSum <= 0) {
               continue;
             }
             $teamSum = 0;
             $teamCount = 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
-              $categoryAverage = $categoryTotals[$playerId] / $disciplineCount;
-              $overallScores[$playerId] += $categoryAverage;
+              $categoryAverage = $categoryTotals[$playerId] / $disciplineWeightSum;
+              $overallScores[$playerId] += $categoryAverage * $categoryWeight;
               $categoryAverages[$category][$playerId] = $categoryAverage;
               $teamSum += $categoryAverage;
               $teamCount++;
@@ -988,9 +1097,36 @@ if (!$pageError && !$combineError && $mode === "results") {
                   </div>
                 </div>
                 <div class="radar-details">
+                  <?php
+                    $showCategoryWeights = false;
+                    foreach ($assignedDisciplinesByCategory as $categoryKey => $categoryDisciplines) {
+                      $weight = $combineCategoryWeights[$categoryKey] ?? 1;
+                      if ((float)$weight !== 1.0) {
+                        $showCategoryWeights = true;
+                        break;
+                      }
+                    }
+                  ?>
                   <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+                    <?php
+                      $categoryWeight = $combineCategoryWeights[$category] ?? 1;
+                      $showDisciplineWeights = false;
+                      foreach ($categoryDisciplines as $discipline) {
+                        $discId = (int)$discipline["id"];
+                        $discWeight = $combineDisciplineWeights[$discId] ?? 1;
+                        if ((float)$discWeight !== 1.0) {
+                          $showDisciplineWeights = true;
+                          break;
+                        }
+                      }
+                    ?>
                     <div class="category-block">
-                      <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                      <h4 class="category-title">
+                        <?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>
+                        <?php if ($showCategoryWeights): ?>
+                          <span class="meta">(<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                        <?php endif; ?>
+                      </h4>
                       <ul class="list">
                         <?php foreach ($categoryDisciplines as $discipline): ?>
                           <?php
@@ -1000,6 +1136,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                               $direction = "more";
                             }
                             $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                            $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1;
                             $rankValues = [];
                             foreach ($filteredPlayers as $player) {
                               $playerId = (int)$player["id"];
@@ -1057,6 +1194,9 @@ if (!$pageError && !$combineError && $mode === "results") {
                           <li class="list-item">
                             <div>
                               <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                              <?php if ($showDisciplineWeights): ?>
+                                <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                              <?php endif; ?>
                               <?php if ($display !== "-"): ?>
                                 <span class="meta"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
@@ -1078,9 +1218,36 @@ if (!$pageError && !$combineError && $mode === "results") {
         <?php if (empty($assignedDisciplines)): ?>
           <p class="help">Keine Disziplinen zugeordnet.</p>
         <?php else: ?>
+          <?php
+            $showCategoryWeights = false;
+            foreach ($assignedDisciplinesByCategory as $categoryKey => $categoryDisciplines) {
+              $weight = $combineCategoryWeights[$categoryKey] ?? 1;
+              if ((float)$weight !== 1.0) {
+                $showCategoryWeights = true;
+                break;
+              }
+            }
+          ?>
           <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+            <?php
+              $categoryWeight = $combineCategoryWeights[$category] ?? 1;
+              $showDisciplineWeights = false;
+              foreach ($categoryDisciplines as $discipline) {
+                $discId = (int)$discipline["id"];
+                $discWeight = $combineDisciplineWeights[$discId] ?? 1;
+                if ((float)$discWeight !== 1.0) {
+                  $showDisciplineWeights = true;
+                  break;
+                }
+              }
+            ?>
             <div class="category-block">
-              <h3 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h3>
+              <h3 class="category-title">
+                <?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>
+                <?php if ($showCategoryWeights): ?>
+                  <span class="meta">(<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                <?php endif; ?>
+              </h3>
               <?php foreach ($categoryDisciplines as $discipline): ?>
                 <?php
                   $discId = (int)$discipline["id"];
@@ -1089,6 +1256,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                     $direction = "more";
                   }
                   $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                  $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1;
                   $rankValues = [];
                   foreach ($filteredPlayers as $player) {
                     $playerId = (int)$player["id"];
@@ -1146,6 +1314,9 @@ if (!$pageError && !$combineError && $mode === "results") {
                   <details>
                     <summary>
                       <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                      <?php if ($showDisciplineWeights): ?>
+                        <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                      <?php endif; ?>
                       <span class="meta">
                         <?php
                           $topLabel = $topValue === null ? "-" : uc_display_value($topValue, "-");
@@ -1246,10 +1417,10 @@ if (!$pageError && !$combineError && $mode === "results") {
     <?php endif; ?>
 
     <?php if ($editMode && !$pageError && !$combineError): ?>
-      <section class="auth-card" id="edit">
-        <h2>Combine bearbeiten</h2>
-        <form class="form" method="post" action="">
-          <input type="hidden" name="action" value="update_combine">
+        <section class="auth-card" id="edit">
+          <h2>Combine bearbeiten</h2>
+          <form class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_combine">
           <label class="field">
             <span>Name</span>
             <input type="text" name="combine_name" value="<?php echo htmlspecialchars($formCombineName, ENT_QUOTES, "UTF-8"); ?>" required>
@@ -1311,6 +1482,55 @@ if (!$pageError && !$combineError && $mode === "results") {
               </div>
             <?php endif; ?>
           </div>
+
+          <?php
+            $selectedDisciplinesByCategory = [];
+            foreach ($disciplines as $discipline) {
+              $discId = (int)$discipline["id"];
+              if (!in_array($discId, $formDisciplineIds, true)) {
+                continue;
+              }
+              $category = trim((string)($discipline["category"] ?? ""));
+              if ($category === "") {
+                $category = "Ohne Kategorie";
+              }
+              $selectedDisciplinesByCategory[$category][] = $discipline;
+            }
+          ?>
+
+          <?php if (!empty($selectedDisciplinesByCategory)): ?>
+            <div class="field">
+              <span>Gewichtungen</span>
+              <div class="category-block">
+                <?php foreach ($selectedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+                  <?php $categoryWeight = $formCategoryWeights[$category] ?? 1; ?>
+                  <div class="category-block">
+                    <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                    <label class="field">
+                      <input type="number" name="category_weight[]" step="0.1" min="0.1" value="<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>">
+                      <input type="hidden" name="category_name[]" value="<?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>">
+                    </label>
+                    <?php if (count($categoryDisciplines) > 1): ?>
+                      <div class="check-grid">
+                        <?php foreach ($categoryDisciplines as $discipline): ?>
+                          <?php
+                            $discId = (int)$discipline["id"];
+                            $weightValue = $formDisciplineWeights[$discId] ?? 1;
+                          ?>
+                          <label class="check-item">
+                            <span>
+                              <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                            </span>
+                            <input type="number" name="discipline_weight[<?php echo $discId; ?>]" step="0.1" min="0.1" value="<?php echo htmlspecialchars($weightValue, ENT_QUOTES, "UTF-8"); ?>">
+                          </label>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endif; ?>
 
           <div class="form-actions">
             <button class="primary-button" type="submit">Speichern</button>
