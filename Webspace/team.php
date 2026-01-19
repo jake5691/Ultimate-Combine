@@ -35,7 +35,7 @@ $validDirections = [
 $infoTexts = [
   "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen.\nKlicke auf einen Spieler, um diesen zu bearbeiten.",
   "combines" => "Combines sind einzelne Leistungsbewertungsevents.\nPro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden.\nEs können mehrere Combines pro Team angelegt werden.\nKlicke auf ein Combine, um Details zu sehen und Ergebnisse zu erfassen.",
-  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten.",
+  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten. (Globale Disziplinen können nicht bearbeitet werden.)",
 ];
 $formatTooltip = static function (string $text): string {
   return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
@@ -686,7 +686,7 @@ if (!$pageError) {
                     <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </li>
-              <?php endforeach; ?>
+              <?php endforeach; ?>f
             </ul>
           <?php endif; ?>
         </div>
