@@ -1507,7 +1507,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                   <div class="category-block">
                     <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
                     <label class="field">
-                      <input type="number" name="category_weight[]" step="0.1" min="0.1" value="<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>">
+                      <input type="number" name="category_weight[]" step="1" min="1" value="<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>">
                       <input type="hidden" name="category_name[]" value="<?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>">
                     </label>
                     <?php if (count($categoryDisciplines) > 1): ?>
@@ -1521,7 +1521,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                             <span>
                               <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
                             </span>
-                            <input type="number" name="discipline_weight[<?php echo $discId; ?>]" step="0.1" min="0.1" value="<?php echo htmlspecialchars($weightValue, ENT_QUOTES, "UTF-8"); ?>">
+                            <input type="number" name="discipline_weight[<?php echo $discId; ?>]" step="1" min="1" value="<?php echo htmlspecialchars($weightValue, ENT_QUOTES, "UTF-8"); ?>">
                           </label>
                         <?php endforeach; ?>
                       </div>
