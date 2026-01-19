@@ -116,7 +116,7 @@ function uc_ensure_schema(PDO $pdo): void {
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS disciplines (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      team_id INT NOT NULL,
+      team_id INT NULL,
       discipline_name VARCHAR(120) NOT NULL,
       description TEXT NOT NULL,
       unit VARCHAR(60) NOT NULL,
@@ -128,6 +128,22 @@ function uc_ensure_schema(PDO $pdo): void {
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $disciplineColumns = $pdo
+    ->query(
+      "SELECT column_name, is_nullable
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'disciplines'"
+    )
+    ->fetchAll(PDO::FETCH_ASSOC);
+
+  foreach ($disciplineColumns as $column) {
+    if ($column["column_name"] === "team_id" && $column["is_nullable"] === "NO") {
+      $pdo->exec("ALTER TABLE disciplines MODIFY COLUMN team_id INT NULL");
+      break;
+    }
+  }
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS units (

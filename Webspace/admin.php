@@ -15,7 +15,12 @@ if (empty($_SESSION["is_admin"])) {
 $adminFeedback = null;
 $adminError = null;
 $units = [];
+$globalDisciplines = [];
 $teams = [];
+$validDirections = [
+  "more" => "Mehr ist besser",
+  "less" => "Weniger ist besser",
+];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   $action = $_POST["action"] ?? "";
@@ -126,6 +131,129 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $adminFeedback = "Einheit wurde gelöscht.";
     }
   }
+
+  if ($action === "create_global_discipline") {
+    $disciplineName = trim($_POST["discipline_name"] ?? "");
+    $description = trim($_POST["description"] ?? "");
+    $unit = trim($_POST["unit"] ?? "");
+    $category = trim($_POST["category"] ?? "");
+    $direction = $_POST["rating_direction"] ?? "";
+
+    if (
+      $disciplineName === "" ||
+      $description === "" ||
+      $unit === "" ||
+      $category === "" ||
+      !isset($validDirections[$direction])
+    ) {
+      $adminError = "Bitte alle Felder für die Disziplin ausfüllen.";
+    } else {
+      try {
+        $stmt = $pdo->prepare(
+          "SELECT 1
+           FROM disciplines
+           WHERE team_id IS NULL
+             AND discipline_name = :discipline_name
+           LIMIT 1"
+        );
+        $stmt->execute([":discipline_name" => $disciplineName]);
+        $exists = (bool)$stmt->fetchColumn();
+
+        if ($exists) {
+          $adminError = "Diese Disziplin existiert bereits.";
+        } else {
+          $stmt = $pdo->prepare(
+            "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction)
+             VALUES (NULL, :discipline_name, :description, :unit, :category, :rating_direction)"
+          );
+          $stmt->execute([
+            ":discipline_name" => $disciplineName,
+            ":description" => $description,
+            ":unit" => $unit,
+            ":category" => $category,
+            ":rating_direction" => $direction,
+          ]);
+          $adminFeedback = "Disziplin wurde angelegt.";
+        }
+      } catch (Throwable $e) {
+        $adminError = "Disziplin konnte nicht angelegt werden. Bitte Schema prüfen: ALTER TABLE disciplines MODIFY COLUMN team_id INT NULL;";
+      }
+    }
+  }
+
+  if ($action === "update_global_disciplines" && !empty($_POST["delete_discipline_id"])) {
+    $disciplineId = filter_var($_POST["delete_discipline_id"], FILTER_VALIDATE_INT);
+    if (!$disciplineId) {
+      $adminError = "Disziplin konnte nicht gelöscht werden.";
+    } else {
+      try {
+        $stmt = $pdo->prepare("DELETE FROM disciplines WHERE id = :id AND team_id IS NULL");
+        $stmt->execute([":id" => $disciplineId]);
+        $adminFeedback = "Disziplin wurde gelöscht.";
+      } catch (Throwable $e) {
+        $adminError = "Disziplin konnte nicht gelöscht werden.";
+      }
+    }
+  }
+
+  if ($action === "update_global_disciplines" && empty($_POST["delete_discipline_id"])) {
+    $disciplineIds = (array)($_POST["discipline_id"] ?? []);
+    $disciplineNames = (array)($_POST["discipline_name"] ?? []);
+    $descriptions = (array)($_POST["description"] ?? []);
+    $unitsInput = (array)($_POST["unit"] ?? []);
+    $categories = (array)($_POST["category"] ?? []);
+    $directions = (array)($_POST["rating_direction"] ?? []);
+    $hasError = false;
+
+    foreach ($disciplineIds as $index => $disciplineIdRaw) {
+      $disciplineId = filter_var($disciplineIdRaw, FILTER_VALIDATE_INT);
+      $disciplineName = trim((string)($disciplineNames[$index] ?? ""));
+      $description = trim((string)($descriptions[$index] ?? ""));
+      $unit = trim((string)($unitsInput[$index] ?? ""));
+      $category = trim((string)($categories[$index] ?? ""));
+      $direction = $directions[$index] ?? "";
+      if (
+        !$disciplineId ||
+        $disciplineName === "" ||
+        $description === "" ||
+        $unit === "" ||
+        $category === "" ||
+        !isset($validDirections[$direction])
+      ) {
+        $hasError = true;
+        break;
+      }
+    }
+
+    if ($hasError) {
+      $adminError = "Bitte alle Felder für die Disziplinen ausfüllen.";
+    } else {
+      try {
+        $stmt = $pdo->prepare(
+          "UPDATE disciplines
+           SET discipline_name = :discipline_name,
+               description = :description,
+               unit = :unit,
+               category = :category,
+               rating_direction = :rating_direction
+           WHERE id = :id AND team_id IS NULL"
+        );
+        foreach ($disciplineIds as $index => $disciplineIdRaw) {
+          $stmt->execute([
+            ":discipline_name" => trim((string)($disciplineNames[$index] ?? "")),
+            ":description" => trim((string)($descriptions[$index] ?? "")),
+            ":unit" => trim((string)($unitsInput[$index] ?? "")),
+            ":category" => trim((string)($categories[$index] ?? "")),
+            ":rating_direction" => $directions[$index] ?? "",
+            ":id" => (int)$disciplineIdRaw,
+          ]);
+        }
+        $adminFeedback = "Disziplinen wurden aktualisiert.";
+      } catch (Throwable $e) {
+        $adminError = "Disziplinen konnten nicht gespeichert werden.";
+      }
+    }
+  }
 }
 
 if (!$pageError) {
@@ -136,6 +264,15 @@ if (!$pageError) {
   );
   $stmt->execute();
   $units = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
+    "SELECT id, discipline_name, description, unit, category, rating_direction, created_at
+     FROM disciplines
+     WHERE team_id IS NULL
+     ORDER BY created_at DESC"
+  );
+  $stmt->execute();
+  $globalDisciplines = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
     "SELECT t.id, t.team_name, t.contact,
@@ -204,13 +341,13 @@ if (!$pageError) {
           <button class="pill-button" type="button" data-edit-units>Bearbeiten</button>
           <button class="icon-button small js-toggle" type="button" data-target="add-unit" aria-expanded="false" aria-controls="add-unit">+</button>
         </div>
-        <div class="card-actions is-hidden" id="units-actions-edit">
+        <div class="card-actions is-hidden" id="units-actions-edit" hidden>
           <button class="pill-button" type="button" data-edit-units-cancel>Abbrechen</button>
           <button class="primary-button" type="submit" form="unit-edit-form">Speichern</button>
         </div>
       </div>
 
-      <div id="add-unit" class="is-hidden">
+      <div id="add-unit" class="is-hidden" hidden>
         <form class="form" method="post" action="">
           <input type="hidden" name="action" value="create_unit">
           <label class="field">
@@ -240,7 +377,7 @@ if (!$pageError) {
         </ul>
       <?php endif; ?>
 
-      <div id="edit-units" class="is-hidden">
+      <div id="edit-units" class="is-hidden" hidden>
         <?php if (!empty($units)): ?>
           <form id="unit-edit-form" class="form" method="post" action="">
             <input type="hidden" name="action" value="update_units">
@@ -261,6 +398,134 @@ if (!$pageError) {
                     </div>
                   </div>
                   <button class="pill-button" type="submit" name="delete_unit_id" value="<?php echo (int)$unit["id"]; ?>" formnovalidate>Löschen</button>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          </form>
+        <?php endif; ?>
+      </div>
+    </section>
+
+    <section class="info">
+      <div class="card-header">
+        <h2>Globale Disziplinen</h2>
+        <div class="card-actions" id="disciplines-actions-view">
+          <button class="pill-button" type="button" data-edit-disciplines>Bearbeiten</button>
+          <button class="icon-button small js-toggle" type="button" data-target="add-global-discipline" aria-expanded="false" aria-controls="add-global-discipline">+</button>
+        </div>
+        <div class="card-actions is-hidden" id="disciplines-actions-edit" hidden>
+          <button class="pill-button" type="button" data-edit-disciplines-cancel>Abbrechen</button>
+          <button class="primary-button" type="submit" form="discipline-edit-form">Speichern</button>
+        </div>
+      </div>
+
+      <div id="add-global-discipline" class="is-hidden" hidden>
+        <form class="form" method="post" action="">
+          <input type="hidden" name="action" value="create_global_discipline">
+          <label class="field">
+            <span>Name</span>
+            <input type="text" name="discipline_name" required>
+          </label>
+          <label class="field">
+            <span>Beschreibung</span>
+            <textarea name="description" rows="3" required></textarea>
+          </label>
+          <label class="field">
+            <span>Einheit</span>
+            <input type="text" name="unit" list="admin-unit-options" required>
+          </label>
+          <label class="field">
+            <span>Kategorie</span>
+            <input type="text" name="category" required>
+          </label>
+          <label class="field">
+            <span>Bewertung</span>
+            <select name="rating_direction" required>
+              <option value="">Bitte wählen</option>
+              <?php foreach ($validDirections as $key => $label): ?>
+                <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>">
+                  <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <button class="primary-button" type="submit">Disziplin anlegen</button>
+        </form>
+      </div>
+
+      <datalist id="admin-unit-options">
+        <?php foreach ($units as $unit): ?>
+          <?php
+            $unitName = trim((string)($unit["unit_name"] ?? ""));
+            $unitAbbr = trim((string)($unit["unit_abbreviation"] ?? ""));
+            $unitLabel = $unitName;
+            if ($unitAbbr !== "") {
+              $unitLabel .= " (" . $unitAbbr . ")";
+            }
+          ?>
+          <option value="<?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>"></option>
+        <?php endforeach; ?>
+      </datalist>
+
+      <?php if (empty($globalDisciplines)): ?>
+        <p class="help">Noch keine globalen Disziplinen hinterlegt.</p>
+      <?php else: ?>
+        <ul class="list" id="disciplines-overview">
+          <?php foreach ($globalDisciplines as $discipline): ?>
+            <li class="list-item">
+              <div>
+                <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                <span class="meta">
+                  <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                  &middot;
+                  <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                </span>
+                <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+
+      <div id="edit-disciplines" class="is-hidden" hidden>
+        <?php if (!empty($globalDisciplines)): ?>
+          <form id="discipline-edit-form" class="form" method="post" action="">
+            <input type="hidden" name="action" value="update_global_disciplines">
+            <ul class="list">
+              <?php foreach ($globalDisciplines as $discipline): ?>
+                <li class="list-item list-item--edit">
+                  <div>
+                    <div class="form inline-form">
+                      <input type="hidden" name="discipline_id[]" value="<?php echo (int)$discipline["id"]; ?>">
+                      <label class="field">
+                        <span>Name</span>
+                        <input type="text" name="discipline_name[]" value="<?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>" required>
+                      </label>
+                      <label class="field">
+                        <span>Beschreibung</span>
+                        <textarea name="description[]" rows="3" required><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></textarea>
+                      </label>
+                      <label class="field">
+                        <span>Einheit</span>
+                        <input type="text" name="unit[]" list="admin-unit-options" value="<?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>" required>
+                      </label>
+                      <label class="field">
+                        <span>Kategorie</span>
+                        <input type="text" name="category[]" value="<?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>" required>
+                      </label>
+                      <label class="field">
+                        <span>Bewertung</span>
+                        <select name="rating_direction[]" required>
+                          <?php foreach ($validDirections as $key => $label): ?>
+                            <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($discipline["rating_direction"] ?? "") === $key ? " selected" : ""; ?>>
+                              <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
+                            </option>
+                          <?php endforeach; ?>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                  <button class="pill-button" type="submit" name="delete_discipline_id" value="<?php echo (int)$discipline["id"]; ?>" formnovalidate>Löschen</button>
                 </li>
               <?php endforeach; ?>
             </ul>
@@ -307,6 +572,7 @@ if (!$pageError) {
         const target = document.getElementById(targetId);
         if (!target) return;
         const isHidden = target.classList.toggle("is-hidden");
+        target.hidden = isHidden;
         btn.setAttribute("aria-expanded", String(!isHidden));
         if (!isHidden) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -324,11 +590,20 @@ if (!$pageError) {
 
     const setEditMode = (isEdit) => {
       const show = isEdit ? "true" : "false";
-      if (editPanel) editPanel.classList.toggle("is-hidden", !isEdit);
+      if (editPanel) {
+        editPanel.classList.toggle("is-hidden", !isEdit);
+        editPanel.hidden = !isEdit;
+      }
       if (overviewList) overviewList.classList.toggle("is-hidden", isEdit);
-      if (addUnitPanel) addUnitPanel.classList.toggle("is-hidden", true);
+      if (addUnitPanel) {
+        addUnitPanel.classList.toggle("is-hidden", true);
+        addUnitPanel.hidden = true;
+      }
       if (viewActions) viewActions.classList.toggle("is-hidden", isEdit);
-      if (editActions) editActions.classList.toggle("is-hidden", !isEdit);
+      if (editActions) {
+        editActions.classList.toggle("is-hidden", !isEdit);
+        editActions.hidden = !isEdit;
+      }
       if (editButton) editButton.setAttribute("aria-expanded", show);
       if (cancelButton) cancelButton.setAttribute("aria-expanded", show);
     };
@@ -338,6 +613,41 @@ if (!$pageError) {
     }
     if (cancelButton) {
       cancelButton.addEventListener("click", () => setEditMode(false));
+    }
+
+    const editDisciplinesButton = document.querySelector("[data-edit-disciplines]");
+    const cancelDisciplinesButton = document.querySelector("[data-edit-disciplines-cancel]");
+    const editDisciplinesPanel = document.getElementById("edit-disciplines");
+    const disciplinesOverview = document.getElementById("disciplines-overview");
+    const addDisciplinePanel = document.getElementById("add-global-discipline");
+    const disciplinesViewActions = document.getElementById("disciplines-actions-view");
+    const disciplinesEditActions = document.getElementById("disciplines-actions-edit");
+
+    const setDisciplinesEditMode = (isEdit) => {
+      const show = isEdit ? "true" : "false";
+      if (editDisciplinesPanel) {
+        editDisciplinesPanel.classList.toggle("is-hidden", !isEdit);
+        editDisciplinesPanel.hidden = !isEdit;
+      }
+      if (disciplinesOverview) disciplinesOverview.classList.toggle("is-hidden", isEdit);
+      if (addDisciplinePanel) {
+        addDisciplinePanel.classList.toggle("is-hidden", true);
+        addDisciplinePanel.hidden = true;
+      }
+      if (disciplinesViewActions) disciplinesViewActions.classList.toggle("is-hidden", isEdit);
+      if (disciplinesEditActions) {
+        disciplinesEditActions.classList.toggle("is-hidden", !isEdit);
+        disciplinesEditActions.hidden = !isEdit;
+      }
+      if (editDisciplinesButton) editDisciplinesButton.setAttribute("aria-expanded", show);
+      if (cancelDisciplinesButton) cancelDisciplinesButton.setAttribute("aria-expanded", show);
+    };
+
+    if (editDisciplinesButton) {
+      editDisciplinesButton.addEventListener("click", () => setDisciplinesEditMode(true));
+    }
+    if (cancelDisciplinesButton) {
+      cancelDisciplinesButton.addEventListener("click", () => setDisciplinesEditMode(false));
     }
   </script>
 </body>

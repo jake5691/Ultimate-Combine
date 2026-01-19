@@ -177,7 +177,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE team_id = :team_id
+         WHERE (team_id = :team_id OR team_id IS NULL)
            AND discipline_name = :discipline_name
          LIMIT 1"
       );
@@ -424,7 +424,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE team_id = :team_id
+         WHERE (team_id = :team_id OR team_id IS NULL)
            AND discipline_name = :discipline_name
            AND id <> :id
          LIMIT 1"
@@ -549,9 +549,9 @@ if (!$pageError) {
   $combines = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT id, discipline_name, description, unit, category, rating_direction, created_at
+    "SELECT id, team_id, discipline_name, description, unit, category, rating_direction, created_at
      FROM disciplines
-     WHERE team_id = :team_id
+     WHERE team_id = :team_id OR team_id IS NULL
      ORDER BY created_at DESC"
   );
   $stmt->execute([":team_id" => $teamId]);
@@ -742,14 +742,22 @@ if (!$pageError) {
                     <li class="list-item">
                       <div>
                         <strong>
-                          <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                          <?php if ($discipline["team_id"] !== null): ?>
+                            <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                              <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                            </a>
+                          <?php else: ?>
                             <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
-                          </a>
+                          <?php endif; ?>
                         </strong>
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
                           <?php echo htmlspecialchars($validDirections[$discipline["rating_direction"]] ?? $discipline["rating_direction"], ENT_QUOTES, "UTF-8"); ?>
+                          <?php if ($discipline["team_id"] === null): ?>
+                            &middot;
+                            Global
+                          <?php endif; ?>
                         </span>
                         <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
                       </div>
