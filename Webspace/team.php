@@ -686,7 +686,7 @@ if (!$pageError) {
                     <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </li>
-              <?php endforeach; ?>f
+              <?php endforeach; ?>
             </ul>
           <?php endif; ?>
         </div>
