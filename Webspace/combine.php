@@ -58,6 +58,11 @@ if (!$pdo) {
 $teamId = $_SESSION["team_id"] ?? null;
 $teamName = $_SESSION["team_name"] ?? "";
 
+if (!empty($_SESSION["is_admin"])) {
+  header("Location: admin.php");
+  exit;
+}
+
 if (!$teamId) {
   header("Location: index.php");
   exit;
