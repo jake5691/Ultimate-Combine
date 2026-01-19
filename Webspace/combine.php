@@ -1134,7 +1134,7 @@ if (!$pageError && !$combineError && $mode === "results") {
               <div class="radar-grid">
                 <div class="radar-chart">
                   <canvas id="radar-chart" width="360" height="360"></canvas>
-                  <div class="radar-legend">
+                  <div class="radar-legend is-overlay">
                     <span class="legend-item legend-player">Spieler</span>
                     <span class="legend-item legend-team">Team</span>
                   </div>
@@ -1628,110 +1628,124 @@ if (!$pageError && !$combineError && $mode === "results") {
     if (radarDataEl && radarCanvas) {
       const data = JSON.parse(radarDataEl.textContent || "[]");
       if (data.length) {
-        const ctx = radarCanvas.getContext("2d");
-      const dpi = window.devicePixelRatio || 1;
-      const size = Math.min(radarCanvas.width, radarCanvas.height);
-      radarCanvas.width = size * dpi;
-      radarCanvas.height = size * dpi;
-      radarCanvas.style.width = `${size}px`;
-      radarCanvas.style.height = `${size}px`;
-      ctx.scale(dpi, dpi);
+        const drawRadar = () => {
+          const container = radarCanvas.parentElement;
+          if (!container) return;
+          const rect = container.getBoundingClientRect();
+          const size = Math.max(0, Math.floor(rect.width));
+          if (!size) return;
+          const dpi = window.devicePixelRatio || 1;
+          radarCanvas.width = size * dpi;
+          radarCanvas.height = size * dpi;
+          radarCanvas.style.width = `${size}px`;
+          radarCanvas.style.height = `${size}px`;
 
-      const rootStyles = getComputedStyle(document.documentElement);
-      const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
-      const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
-      const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
-      const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
+          const ctx = radarCanvas.getContext("2d");
+          ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
 
-      const center = size / 2;
-      const radius = center - 60;
-      const labelOffset = 6;
-      const maxValue = 2;
-      const midValue = 1;
-      const midRatio = 0.4;
-      const upperRings = 3;
-      const angleStep = (Math.PI * 2) / data.length;
+          const rootStyles = getComputedStyle(document.documentElement);
+          const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
+          const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
+          const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
+          const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
 
-      ctx.clearRect(0, 0, size, size);
-      ctx.translate(center, center);
+          const center = size / 2;
+          const radius = center - 60;
+          const labelOffset = 6;
+          const maxValue = 2;
+          const midValue = 1;
+          const midRatio = 0.4;
+          const upperRings = 3;
+          const angleStep = (Math.PI * 2) / data.length;
 
-      ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
-      ctx.lineWidth = 1;
-      const rings = [midRatio];
-      for (let i = 1; i <= upperRings; i += 1) {
-        rings.push(midRatio + (i / (upperRings + 1)) * (1 - midRatio));
-      }
-      rings.push(1);
-      rings.forEach((ratio) => {
-        const r = radius * ratio;
-        ctx.beginPath();
-        for (let i = 0; i < data.length; i += 1) {
-          const angle = i * angleStep - Math.PI / 2;
-          const x = Math.cos(angle) * r;
-          const y = Math.sin(angle) * r;
-          if (i === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+          ctx.clearRect(0, 0, size, size);
+          ctx.translate(center, center);
+
+          ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
+          ctx.lineWidth = 1;
+          const rings = [midRatio];
+          for (let i = 1; i <= upperRings; i += 1) {
+            rings.push(midRatio + (i / (upperRings + 1)) * (1 - midRatio));
           }
-        }
-        ctx.closePath();
-        ctx.stroke();
-      });
+          rings.push(1);
+          rings.forEach((ratio) => {
+            const r = radius * ratio;
+            ctx.beginPath();
+            for (let i = 0; i < data.length; i += 1) {
+              const angle = i * angleStep - Math.PI / 2;
+              const x = Math.cos(angle) * r;
+              const y = Math.sin(angle) * r;
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.closePath();
+            ctx.stroke();
+          });
 
-      ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
-      for (let i = 0; i < data.length; i += 1) {
-        const angle = i * angleStep - Math.PI / 2;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-        ctx.stroke();
-      }
-
-      const normalizeValue = (value) => {
-        if (value <= midValue) {
-          return (value / midValue) * midRatio;
-        }
-        return midRatio + ((value - midValue) / (maxValue - midValue)) * (1 - midRatio);
-      };
-
-      const drawShape = (values, stroke, fill) => {
-        ctx.beginPath();
-        values.forEach((value, index) => {
-          const normalized = Math.max(0, Math.min(normalizeValue(value), 1));
-          const angle = index * angleStep - Math.PI / 2;
-          const x = Math.cos(angle) * radius * normalized;
-          const y = Math.sin(angle) * radius * normalized;
-          if (index === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+          ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
+          for (let i = 0; i < data.length; i += 1) {
+            const angle = i * angleStep - Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            ctx.stroke();
           }
-        });
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 2;
-        ctx.fill();
-        ctx.stroke();
-      };
 
-      const teamValues = data.map((item) => item.team || 0);
-      const playerValues = data.map((item) => item.player || 0);
-      drawShape(teamValues, accent2, "rgba(44, 42, 74, 0.15)");
-      drawShape(playerValues, accent, "rgba(255, 123, 75, 0.22)");
+          const normalizeValue = (value) => {
+            if (value <= midValue) {
+              return (value / midValue) * midRatio;
+            }
+            return midRatio + ((value - midValue) / (maxValue - midValue)) * (1 - midRatio);
+          };
 
-      ctx.fillStyle = ink;
-      ctx.font = "12px \"Space Grotesk\", sans-serif";
-      data.forEach((item, index) => {
-        const angle = index * angleStep - Math.PI / 2;
-        const x = Math.cos(angle) * (radius + labelOffset);
-        const y = Math.sin(angle) * (radius + labelOffset);
-        ctx.textAlign = x > 5 ? "left" : x < -5 ? "right" : "center";
-        ctx.textBaseline = y > 5 ? "top" : y < -5 ? "bottom" : "middle";
-        ctx.fillStyle = muted;
-        ctx.fillText(item.label, x, y);
-      });
+          const drawShape = (values, stroke, fill) => {
+            ctx.beginPath();
+            values.forEach((value, index) => {
+              const normalized = Math.max(0, Math.min(normalizeValue(value), 1));
+              const angle = index * angleStep - Math.PI / 2;
+              const x = Math.cos(angle) * radius * normalized;
+              const y = Math.sin(angle) * radius * normalized;
+              if (index === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            });
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+          };
+
+          const teamValues = data.map((item) => item.team || 0);
+          const playerValues = data.map((item) => item.player || 0);
+          drawShape(teamValues, accent2, "rgba(44, 42, 74, 0.15)");
+          drawShape(playerValues, accent, "rgba(255, 123, 75, 0.22)");
+
+          ctx.fillStyle = ink;
+          ctx.font = "12px \"Space Grotesk\", sans-serif";
+          data.forEach((item, index) => {
+            const angle = index * angleStep - Math.PI / 2;
+            const x = Math.cos(angle) * (radius + labelOffset);
+            const y = Math.sin(angle) * (radius + labelOffset);
+            ctx.textAlign = x > 5 ? "left" : x < -5 ? "right" : "center";
+            ctx.textBaseline = y > 5 ? "top" : y < -5 ? "bottom" : "middle";
+            ctx.fillStyle = muted;
+            ctx.fillText(item.label, x, y);
+          });
+        };
+
+        const resizeRadar = () => {
+          window.requestAnimationFrame(drawRadar);
+        };
+
+        drawRadar();
+        window.addEventListener("resize", resizeRadar);
       }
     }
   </script></body>
