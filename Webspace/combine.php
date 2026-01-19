@@ -908,7 +908,7 @@ if (!$pageError && !$combineError && $mode === "results") {
           $overallScores = [];
           $categoryAverages = [];
           $categoryTeamAverages = [];
-          $categoryWeights = [];
+          $categoryTeamWeightedAverages = [];
           $categoryWeights = [];
           foreach ($filteredPlayers as $player) {
             $overallScores[(int)$player["id"]] = 0;
@@ -920,10 +920,11 @@ if (!$pageError && !$combineError && $mode === "results") {
             }
             $categoryWeights[$category] = $categoryWeight;
             $disciplineCount = 0;
-            $disciplineWeightSum = 0.0;
             $categoryTotals = [];
+            $categoryWeightSums = [];
             foreach ($filteredPlayers as $player) {
               $categoryTotals[(int)$player["id"]] = 0;
+              $categoryWeightSums[(int)$player["id"]] = 0.0;
             }
             foreach ($categoryDisciplines as $discipline) {
               $discId = (int)$discipline["id"];
@@ -949,7 +950,6 @@ if (!$pageError && !$combineError && $mode === "results") {
               $worstValue = null;
               if (!empty($rankValues)) {
                 $disciplineCount++;
-                $disciplineWeightSum += $disciplineWeight;
                 $values = array_values($rankValues);
                 if ($direction === "less") {
                   $bestValue = min($values);
@@ -963,24 +963,31 @@ if (!$pageError && !$combineError && $mode === "results") {
                 $playerId = (int)$player["id"];
                 $numericValue = $rankValues[$playerId] ?? null;
                 if ($numericValue === null || $bestValue === null || $worstValue === null) {
-                  $points = 0;
-                } elseif ($bestValue == $worstValue) {
+                  continue;
+                }
+                if ($bestValue == $worstValue) {
                   $points = 2;
                 } else {
                   $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
                   $points = 1 + $ratio;
                 }
                 $categoryTotals[$playerId] += $points * $disciplineWeight;
+                $categoryWeightSums[$playerId] += $disciplineWeight;
               }
             }
-            if ($disciplineCount === 0 || $disciplineWeightSum <= 0) {
+            if ($disciplineCount === 0) {
               continue;
             }
             $teamSum = 0;
             $teamCount = 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
-              $categoryAverage = $categoryTotals[$playerId] / $disciplineWeightSum;
+              $weightSum = $categoryWeightSums[$playerId] ?? 0.0;
+              if ($weightSum <= 0) {
+                $categoryAverage = 0;
+              } else {
+                $categoryAverage = $categoryTotals[$playerId] / $weightSum;
+              }
               $overallScores[$playerId] += $categoryAverage * $categoryWeight;
               $categoryAverages[$category][$playerId] = $categoryAverage;
               $teamSum += $categoryAverage;
@@ -988,6 +995,7 @@ if (!$pageError && !$combineError && $mode === "results") {
             }
             if ($teamCount > 0) {
               $categoryTeamAverages[$category] = $teamSum / $teamCount;
+              $categoryTeamWeightedAverages[$category] = ($teamSum / $teamCount) * $categoryWeight;
             }
           }
           $overallRankValues = $overallScores;
@@ -1092,8 +1100,12 @@ if (!$pageError && !$combineError && $mode === "results") {
           <?php
             $radarData = [];
             foreach ($categoryAverages as $category => $playerAverages) {
-              $playerAverage = $playerAverages[$selectedPlayerId] ?? 0;
-              $teamAverage = $categoryTeamAverages[$category] ?? 0;
+              $categoryWeight = $combineCategoryWeights[$category] ?? 1;
+              if ($categoryWeight <= 0) {
+                $categoryWeight = 1;
+              }
+              $playerAverage = ($playerAverages[$selectedPlayerId] ?? 0) * $categoryWeight;
+              $teamAverage = $categoryTeamWeightedAverages[$category] ?? ($categoryTeamAverages[$category] ?? 0);
               $radarData[] = [
                 "label" => $category,
                 "player" => $playerAverage,
@@ -1158,6 +1170,13 @@ if (!$pageError && !$combineError && $mode === "results") {
                           <span class="meta">(<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
                         <?php endif; ?>
                       </h4>
+                      <?php if (count($categoryDisciplines) > 1): ?>
+                        <?php
+                          $categoryScore = $categoryAverages[$category][$selectedPlayerId] ?? null;
+                          $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " P";
+                        ?>
+                        <p class="help">Kategorie-Score: <?php echo htmlspecialchars($categoryScoreLabel, ENT_QUOTES, "UTF-8"); ?></p>
+                      <?php endif; ?>
                       <ul class="list">
                         <?php foreach ($categoryDisciplines as $discipline): ?>
                           <?php
