@@ -22,7 +22,10 @@
 
 body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #fff5e3 0%, #f1e7dc 40%, #efe3d6 100%);
+  background:
+    linear-gradient(180deg, rgba(247, 244, 239, 0.94), rgba(247, 244, 239, 0.88)),
+    url("assets/FrisbeeCatch.png") center/cover no-repeat fixed,
+    radial-gradient(circle at top, #fff5e3 0%, #f1e7dc 40%, #efe3d6 100%);
   color: var(--ink);
   min-height: 100vh;
 }
@@ -45,12 +48,29 @@ body {
   gap: 16px;
 }
 
+.topbar.is-simple {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.topbar.is-simple .brand {
+  justify-content: center;
+}
+
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
   font-weight: 600;
   font-size: 1.1rem;
+}
+
+.brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 10px 20px rgba(31, 26, 20, 0.15);
 }
 
 .brand-mark {
@@ -64,6 +84,24 @@ body {
 
 .brand-text {
   letter-spacing: 0.03em;
+}
+
+.brand-sep {
+  color: var(--muted);
+}
+
+.brand-team {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: inherit;
+}
+
+.topbar .brand-text {
+  font-size: clamp(1.3rem, 1.4vw + 1rem, 2rem);
+}
+
+.topbar .brand-team {
+  font-size: clamp(1.3rem, 1.4vw + 1rem, 2rem);
 }
 
 .icon-button {
@@ -140,6 +178,10 @@ body {
   padding: 10px 16px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .auth {
@@ -148,6 +190,10 @@ body {
   padding: 20px;
   max-width: 1000px;
   margin: 0 auto 80px;
+}
+
+.auth.is-wide {
+  max-width: 1100px;
 }
 
 .team {
@@ -170,6 +216,7 @@ body {
 .auth-card h1 {
   font-size: clamp(1.8rem, 2vw + 1.2rem, 2.5rem);
 }
+
 
 .lead {
   color: var(--muted);
@@ -252,6 +299,15 @@ body {
   font-size: 0.95rem;
 }
 
+.help.error {
+  color: #b33227;
+}
+
+.input-error {
+  border-color: #b33227;
+  box-shadow: 0 0 0 3px rgba(179, 50, 39, 0.15);
+}
+
 .text-link {
   color: var(--accent-2);
   text-decoration: underline;
@@ -283,6 +339,15 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.team-info-grid,
+.info-grid.team-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-card.is-wide {
+  grid-column: 1 / -1;
+}
+
 .info-grid--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -305,6 +370,63 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-icon {
+  border: 1px solid rgba(31, 26, 20, 0.35);
+  background: #fff;
+  color: var(--ink);
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  box-shadow: var(--shadow);
+}
+
+.info-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  width: max-content;
+  max-width: 240px;
+  white-space: pre-line;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  text-align: left;
+  box-shadow: 0 12px 24px rgba(31, 26, 20, 0.18);
+  z-index: 5;
+}
+
+.info-icon.is-open::after {
+  opacity: 1;
 }
 
 .team-grid {
@@ -429,12 +551,26 @@ body {
     align-items: start;
   }
 
+  .auth.is-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .auth.is-wide .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
   .team-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .info-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .team-info-grid,
+  .info-grid.team-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .info-grid--two {

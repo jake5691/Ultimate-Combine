@@ -3,6 +3,9 @@ require_once __DIR__ . "/bootstrap.php";
 
 $feedback = null;
 $activeTab = "login";
+$registerTeam = "";
+$registerContact = "";
+$registerContactInvalid = false;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $action = $_POST["action"] ?? "login";
@@ -15,9 +18,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       $team = trim($_POST["team"] ?? "");
       $key = (string)($_POST["key"] ?? "");
       $contact = trim($_POST["contact"] ?? "");
+      $registerTeam = $team;
+      $registerContact = $contact;
 
       if ($team === "" || $key === "" || $contact === "") {
         $feedback = "Bitte Teamname, Schlüsselwort und Kontakt angeben.";
+      } elseif (!filter_var($contact, FILTER_VALIDATE_EMAIL)) {
+        $feedback = "Bitte eine gültige E-Mail-Adresse angeben.";
+        $registerContactInvalid = true;
       } else {
         try {
           $stmt = $pdo->prepare(
@@ -81,36 +89,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ultimate Combine – Login</title>
+  <link rel="icon" href="assets/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="assets/site.webmanifest">
   <link rel="stylesheet" href="ui.css">
 </head>
 <body>
   <div class="bg-grid"></div>
 
-  <header class="topbar">
-    <button class="icon-button" id="navToggle" aria-label="Navigation öffnen">
-      <span class="icon-lines"></span>
-    </button>
+  <header class="topbar is-simple">
     <div class="brand">
-      <span class="brand-mark">UC</span>
+      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
     </div>
-    <button class="pill-button" type="button">Hilfe</button>
   </header>
 
-  <nav class="drawer" id="drawer" aria-hidden="true">
-    <div class="drawer-header">
-      <span>Navigation</span>
-      <button class="icon-button" id="navClose" aria-label="Navigation schliessen">
-        <span class="icon-close"></span>
-      </button>
-    </div>
-    <a class="drawer-link" href="#login" data-tab="login">Login</a>
-    <a class="drawer-link" href="#register" data-tab="register">Registrieren</a>
-    <a class="drawer-link" href="#info">Info</a>
-  </nav>
-  <div class="scrim" id="scrim"></div>
-
-  <main class="auth">
+  <main class="auth is-wide">
     <section class="auth-card" id="login">
       <h1>Willkommen zur Combine Verwaltung</h1>
       <p class="lead">Melde dich an, um Combines für dein Team zu anzulegen, verwalten und anzusehen.</p>
@@ -141,7 +137,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <input type="hidden" name="action" value="register">
         <label class="field">
           <span>Teamname</span>
-          <input type="text" name="team" placeholder="Neuer Teamname" required>
+          <input type="text" name="team" placeholder="Neuer Teamname" value="<?php echo htmlspecialchars($registerTeam, ENT_QUOTES, "UTF-8"); ?>" required>
         </label>
         <label class="field">
           <span>Schlüsselwort</span>
@@ -149,8 +145,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </label>
         <label class="field">
           <span>Kontakt</span>
-          <input type="text" name="contact" placeholder="Name oder E-Mail" required>
+          <input class="<?php echo $registerContactInvalid ? "input-error" : ""; ?>" type="email" name="contact" placeholder="E-Mail-Adresse" value="<?php echo htmlspecialchars($registerContact, ENT_QUOTES, "UTF-8"); ?>" required>
         </label>
+        <?php if ($registerContactInvalid): ?>
+          <p class="help error">Bitte korrigiere die E-Mail-Adresse, damit du fortfahren kannst.</p>
+        <?php endif; ?>
         <button class="primary-button" type="submit">Team anlegen</button>
         <?php if ($feedback && $activeTab === "register"): ?>
           <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -159,12 +158,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       </form>
     </section>
 
-    <section class="info" id="info">
+    <section class="auth-card" id="info">
       <h2>Was erwartet euch?</h2>
       <div class="info-grid">
         <div class="info-card">
           <h3>Eigenes Combine Setup</h3>
-          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch  </p>
+          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch</p>
         </div>
         <div class="info-card">
           <h3>Eintragen der Ergebnisse</h3>
@@ -189,7 +188,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <script>
     const tabs = document.querySelectorAll(".segmented-button");
     const panels = document.querySelectorAll(".form[data-panel]");
-    const tabLinks = document.querySelectorAll("[data-tab].js-tab-link, .drawer-link[data-tab]");
+    const tabLinks = document.querySelectorAll("[data-tab].js-tab-link");
 
     const setActiveTab = (tabName) => {
       tabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === tabName));
@@ -210,27 +209,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         history.replaceState(null, "", link.getAttribute("href"));
       });
     });
-
-    const drawer = document.getElementById("drawer");
-    const scrim = document.getElementById("scrim");
-    const navToggle = document.getElementById("navToggle");
-    const navClose = document.getElementById("navClose");
-
-    const closeDrawer = () => {
-      drawer.classList.remove("is-open");
-      scrim.classList.remove("is-visible");
-      drawer.setAttribute("aria-hidden", "true");
-    };
-
-    const openDrawer = () => {
-      drawer.classList.add("is-open");
-      scrim.classList.add("is-visible");
-      drawer.setAttribute("aria-hidden", "false");
-    };
-
-    navToggle.addEventListener("click", openDrawer);
-    navClose.addEventListener("click", closeDrawer);
-    scrim.addEventListener("click", closeDrawer);
 
     if (window.location.hash === "#register") {
       setActiveTab("register");

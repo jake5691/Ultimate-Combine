@@ -503,15 +503,23 @@ if (!$pageError && !$combineError && $mode === "results") {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ultimate Combine - Combine</title>
+  <link rel="icon" href="assets/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="assets/site.webmanifest">
   <link rel="stylesheet" href="ui.css">
 </head>
 <body>
   <div class="bg-grid"></div>
 
   <header class="topbar">
-    <a class="pill-button" href="team.php">Zurück</a>
+    <button class="pill-button" type="button" onclick="window.location.href='team.php'">Zurück</button>
     <div class="brand">
+      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
+      <span class="brand-sep">•</span>
+      <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">
