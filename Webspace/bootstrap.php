@@ -184,6 +184,7 @@ function uc_ensure_schema(PDO $pdo): void {
       id INT AUTO_INCREMENT PRIMARY KEY,
       combine_id INT NOT NULL,
       discipline_id INT NOT NULL,
+      weight DECIMAL(6,2) NOT NULL DEFAULT 1.00,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY uq_combine_discipline (combine_id, discipline_id),
       CONSTRAINT fk_combine_disciplines_combine
@@ -191,6 +192,33 @@ function uc_ensure_schema(PDO $pdo): void {
         ON DELETE CASCADE,
       CONSTRAINT fk_combine_disciplines_discipline
         FOREIGN KEY (discipline_id) REFERENCES disciplines(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $combineDisciplineColumns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'combine_disciplines'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+
+  if (!in_array("weight", $combineDisciplineColumns, true)) {
+    $pdo->exec("ALTER TABLE combine_disciplines ADD COLUMN weight DECIMAL(6,2) NOT NULL DEFAULT 1.00 AFTER discipline_id");
+  }
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS combine_category_weights (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      combine_id INT NOT NULL,
+      category VARCHAR(80) NOT NULL,
+      weight DECIMAL(6,2) NOT NULL DEFAULT 1.00,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_combine_category (combine_id, category),
+      CONSTRAINT fk_combine_category_weights_combine
+        FOREIGN KEY (combine_id) REFERENCES combines(id)
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
