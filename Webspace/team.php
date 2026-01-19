@@ -35,7 +35,7 @@ $validDirections = [
 $infoTexts = [
   "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen.\nKlicke auf einen Spieler, um diesen zu bearbeiten.",
   "combines" => "Combines sind einzelne Leistungsbewertungsevents.\nPro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden.\nEs können mehrere Combines pro Team angelegt werden.\nKlicke auf ein Combine, um Details zu sehen und Ergebnisse zu erfassen.",
-  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten.",
+  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten. (Globale Disziplinen können nicht bearbeitet werden.)",
 ];
 $formatTooltip = static function (string $text): string {
   return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
@@ -177,7 +177,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE team_id = :team_id
+         WHERE (team_id = :team_id OR team_id IS NULL)
            AND discipline_name = :discipline_name
          LIMIT 1"
       );
@@ -424,7 +424,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE team_id = :team_id
+         WHERE (team_id = :team_id OR team_id IS NULL)
            AND discipline_name = :discipline_name
            AND id <> :id
          LIMIT 1"
@@ -549,9 +549,9 @@ if (!$pageError) {
   $combines = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT id, discipline_name, description, unit, category, rating_direction, created_at
+    "SELECT id, team_id, discipline_name, description, unit, category, rating_direction, created_at
      FROM disciplines
-     WHERE team_id = :team_id
+     WHERE team_id = :team_id OR team_id IS NULL
      ORDER BY created_at DESC"
   );
   $stmt->execute([":team_id" => $teamId]);
@@ -742,14 +742,22 @@ if (!$pageError) {
                     <li class="list-item">
                       <div>
                         <strong>
-                          <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                          <?php if ($discipline["team_id"] !== null): ?>
+                            <a class="text-link" href="?edit=discipline&id=<?php echo (int)$discipline["id"]; ?>#edit">
+                              <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                            </a>
+                          <?php else: ?>
                             <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
-                          </a>
+                          <?php endif; ?>
                         </strong>
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
                           <?php echo htmlspecialchars($validDirections[$discipline["rating_direction"]] ?? $discipline["rating_direction"], ENT_QUOTES, "UTF-8"); ?>
+                          <?php if ($discipline["team_id"] === null): ?>
+                            &middot;
+                            Global
+                          <?php endif; ?>
                         </span>
                         <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
                       </div>

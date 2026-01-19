@@ -166,7 +166,7 @@ if (!$pageError) {
   $stmt = $pdo->prepare(
     "SELECT id, discipline_name, description, category, unit, rating_direction
      FROM disciplines
-     WHERE team_id = :team_id
+     WHERE team_id = :team_id OR team_id IS NULL
      ORDER BY created_at DESC"
   );
   $stmt->execute([":team_id" => $teamId]);
