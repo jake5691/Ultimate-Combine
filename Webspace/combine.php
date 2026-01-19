@@ -725,14 +725,45 @@ if (!$pageError && !$combineError && $mode === "results") {
             <?php if (empty($assignedDisciplineIds)): ?>
               <p class="help">Keine Disziplinen zugeordnet.</p>
             <?php else: ?>
+              <?php
+                $showCategoryWeights = false;
+                foreach ($assignedDisciplinesByCategory as $categoryKey => $categoryDisciplines) {
+                  $weight = $combineCategoryWeights[$categoryKey] ?? 1;
+                  if ((float)$weight !== 1.0) {
+                    $showCategoryWeights = true;
+                    break;
+                  }
+                }
+              ?>
               <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+                <?php
+                  $categoryWeight = $combineCategoryWeights[$category] ?? 1;
+                  $showDisciplineWeights = false;
+                  foreach ($categoryDisciplines as $discipline) {
+                    $discId = (int)$discipline["id"];
+                    $discWeight = $combineDisciplineWeights[$discId] ?? 1;
+                    if ((float)$discWeight !== 1.0) {
+                      $showDisciplineWeights = true;
+                      break;
+                    }
+                  }
+                ?>
                 <div class="category-block">
-                  <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                  <h4 class="category-title">
+                    <?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?>
+                    <?php if ($showCategoryWeights): ?>
+                      <span class="meta">(<?php echo htmlspecialchars($categoryWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                    <?php endif; ?>
+                  </h4>
                   <ul class="list">
                     <?php foreach ($categoryDisciplines as $discipline): ?>
+                      <?php $disciplineWeight = $combineDisciplineWeights[(int)$discipline["id"]] ?? 1; ?>
                       <li class="list-item">
                         <div>
                           <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                          <?php if ($showDisciplineWeights): ?>
+                            <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                          <?php endif; ?>
                           <span class="meta"><?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?></span>
                         </div>
                       </li>
