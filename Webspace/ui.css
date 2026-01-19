@@ -339,6 +339,15 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.team-info-grid,
+.info-grid.team-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-card.is-wide {
+  grid-column: 1 / -1;
+}
+
 .info-grid--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -557,6 +566,11 @@ body {
 
   .info-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .team-info-grid,
+  .info-grid.team-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .info-grid--two {

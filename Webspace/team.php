@@ -648,7 +648,34 @@ if (!$pageError) {
 
     <section class="info">
       <h2>Bestehende Daten</h2>
-      <div class="info-grid">
+      <div class="info-grid team-info-grid">
+        <div class="info-card is-wide">
+          <div class="card-header">
+            <h3>Combines</h3>
+            <div class="card-actions">
+              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["combines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["combines"]); ?>">i</button>
+              <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
+            </div>
+          </div>
+          <?php if (empty($combines)): ?>
+            <p class="help">Noch keine Combines angelegt.</p>
+          <?php else: ?>
+            <ul class="list">
+              <?php foreach ($combines as $combine): ?>
+                <li class="list-item">
+                  <div>
+                    <strong>
+                      <a class="text-link" href="combine.php?id=<?php echo (int)$combine["id"]; ?>">
+                        <?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?>
+                      </a>
+                    </strong>
+                    <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
+                  </div>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        </div>
         <div class="info-card">
           <div class="card-header">
             <h3>Spieler</h3>
@@ -677,33 +704,6 @@ if (!$pageError) {
                   <?php if ($player["jersey_number"] !== null): ?>
                     <span class="badge">#<?php echo (int)$player["jersey_number"]; ?></span>
                   <?php endif; ?>
-                </li>
-              <?php endforeach; ?>
-            </ul>
-          <?php endif; ?>
-        </div>
-        <div class="info-card">
-          <div class="card-header">
-            <h3>Combines</h3>
-            <div class="card-actions">
-              <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["combines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["combines"]); ?>">i</button>
-              <button class="icon-button small js-toggle" type="button" data-target="create-combine" aria-expanded="false" aria-controls="create-combine">+</button>
-            </div>
-          </div>
-          <?php if (empty($combines)): ?>
-            <p class="help">Noch keine Combines angelegt.</p>
-          <?php else: ?>
-            <ul class="list">
-              <?php foreach ($combines as $combine): ?>
-                <li class="list-item">
-                  <div>
-                    <strong>
-                      <a class="text-link" href="combine.php?id=<?php echo (int)$combine["id"]; ?>">
-                        <?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?>
-                      </a>
-                    </strong>
-                    <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
-                  </div>
                 </li>
               <?php endforeach; ?>
             </ul>
