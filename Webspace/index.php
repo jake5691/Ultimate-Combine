@@ -183,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       <div class="info-grid">
         <div class="info-card">
           <h3>Eigenes Combine Setup</h3>
-          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch</p>
+          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch. Gewichtet euch relevantere Disziplinen und Kategorien stärker.</p>
         </div>
         <div class="info-card">
           <h3>Eintragen der Ergebnisse</h3>
@@ -196,6 +196,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div class="info-card">
           <h3>Individuelle Leistungsbetrachtung</h3>
           <p>Seht für jeden Spieler wo dessen Stärken und Potentiale im Vergleich zum Rest des Teams sind im eigenen Spinnengraph.</p>
+        </div>
+         <div class="info-card">
+          <h3>Head to Head</h3>
+          <p>Stellt die Leistung zweier Spieler direkt gegenüber.</p>
         </div>
         <div class="info-card">
           <h3>Teilen der Ergebnisse</h3>
