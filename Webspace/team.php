@@ -636,7 +636,24 @@ if (!$pageError) {
     <section class="auth-card">
       <div class="section-header">
         <h1><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?>-Übersicht</h1>
-        <button class="pill-button js-toggle" type="button" data-target="edit-team" aria-expanded="false" aria-controls="edit-team">Bearbeiten</button>
+        <div class="card-actions">
+          <button
+            class="pill-button is-primary<?php echo $teamEditFeedback ? "" : " is-hidden"; ?> js-edit-save"
+            type="submit"
+            form="team-edit-form"
+          >
+            Speichern
+          </button>
+          <button
+            class="pill-button js-toggle<?php echo $teamEditFeedback ? " is-muted" : ""; ?>"
+            type="button"
+            data-target="edit-team"
+            aria-expanded="<?php echo $teamEditFeedback ? "true" : "false"; ?>"
+            aria-controls="edit-team"
+          >
+            <?php echo $teamEditFeedback ? "Abbrechen" : "Bearbeiten"; ?>
+          </button>
+        </div>
       </div>
       <p class="lead">Verwalte Spieler, Disziplinen und Combines für dein Team.</p>
       <?php if ($pageError): ?>
@@ -646,7 +663,7 @@ if (!$pageError) {
 
     <section class="auth-card<?php echo $teamEditFeedback ? "" : " is-hidden"; ?>" id="edit-team">
       <h2>Team bearbeiten</h2>
-      <form class="form" method="post" action="">
+      <form class="form" id="team-edit-form" method="post" action="">
         <input type="hidden" name="action" value="update_team">
         <label class="field">
           <span>Name</span>
@@ -672,13 +689,13 @@ if (!$pageError) {
             <input type="password" name="team_key_repeat" autocomplete="new-password">
           </label>
         </div>
-        <div class="form-actions">
-          <button class="primary-button" type="submit">Speichern</button>
-          <a class="text-link" href="team.php">Abbrechen</a>
-        </div>
         <?php if ($teamEditFeedback): ?>
           <p class="help"><?php echo htmlspecialchars($teamEditFeedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
+        <div class="form-actions">
+          <button class="pill-button is-primary" type="submit">Speichern</button>
+          <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+        </div>
       </form>
     </section>
 
@@ -1082,6 +1099,14 @@ if (!$pageError) {
         if (!target) return;
         const isHidden = target.classList.toggle("is-hidden");
         btn.setAttribute("aria-expanded", String(!isHidden));
+        if (targetId === "edit-team") {
+          const saveButton = document.querySelector(".js-edit-save");
+          btn.textContent = isHidden ? "Bearbeiten" : "Abbrechen";
+          btn.classList.toggle("is-muted", !isHidden);
+          if (saveButton) {
+            saveButton.classList.toggle("is-hidden", isHidden);
+          }
+        }
         if (!isHidden) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
