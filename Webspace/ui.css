@@ -28,6 +28,7 @@ body {
     radial-gradient(circle at top, #fff5e3 0%, #f1e7dc 40%, #efe3d6 100%);
   color: var(--ink);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .bg-grid {
@@ -197,6 +198,7 @@ body {
   padding: 20px;
   max-width: 1000px;
   margin: 0 auto 80px;
+  width: 100%;
 }
 
 .auth.is-wide {
@@ -209,6 +211,7 @@ body {
   padding: 20px;
   max-width: 1100px;
   margin: 0 auto 80px;
+  width: 100%;
 }
 
 .auth-card {
@@ -338,6 +341,7 @@ body {
   box-shadow: var(--shadow);
   display: grid;
   gap: 16px;
+  max-width: 100%;
 }
 
 .info-grid {
@@ -391,6 +395,8 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .info-icon {
@@ -446,6 +452,7 @@ body {
   display: grid;
   gap: 12px;
   margin-top: 12px;
+  max-width: 100%;
 }
 
 .list-item {
@@ -457,6 +464,11 @@ body {
   justify-content: space-between;
   gap: 12px;
   box-shadow: 0 12px 24px rgba(31, 26, 20, 0.08);
+  max-width: 100%;
+}
+
+.list-item > div {
+  min-width: 0;
 }
 
 .list-item--edit {
@@ -682,6 +694,7 @@ body {
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 12px;
+  max-width: 100%;
 }
 
 .result-grid {
@@ -750,6 +763,7 @@ body {
   grid-template-columns: minmax(240px, 360px) 1fr;
   align-items: start;
   min-width: 0;
+  max-width: 100%;
 }
 
 .player-detail .category-block {
@@ -818,6 +832,9 @@ body {
   display: flex;
   gap: 12px;
   font-size: 0.85rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+  row-gap: 6px;
 }
 
 .radar-legend.is-overlay {
@@ -881,6 +898,7 @@ body {
   gap: 8px;
   width: 100%;
   margin-top: 8px;
+  max-width: 100%;
 }
 
 .h2h-bar {

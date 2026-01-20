@@ -1181,14 +1181,14 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
             <h3>Overall Ranking</h3>
             <div class="card-actions">
               <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>">Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Kategorien</a>
+              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Relativ</a>
               <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
             <p class="help">Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.</p>
           <?php elseif ($overallMode === "avg"): ?>
-            <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+            <p class="help">Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
           <?php else: ?>
             <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt.</p>
           <?php endif; ?>
@@ -1712,14 +1712,14 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
           <div class="card-header">
             <div class="card-actions">
               <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>">Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Kategorien</a>
+              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Relativ</a>
               <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
             <p class="help">Relativ: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
           <?php elseif ($overallMode === "avg"): ?>
-            <p class="help">Ø Kategorien: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
+            <p class="help">Ø Relativ: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
           <?php else: ?>
             <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Es werden nur Disziplinen mit Erwartungswerten angezeigt.</p>
           <?php endif; ?>
