@@ -1362,6 +1362,12 @@ if (!$pageError && !$combineError && $mode === "results") {
                             $display = uc_display_value($playerValue, "-");
                             if ($display !== "-" && $unit !== "") { $display .= " " . $unit; }
                             $numericValue = $rankValues[$selectedPlayerId] ?? null;
+                            $minLabel = $expectedMinValue === null ? "-" : uc_display_value($expectedMinValue, "-");
+                            $maxLabel = $expectedMaxValue === null ? "-" : uc_display_value($expectedMaxValue, "-");
+                            if ($overallMode === "abs" && $unit !== "") {
+                              if ($minLabel !== "-") { $minLabel .= " " . $unit; }
+                              if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
+                            }
                             if ($overallMode === "abs") {
                               $points = uc_absolute_points($numericValue, $expectedMinValue, $expectedMaxValue, $direction);
                               if ($points === null) {
@@ -1386,6 +1392,9 @@ if (!$pageError && !$combineError && $mode === "results") {
                               <?php endif; ?>
                               <?php if ($display !== "-"): ?>
                                 <span class="meta"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
+                              <?php endif; ?>
+                              <?php if ($overallMode === "abs"): ?>
+                                <span class="meta">Min: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Max: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
                             </div>
                             <span class="badge">
@@ -1509,6 +1518,12 @@ if (!$pageError && !$combineError && $mode === "results") {
                       $worstValue = min($values);
                     }
                   }
+                  $minLabel = $expectedMinValue === null ? "-" : uc_display_value($expectedMinValue, "-");
+                  $maxLabel = $expectedMaxValue === null ? "-" : uc_display_value($expectedMaxValue, "-");
+                  if ($overallMode === "abs" && $unit !== "") {
+                    if ($minLabel !== "-") { $minLabel .= " " . $unit; }
+                    if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
+                  }
                 ?>
                 <div class="info-card">
                   <details>
@@ -1516,6 +1531,9 @@ if (!$pageError && !$combineError && $mode === "results") {
                       <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
                       <?php if ($showDisciplineWeights): ?>
                         <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
+                      <?php endif; ?>
+                      <?php if ($overallMode === "abs"): ?>
+                        <span class="meta">Min: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Max: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                       <?php endif; ?>
                       <span class="meta">
                         <?php
