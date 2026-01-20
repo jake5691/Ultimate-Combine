@@ -841,6 +841,66 @@ body {
   color: var(--accent-2);
 }
 
+.legend-average::before {
+  background: var(--muted);
+}
+
+.legend-average {
+  color: var(--muted);
+}
+
+.h2h-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.h2h-bars {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.h2h-bar {
+  background: var(--bg-strong);
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+  height: 34px;
+}
+
+.h2h-fill {
+  height: 100%;
+  border-radius: inherit;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.h2h-bar.is-a .h2h-fill {
+  background: var(--accent);
+}
+
+.h2h-bar.is-b .h2h-fill {
+  background: var(--accent-2);
+}
+
+.h2h-value {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 6px 12px rgba(31, 26, 20, 0.15);
+}
+
 @media (max-width: 900px) {
   .radar-grid {
     grid-template-columns: 1fr;

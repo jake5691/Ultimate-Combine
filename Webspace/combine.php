@@ -102,7 +102,7 @@ if (!$combineId) {
 
 $editMode = isset($_GET["edit"]);
 $mode = $_GET["mode"] ?? "view";
-if (!in_array($mode, ["view", "start", "results"], true)) {
+if (!in_array($mode, ["view", "start", "results", "h2h"], true)) {
   $mode = "view";
 }
 if ($editMode) {
@@ -153,6 +153,8 @@ $overallMode = $_GET["overall"] ?? "sum";
 if (!in_array($overallMode, ["sum", "avg", "abs"], true)) {
   $overallMode = "sum";
 }
+$h2hPlayerAId = filter_var($_GET["player_a"] ?? null, FILTER_VALIDATE_INT);
+$h2hPlayerBId = filter_var($_GET["player_b"] ?? null, FILTER_VALIDATE_INT);
 
 $formCombineName = "";
 $formEventDate = "";
@@ -655,7 +657,7 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
   }
 }
 
-if (!$pageError && !$combineError && $mode === "results") {
+if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) {
   try {
     $stmt = $pdo->prepare(
       "SELECT discipline_id, player_id, result_value
@@ -730,6 +732,7 @@ if (!$pageError && !$combineError && $mode === "results") {
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>">Setup</a>
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start">Eintragen</a>
             <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=results">Ergebnisse</a>
+            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=h2h">H2H</a>
           </div>
         <?php endif; ?>
       <?php endif; ?>
@@ -1679,6 +1682,429 @@ if (!$pageError && !$combineError && $mode === "results") {
       </section>
     <?php endif; ?>
 
+    <?php if (!$pageError && !$combineError && $mode === "h2h"): ?>
+      <section class="info">
+        <h2>Head 2 Head</h2>
+        <?php
+          $playerMap = [];
+          foreach ($assignedPlayers as $player) {
+            $playerMap[(int)$player["id"]] = $player;
+          }
+          $h2hPlayerA = $h2hPlayerAId ? ($playerMap[$h2hPlayerAId] ?? null) : null;
+          $h2hPlayerB = $h2hPlayerBId ? ($playerMap[$h2hPlayerBId] ?? null) : null;
+          $h2hReady = $h2hPlayerA && $h2hPlayerB && $h2hPlayerAId !== $h2hPlayerBId;
+          $h2hBaseParams = [
+            "id" => (int)$combineId,
+            "mode" => "h2h",
+          ];
+          if ($h2hPlayerAId) {
+            $h2hBaseParams["player_a"] = $h2hPlayerAId;
+          }
+          if ($h2hPlayerBId) {
+            $h2hBaseParams["player_b"] = $h2hPlayerBId;
+          }
+          $h2hBaseUrl = "combine.php?" . http_build_query($h2hBaseParams);
+          $h2hSumUrl = $h2hBaseUrl . "&overall=sum";
+          $h2hAvgUrl = $h2hBaseUrl . "&overall=avg";
+          $h2hAbsUrl = $h2hBaseUrl . "&overall=abs";
+        ?>
+        <div class="info-card">
+          <div class="card-header">
+            <div class="card-actions">
+              <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>">Relativ</a>
+              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Kategorien</a>
+              <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
+            </div>
+          </div>
+          <?php if ($overallMode === "sum"): ?>
+            <p class="help">Relativ: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
+          <?php elseif ($overallMode === "avg"): ?>
+            <p class="help">Ø Kategorien: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
+          <?php else: ?>
+            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Es werden nur Disziplinen mit Erwartungswerten angezeigt.</p>
+          <?php endif; ?>
+          <form class="form" method="get" action="combine.php">
+            <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
+            <input type="hidden" name="mode" value="h2h">
+            <input type="hidden" name="overall" value="<?php echo htmlspecialchars($overallMode, ENT_QUOTES, "UTF-8"); ?>">
+            <label class="field">
+              <select name="player_a" required>
+                <option value="">Bitte wählen</option>
+                <?php foreach ($assignedPlayers as $player): ?>
+                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerAId ? " selected" : ""; ?>>
+                    <?php echo htmlspecialchars($player["first_name"] . " " . $player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label class="field">
+              <select name="player_b" required>
+                <option value="">Bitte wählen</option>
+                <?php foreach ($assignedPlayers as $player): ?>
+                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerBId ? " selected" : ""; ?>>
+                    <?php echo htmlspecialchars($player["first_name"] . " " . $player["last_name"], ENT_QUOTES, "UTF-8"); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Vergleichen</button>
+            </div>
+          </form>
+          <?php if ($h2hPlayerAId && $h2hPlayerBId && $h2hPlayerAId === $h2hPlayerBId): ?>
+            <p class="help">Bitte zwei unterschiedliche Spieler auswählen.</p>
+          <?php endif; ?>
+        </div>
+
+        <?php if ($h2hReady): ?>
+          <?php
+            $playerALabel = $h2hPlayerA["first_name"] . " " . $h2hPlayerA["last_name"];
+            $playerBLabel = $h2hPlayerB["first_name"] . " " . $h2hPlayerB["last_name"];
+            $h2hRadarData = [];
+            foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+              $displayDisciplines = $categoryDisciplines;
+              if ($overallMode === "abs") {
+                $displayDisciplines = array_values(array_filter($categoryDisciplines, function ($discipline) {
+                  $minValue = uc_value_to_float($discipline["expected_min"] ?? null);
+                  $maxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                  return $minValue !== null && $maxValue !== null;
+                }));
+              }
+              if (empty($displayDisciplines)) {
+                continue;
+              }
+              $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+              if ($categoryWeight <= 0) {
+                $categoryWeight = 1.0;
+              }
+              $weightSum = 0.0;
+              $weightSumAbs = 0.0;
+              $sumA = 0.0;
+              $sumB = 0.0;
+              $sumAbsA = 0.0;
+              $sumAbsB = 0.0;
+              $sumAvgA = 0.0;
+              $sumAvgB = 0.0;
+              $sumAvgWeightA = 0.0;
+              $sumAvgWeightB = 0.0;
+              $categoryTotalsTeam = [];
+              $categoryTotalsAbsTeam = [];
+              $categoryTotalsAvgTeam = [];
+              $categoryWeightSumsAvgTeam = [];
+              foreach ($assignedPlayers as $player) {
+                $playerId = (int)$player["id"];
+                $categoryTotalsTeam[$playerId] = 0.0;
+                $categoryTotalsAbsTeam[$playerId] = 0.0;
+                $categoryTotalsAvgTeam[$playerId] = 0.0;
+                $categoryWeightSumsAvgTeam[$playerId] = 0.0;
+              }
+              foreach ($displayDisciplines as $discipline) {
+                $discId = (int)$discipline["id"];
+                $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+                if ($disciplineWeight <= 0) {
+                  $disciplineWeight = 1.0;
+                }
+                $direction = $discipline["rating_direction"] ?? "more";
+                if ($direction !== "less" && $direction !== "more") {
+                  $direction = "more";
+                }
+                $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+                $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                $hasAbsolute = $expectedMinValue !== null && $expectedMaxValue !== null;
+                $rankValues = [];
+                foreach ($assignedPlayers as $player) {
+                  $playerId = (int)$player["id"];
+                  $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+                  $numeric = uc_value_to_float($value);
+                  if ($numeric === null) {
+                    continue;
+                  }
+                  $rankValues[$playerId] = $numeric;
+                }
+                $bestValue = null;
+                $worstValue = null;
+                if (!empty($rankValues)) {
+                  $weightSum += $disciplineWeight;
+                  if ($hasAbsolute) {
+                    $weightSumAbs += $disciplineWeight;
+                  }
+                  $values = array_values($rankValues);
+                  if ($direction === "less") {
+                    $bestValue = min($values);
+                    $worstValue = max($values);
+                  } else {
+                    $bestValue = max($values);
+                    $worstValue = min($values);
+                  }
+                }
+                $numericA = isset($rankValues[$h2hPlayerAId]) ? $rankValues[$h2hPlayerAId] : null;
+                $numericB = isset($rankValues[$h2hPlayerBId]) ? $rankValues[$h2hPlayerBId] : null;
+                if ($numericA === null || $bestValue === null || $worstValue === null) {
+                  $pointsA = 0;
+                } elseif ($bestValue == $worstValue) {
+                  $pointsA = 2;
+                } else {
+                  $ratioA = ($numericA - $worstValue) / ($bestValue - $worstValue);
+                  $pointsA = 1 + $ratioA;
+                }
+                if ($numericB === null || $bestValue === null || $worstValue === null) {
+                  $pointsB = 0;
+                } elseif ($bestValue == $worstValue) {
+                  $pointsB = 2;
+                } else {
+                  $ratioB = ($numericB - $worstValue) / ($bestValue - $worstValue);
+                  $pointsB = 1 + $ratioB;
+                }
+                $sumA += $pointsA * $disciplineWeight;
+                $sumB += $pointsB * $disciplineWeight;
+                if ($hasAbsolute) {
+                  $pointsAbsA = uc_absolute_points($numericA, $expectedMinValue, $expectedMaxValue, $direction);
+                  $pointsAbsB = uc_absolute_points($numericB, $expectedMinValue, $expectedMaxValue, $direction);
+                  if ($pointsAbsA === null) { $pointsAbsA = 0; }
+                  if ($pointsAbsB === null) { $pointsAbsB = 0; }
+                  $sumAbsA += $pointsAbsA * $disciplineWeight;
+                  $sumAbsB += $pointsAbsB * $disciplineWeight;
+                }
+                if ($numericA !== null && $bestValue !== null && $worstValue !== null) {
+                  $sumAvgA += $pointsA * $disciplineWeight;
+                  $sumAvgWeightA += $disciplineWeight;
+                }
+                if ($numericB !== null && $bestValue !== null && $worstValue !== null) {
+                  $sumAvgB += $pointsB * $disciplineWeight;
+                  $sumAvgWeightB += $disciplineWeight;
+                }
+                foreach ($assignedPlayers as $player) {
+                  $playerId = (int)$player["id"];
+                  $numeric = $rankValues[$playerId] ?? null;
+                  if ($numeric === null || $bestValue === null || $worstValue === null) {
+                    $points = 0;
+                  } elseif ($bestValue == $worstValue) {
+                    $points = 2;
+                  } else {
+                    $ratio = ($numeric - $worstValue) / ($bestValue - $worstValue);
+                    $points = 1 + $ratio;
+                  }
+                  $categoryTotalsTeam[$playerId] += $points * $disciplineWeight;
+                  if ($hasAbsolute) {
+                    $pointsAbs = uc_absolute_points($numeric, $expectedMinValue, $expectedMaxValue, $direction);
+                    if ($pointsAbs === null) {
+                      $pointsAbs = 0;
+                    }
+                    $categoryTotalsAbsTeam[$playerId] += $pointsAbs * $disciplineWeight;
+                  }
+                  if ($numeric !== null && $bestValue !== null && $worstValue !== null) {
+                    $categoryTotalsAvgTeam[$playerId] += $points * $disciplineWeight;
+                    $categoryWeightSumsAvgTeam[$playerId] += $disciplineWeight;
+                  }
+                }
+              }
+              $radarA = 0.0;
+              $radarB = 0.0;
+              $radarTeam = 0.0;
+              $hasRadar = false;
+              if ($overallMode === "avg") {
+                if ($sumAvgWeightA > 0 || $sumAvgWeightB > 0) {
+                  $radarA = $sumAvgWeightA > 0 ? $sumAvgA / $sumAvgWeightA : 0;
+                  $radarB = $sumAvgWeightB > 0 ? $sumAvgB / $sumAvgWeightB : 0;
+                  $hasRadar = true;
+                }
+                $teamSum = 0.0;
+                $teamCount = 0;
+                foreach ($assignedPlayers as $player) {
+                  $playerId = (int)$player["id"];
+                  $teamWeightSum = $categoryWeightSumsAvgTeam[$playerId] ?? 0.0;
+                  if ($teamWeightSum > 0) {
+                    $teamSum += $categoryTotalsAvgTeam[$playerId] / $teamWeightSum;
+                    $teamCount++;
+                  }
+                }
+                if ($teamCount > 0) {
+                  $radarTeam = $teamSum / $teamCount;
+                  $hasRadar = true;
+                }
+              } elseif ($overallMode === "abs") {
+                if ($weightSumAbs > 0) {
+                  $radarA = $sumAbsA / $weightSumAbs;
+                  $radarB = $sumAbsB / $weightSumAbs;
+                  $hasRadar = true;
+                }
+                if ($weightSumAbs > 0) {
+                  $teamSum = 0.0;
+                  $teamCount = 0;
+                  foreach ($assignedPlayers as $player) {
+                    $playerId = (int)$player["id"];
+                    $teamSum += $categoryTotalsAbsTeam[$playerId] / $weightSumAbs;
+                    $teamCount++;
+                  }
+                  if ($teamCount > 0) {
+                    $radarTeam = $teamSum / $teamCount;
+                    $hasRadar = true;
+                  }
+                }
+              } else {
+                if ($weightSum > 0) {
+                  $radarA = $sumA / $weightSum;
+                  $radarB = $sumB / $weightSum;
+                  $hasRadar = true;
+                }
+                if ($weightSum > 0) {
+                  $teamSum = 0.0;
+                  $teamCount = 0;
+                  foreach ($assignedPlayers as $player) {
+                    $playerId = (int)$player["id"];
+                    $teamSum += $categoryTotalsTeam[$playerId] / $weightSum;
+                    $teamCount++;
+                  }
+                  if ($teamCount > 0) {
+                    $radarTeam = $teamSum / $teamCount;
+                    $hasRadar = true;
+                  }
+                }
+              }
+              if ($hasRadar) {
+                if ($overallMode !== "avg") {
+                  $radarA *= $categoryWeight;
+                  $radarB *= $categoryWeight;
+                  $radarTeam *= $categoryWeight;
+                }
+                $h2hRadarData[] = [
+                  "label" => $category,
+                  "player" => $radarA,
+                  "playerB" => $radarB,
+                  "team" => $radarTeam,
+                ];
+              }
+            }
+          ?>
+          <?php if (empty($assignedDisciplines)): ?>
+            <p class="help">Keine Disziplinen zugeordnet.</p>
+          <?php else: ?>
+            <div class="info-card">
+              <div class="h2h-legend">
+                <span class="legend-item legend-player"><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></span>
+                <span class="legend-item legend-team"><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></span>
+              </div>
+            </div>
+            <?php foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines): ?>
+              <?php
+                $displayDisciplines = $categoryDisciplines;
+                if ($overallMode === "abs") {
+                  $displayDisciplines = array_values(array_filter($categoryDisciplines, function ($discipline) {
+                    $minValue = uc_value_to_float($discipline["expected_min"] ?? null);
+                    $maxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                    return $minValue !== null && $maxValue !== null;
+                  }));
+                }
+                if (empty($displayDisciplines)) {
+                  continue;
+                }
+              ?>
+              <div class="category-block">
+                <h3 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h3>
+                <ul class="list">
+                  <?php foreach ($displayDisciplines as $discipline): ?>
+                    <?php
+                      $discId = (int)$discipline["id"];
+                      $direction = $discipline["rating_direction"] ?? "more";
+                      if ($direction !== "less" && $direction !== "more") {
+                        $direction = "more";
+                      }
+                      $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                      $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+                      $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                      $rankValues = [];
+                      foreach ($assignedPlayers as $player) {
+                        $playerId = (int)$player["id"];
+                        $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+                        $numeric = uc_value_to_float($value);
+                        if ($numeric === null) {
+                          continue;
+                        }
+                        $rankValues[$playerId] = $numeric;
+                      }
+                      $bestValue = null;
+                      $worstValue = null;
+                      if (!empty($rankValues)) {
+                        $values = array_values($rankValues);
+                        if ($direction === "less") {
+                          $bestValue = min($values);
+                          $worstValue = max($values);
+                        } else {
+                          $bestValue = max($values);
+                          $worstValue = min($values);
+                        }
+                      }
+                      $playerAValue = $resultsByDiscipline[$discId][$h2hPlayerAId] ?? null;
+                      $playerBValue = $resultsByDiscipline[$discId][$h2hPlayerBId] ?? null;
+                      $numericA = uc_value_to_float($playerAValue);
+                      $numericB = uc_value_to_float($playerBValue);
+                      if ($overallMode === "abs") {
+                        $pointsA = uc_absolute_points($numericA, $expectedMinValue, $expectedMaxValue, $direction);
+                        $pointsB = uc_absolute_points($numericB, $expectedMinValue, $expectedMaxValue, $direction);
+                        if ($pointsA === null) { $pointsA = 0; }
+                        if ($pointsB === null) { $pointsB = 0; }
+                      } else {
+                        if ($numericA === null || $bestValue === null || $worstValue === null) {
+                          $pointsA = 0;
+                        } elseif ($bestValue == $worstValue) {
+                          $pointsA = 2;
+                        } else {
+                          $ratioA = ($numericA - $worstValue) / ($bestValue - $worstValue);
+                          $pointsA = 1 + $ratioA;
+                        }
+                        if ($numericB === null || $bestValue === null || $worstValue === null) {
+                          $pointsB = 0;
+                        } elseif ($bestValue == $worstValue) {
+                          $pointsB = 2;
+                        } else {
+                          $ratioB = ($numericB - $worstValue) / ($bestValue - $worstValue);
+                          $pointsB = 1 + $ratioB;
+                        }
+                      }
+                      $displayA = uc_display_value($playerAValue, "-");
+                      $displayB = uc_display_value($playerBValue, "-");
+                      if ($displayA !== "-" && $unit !== "") { $displayA .= " " . $unit; }
+                      if ($displayB !== "-" && $unit !== "") { $displayB .= " " . $unit; }
+                      $percentA = max(0, min(100, ($pointsA / 2) * 100));
+                      $percentB = max(0, min(100, ($pointsB / 2) * 100));
+                    ?>
+                    <li class="list-item">
+                      <div class="result-name">
+                        <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                      </div>
+                      <div class="h2h-bars">
+                        <div class="h2h-bar is-a">
+                          <div class="h2h-fill" style="width: <?php echo htmlspecialchars(number_format($percentA, 2, ".", ""), ENT_QUOTES, "UTF-8"); ?>%;"></div>
+                          <span class="h2h-value"><?php echo htmlspecialchars($displayA, ENT_QUOTES, "UTF-8"); ?></span>
+                        </div>
+                        <div class="h2h-bar is-b">
+                          <div class="h2h-fill" style="width: <?php echo htmlspecialchars(number_format($percentB, 2, ".", ""), ENT_QUOTES, "UTF-8"); ?>%;"></div>
+                          <span class="h2h-value"><?php echo htmlspecialchars($displayB, ENT_QUOTES, "UTF-8"); ?></span>
+                        </div>
+                      </div>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            <?php endforeach; ?>
+            <?php if (!empty($h2hRadarData)): ?>
+              <div class="radar-grid">
+                <div class="radar-chart">
+                  <canvas id="radar-chart-h2h" width="360" height="360"></canvas>
+                  <div class="radar-legend is-overlay">
+                    <span class="legend-item legend-player"><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></span>
+                    <span class="legend-item legend-team"><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                    <span class="legend-item legend-average">Team</span>
+                  </div>
+                </div>
+              </div>
+              <script id="radar-data-h2h" type="application/json"><?php echo json_encode($h2hRadarData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+            <?php endif; ?>
+          <?php endif; ?>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
+
     <?php if ($editMode && !$pageError && !$combineError): ?>
         <section class="auth-card" id="edit">
           <h2>Combine bearbeiten</h2>
@@ -1836,130 +2262,152 @@ if (!$pageError && !$combineError && $mode === "results") {
       });
     }
 
-    const radarDataEl = document.getElementById("radar-data");
-    const radarCanvas = document.getElementById("radar-chart");
-    if (radarDataEl && radarCanvas) {
+    const drawRadarChart = (radarDataEl, radarCanvas) => {
       const data = JSON.parse(radarDataEl.textContent || "[]");
-      if (data.length) {
-        const drawRadar = () => {
-          const container = radarCanvas.parentElement;
-          if (!container) return;
-          const rect = container.getBoundingClientRect();
-          const size = Math.max(0, Math.floor(rect.width));
-          if (!size) return;
-          const dpi = window.devicePixelRatio || 1;
-          radarCanvas.width = size * dpi;
-          radarCanvas.height = size * dpi;
-          radarCanvas.style.width = `${size}px`;
-          radarCanvas.style.height = `${size}px`;
+      if (!data.length) return;
+      const drawRadar = () => {
+        const container = radarCanvas.parentElement;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const size = Math.max(0, Math.floor(rect.width));
+        if (!size) return;
+        const dpi = window.devicePixelRatio || 1;
+        radarCanvas.width = size * dpi;
+        radarCanvas.height = size * dpi;
+        radarCanvas.style.width = `${size}px`;
+        radarCanvas.style.height = `${size}px`;
 
-          const ctx = radarCanvas.getContext("2d");
-          ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
+        const ctx = radarCanvas.getContext("2d");
+        ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
 
-          const rootStyles = getComputedStyle(document.documentElement);
-          const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
-          const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
-          const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
-          const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
+        const rootStyles = getComputedStyle(document.documentElement);
+        const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
+        const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
+        const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
+        const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
 
-          const center = size / 2;
-          const radius = center - 60;
-          const labelOffset = 6;
-          const maxValue = 2;
-          const midValue = 1;
-          const midRatio = 0.4;
-          const upperRings = 3;
-          const angleStep = (Math.PI * 2) / data.length;
+        const center = size / 2;
+        const radius = center - 60;
+        const labelOffset = 6;
+        const maxValue = 2;
+        const midValue = 1;
+        const midRatio = 0.4;
+        const upperRings = 3;
+        const angleStep = (Math.PI * 2) / data.length;
 
-          ctx.clearRect(0, 0, size, size);
-          ctx.translate(center, center);
+        ctx.clearRect(0, 0, size, size);
+        ctx.translate(center, center);
 
-          ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
-          ctx.lineWidth = 1;
-          const rings = [midRatio];
-          for (let i = 1; i <= upperRings; i += 1) {
-            rings.push(midRatio + (i / (upperRings + 1)) * (1 - midRatio));
-          }
-          rings.push(1);
-          rings.forEach((ratio) => {
-            const r = radius * ratio;
-            ctx.beginPath();
-            for (let i = 0; i < data.length; i += 1) {
-              const angle = i * angleStep - Math.PI / 2;
-              const x = Math.cos(angle) * r;
-              const y = Math.sin(angle) * r;
-              if (i === 0) {
-                ctx.moveTo(x, y);
-              } else {
-                ctx.lineTo(x, y);
-              }
-            }
-            ctx.closePath();
-            ctx.stroke();
-          });
-
-          ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
+        ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
+        ctx.lineWidth = 1;
+        const rings = [midRatio];
+        for (let i = 1; i <= upperRings; i += 1) {
+          rings.push(midRatio + (i / (upperRings + 1)) * (1 - midRatio));
+        }
+        rings.push(1);
+        rings.forEach((ratio) => {
+          const r = radius * ratio;
+          ctx.beginPath();
           for (let i = 0; i < data.length; i += 1) {
             const angle = i * angleStep - Math.PI / 2;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-            ctx.stroke();
-          }
-
-          const normalizeValue = (value) => {
-            if (value <= midValue) {
-              return (value / midValue) * midRatio;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
             }
-            return midRatio + ((value - midValue) / (maxValue - midValue)) * (1 - midRatio);
-          };
+          }
+          ctx.closePath();
+          ctx.stroke();
+        });
 
-          const drawShape = (values, stroke, fill) => {
-            ctx.beginPath();
-            values.forEach((value, index) => {
-              const normalized = Math.max(0, Math.min(normalizeValue(value), 1));
-              const angle = index * angleStep - Math.PI / 2;
-              const x = Math.cos(angle) * radius * normalized;
-              const y = Math.sin(angle) * radius * normalized;
-              if (index === 0) {
-                ctx.moveTo(x, y);
-              } else {
-                ctx.lineTo(x, y);
-              }
-            });
-            ctx.closePath();
-            ctx.fillStyle = fill;
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 2;
-            ctx.fill();
-            ctx.stroke();
-          };
+        ctx.strokeStyle = "rgba(44, 42, 74, 0.25)";
+        for (let i = 0; i < data.length; i += 1) {
+          const angle = i * angleStep - Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          ctx.stroke();
+        }
 
+        const normalizeValue = (value) => {
+          if (value <= midValue) {
+            return (value / midValue) * midRatio;
+          }
+          return midRatio + ((value - midValue) / (maxValue - midValue)) * (1 - midRatio);
+        };
+
+        const drawShape = (values, stroke, fill) => {
+          ctx.beginPath();
+          values.forEach((value, index) => {
+            const normalized = Math.max(0, Math.min(normalizeValue(value), 1));
+            const angle = index * angleStep - Math.PI / 2;
+            const x = Math.cos(angle) * radius * normalized;
+            const y = Math.sin(angle) * radius * normalized;
+            if (index === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+        };
+
+        const hasCompare = data.some((item) => Object.prototype.hasOwnProperty.call(item, "playerB"));
+        const hasTeam = data.some((item) => Object.prototype.hasOwnProperty.call(item, "team"));
+        if (hasCompare) {
+          const playerValues = data.map((item) => item.player || 0);
+          const compareValues = data.map((item) => item.playerB || 0);
+          if (hasTeam) {
+            const teamValues = data.map((item) => item.team || 0);
+            drawShape(teamValues, muted, "rgba(111, 98, 89, 0.18)");
+          }
+          drawShape(compareValues, accent2, "rgba(44, 42, 74, 0.2)");
+          drawShape(playerValues, accent, "rgba(255, 123, 75, 0.22)");
+        } else {
           const teamValues = data.map((item) => item.team || 0);
           const playerValues = data.map((item) => item.player || 0);
           drawShape(teamValues, accent2, "rgba(44, 42, 74, 0.15)");
           drawShape(playerValues, accent, "rgba(255, 123, 75, 0.22)");
+        }
 
-          ctx.fillStyle = ink;
-          ctx.font = "12px \"Space Grotesk\", sans-serif";
-          data.forEach((item, index) => {
-            const angle = index * angleStep - Math.PI / 2;
-            const x = Math.cos(angle) * (radius + labelOffset);
-            const y = Math.sin(angle) * (radius + labelOffset);
-            ctx.textAlign = x > 5 ? "left" : x < -5 ? "right" : "center";
-            ctx.textBaseline = y > 5 ? "top" : y < -5 ? "bottom" : "middle";
-            ctx.fillStyle = muted;
-            ctx.fillText(item.label, x, y);
-          });
-        };
+        ctx.fillStyle = ink;
+        ctx.font = "12px \"Space Grotesk\", sans-serif";
+        data.forEach((item, index) => {
+          const angle = index * angleStep - Math.PI / 2;
+          const x = Math.cos(angle) * (radius + labelOffset);
+          const y = Math.sin(angle) * (radius + labelOffset);
+          ctx.textAlign = x > 5 ? "left" : x < -5 ? "right" : "center";
+          ctx.textBaseline = y > 5 ? "top" : y < -5 ? "bottom" : "middle";
+          ctx.fillStyle = muted;
+          ctx.fillText(item.label, x, y);
+        });
+      };
 
-        const resizeRadar = () => {
-          window.requestAnimationFrame(drawRadar);
-        };
+      const resizeRadar = () => {
+        window.requestAnimationFrame(drawRadar);
+      };
 
-        drawRadar();
-        window.addEventListener("resize", resizeRadar);
-      }
+      drawRadar();
+      window.addEventListener("resize", resizeRadar);
+    };
+
+    const radarDataEl = document.getElementById("radar-data");
+    const radarCanvas = document.getElementById("radar-chart");
+    if (radarDataEl && radarCanvas) {
+      drawRadarChart(radarDataEl, radarCanvas);
+    }
+
+    const radarDataH2h = document.getElementById("radar-data-h2h");
+    const radarCanvasH2h = document.getElementById("radar-chart-h2h");
+    if (radarDataH2h && radarCanvasH2h) {
+      drawRadarChart(radarDataH2h, radarCanvasH2h);
     }
   </script></body>
 </html>
