@@ -2089,9 +2089,9 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
             <?php endforeach; ?>
             <?php if (!empty($h2hRadarData)): ?>
               <div class="radar-grid">
-                <div class="radar-chart">
+                <div class="radar-chart is-stacked">
                   <canvas id="radar-chart-h2h" width="360" height="360"></canvas>
-                  <div class="radar-legend is-overlay">
+                  <div class="radar-legend">
                     <span class="legend-item legend-player"><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></span>
                     <span class="legend-item legend-team"><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></span>
                     <span class="legend-item legend-average">Team</span>

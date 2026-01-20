@@ -794,6 +794,26 @@ body {
   max-width: 100%;
 }
 
+.radar-chart .radar-legend {
+  justify-content: center;
+}
+
+.radar-chart.is-stacked {
+  aspect-ratio: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+}
+
+.radar-chart.is-stacked canvas {
+  height: auto;
+}
+
+.radar-chart.is-stacked .radar-legend {
+  margin-top: -40px;
+}
+
 .radar-legend {
   display: flex;
   gap: 12px;
