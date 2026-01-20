@@ -921,10 +921,9 @@ if (!$pageError && !$combineError && $mode === "results") {
             $categoryWeights[$category] = $categoryWeight;
             $disciplineCount = 0;
             $categoryTotals = [];
-            $categoryWeightSums = [];
+            $categoryWeightSumAll = 0.0;
             foreach ($filteredPlayers as $player) {
               $categoryTotals[(int)$player["id"]] = 0;
-              $categoryWeightSums[(int)$player["id"]] = 0.0;
             }
             foreach ($categoryDisciplines as $discipline) {
               $discId = (int)$discipline["id"];
@@ -950,6 +949,7 @@ if (!$pageError && !$combineError && $mode === "results") {
               $worstValue = null;
               if (!empty($rankValues)) {
                 $disciplineCount++;
+                $categoryWeightSumAll += $disciplineWeight;
                 $values = array_values($rankValues);
                 if ($direction === "less") {
                   $bestValue = min($values);
@@ -963,31 +963,24 @@ if (!$pageError && !$combineError && $mode === "results") {
                 $playerId = (int)$player["id"];
                 $numericValue = $rankValues[$playerId] ?? null;
                 if ($numericValue === null || $bestValue === null || $worstValue === null) {
-                  continue;
-                }
-                if ($bestValue == $worstValue) {
+                  $points = 0;
+                } elseif ($bestValue == $worstValue) {
                   $points = 2;
                 } else {
                   $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
                   $points = 1 + $ratio;
                 }
                 $categoryTotals[$playerId] += $points * $disciplineWeight;
-                $categoryWeightSums[$playerId] += $disciplineWeight;
               }
             }
-            if ($disciplineCount === 0) {
+            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
               continue;
             }
             $teamSum = 0;
             $teamCount = 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
-              $weightSum = $categoryWeightSums[$playerId] ?? 0.0;
-              if ($weightSum <= 0) {
-                $categoryAverage = 0;
-              } else {
-                $categoryAverage = $categoryTotals[$playerId] / $weightSum;
-              }
+              $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
               $overallScores[$playerId] += $categoryAverage * $categoryWeight;
               $categoryAverages[$category][$playerId] = $categoryAverage;
               $teamSum += $categoryAverage;
