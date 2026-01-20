@@ -35,6 +35,32 @@ function uc_format_points($points) {
   return number_format($rounded, 2, ",", "");
 }
 
+function uc_absolute_points($value, $min, $max, string $direction): ?float {
+  if ($value === null || $min === null || $max === null) {
+    return null;
+  }
+  $min = (float)$min;
+  $max = (float)$max;
+  if ($max == $min) {
+    return null;
+  }
+  $numericValue = (float)$value;
+  if ($direction === "less") {
+    $numericValue = -$numericValue;
+    $oldMin = $min;
+    $min = -$max;
+    $max = -$oldMin;
+  }
+  if ($numericValue >= $max) {
+    return 2.0;
+  }
+  if ($numericValue <= $min) {
+    $points = 1 - (($min - $numericValue) / ($max - $min));
+    return max(0.0, $points);
+  }
+  return 1 + (($numericValue - $min) / ($max - $min));
+}
+
 function uc_format_unit($unit, array $unitMap): string {
   $unit = trim((string)$unit);
   if ($unit === "") {
@@ -124,7 +150,7 @@ if (!in_array($filterPosition, ["handler", "cutter"], true)) {
   $filterPosition = "";
 }
 $overallMode = $_GET["overall"] ?? "sum";
-if (!in_array($overallMode, ["sum", "avg"], true)) {
+if (!in_array($overallMode, ["sum", "avg", "abs"], true)) {
   $overallMode = "sum";
 }
 
@@ -171,14 +197,25 @@ if (!$pageError) {
   $stmt->execute([":team_id" => $teamId]);
   $players = $stmt->fetchAll();
 
-  $stmt = $pdo->prepare(
-    "SELECT id, discipline_name, description, category, unit, rating_direction
-     FROM disciplines
-     WHERE team_id = :team_id OR team_id IS NULL
-     ORDER BY created_at DESC"
-  );
-  $stmt->execute([":team_id" => $teamId]);
-  $disciplines = $stmt->fetchAll();
+  try {
+    $stmt = $pdo->prepare(
+      "SELECT id, discipline_name, description, category, unit, rating_direction, expected_min, expected_max
+       FROM disciplines
+       WHERE team_id = :team_id OR team_id IS NULL
+       ORDER BY created_at DESC"
+    );
+    $stmt->execute([":team_id" => $teamId]);
+    $disciplines = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    $stmt = $pdo->prepare(
+      "SELECT id, discipline_name, description, category, unit, rating_direction
+       FROM disciplines
+       WHERE team_id = :team_id OR team_id IS NULL
+       ORDER BY created_at DESC"
+    );
+    $stmt->execute([":team_id" => $teamId]);
+    $disciplines = $stmt->fetchAll();
+  }
 
   $stmt = $pdo->prepare(
     "SELECT unit_name, unit_abbreviation
@@ -911,6 +948,7 @@ if (!$pageError && !$combineError && $mode === "results") {
           }
           $overallScoresSum = [];
           $overallScoresAvg = [];
+          $overallScoresAbs = [];
           $overallCategoryCounts = [];
           $categoryAverages = [];
           $categoryTeamAverages = [];
@@ -920,6 +958,7 @@ if (!$pageError && !$combineError && $mode === "results") {
             $playerId = (int)$player["id"];
             $overallScoresSum[$playerId] = 0;
             $overallScoresAvg[$playerId] = 0;
+            $overallScoresAbs[$playerId] = 0;
             $overallCategoryCounts[$playerId] = 0;
           }
           foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
@@ -930,12 +969,15 @@ if (!$pageError && !$combineError && $mode === "results") {
             $categoryWeights[$category] = $categoryWeight;
             $disciplineCount = 0;
             $categoryTotals = [];
+            $categoryTotalsAbs = [];
             $categoryTotalsAvg = [];
             $categoryWeightSumAll = 0.0;
+            $categoryWeightSumAllAbs = 0.0;
             $categoryWeightSumsAvg = [];
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
               $categoryTotals[$playerId] = 0;
+              $categoryTotalsAbs[$playerId] = 0;
               $categoryTotalsAvg[$playerId] = 0;
               $categoryWeightSumsAvg[$playerId] = 0.0;
             }
@@ -949,6 +991,8 @@ if (!$pageError && !$combineError && $mode === "results") {
               if ($direction !== "less" && $direction !== "more") {
                 $direction = "more";
               }
+              $expectedMin = $discipline["expected_min"] ?? null;
+              $expectedMax = $discipline["expected_max"] ?? null;
               $rankValues = [];
               foreach ($filteredPlayers as $player) {
                 $playerId = (int)$player["id"];
@@ -964,6 +1008,7 @@ if (!$pageError && !$combineError && $mode === "results") {
               if (!empty($rankValues)) {
                 $disciplineCount++;
                 $categoryWeightSumAll += $disciplineWeight;
+                $categoryWeightSumAllAbs += $disciplineWeight;
                 $values = array_values($rankValues);
                 if ($direction === "less") {
                   $bestValue = min($values);
@@ -985,13 +1030,20 @@ if (!$pageError && !$combineError && $mode === "results") {
                   $points = 1 + $ratio;
                 }
                 $categoryTotals[$playerId] += $points * $disciplineWeight;
+
+                $absolutePoints = uc_absolute_points($numericValue, $expectedMin, $expectedMax, $direction);
+                if ($absolutePoints === null) {
+                  $absolutePoints = $points;
+                }
+                $categoryTotalsAbs[$playerId] += $absolutePoints * $disciplineWeight;
+
                 if ($numericValue !== null && $bestValue !== null && $worstValue !== null) {
                   $categoryTotalsAvg[$playerId] += $points * $disciplineWeight;
                   $categoryWeightSumsAvg[$playerId] += $disciplineWeight;
                 }
               }
             }
-            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
+            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0 || $categoryWeightSumAllAbs <= 0) {
               continue;
             }
             $teamSum = 0;
@@ -1000,6 +1052,8 @@ if (!$pageError && !$combineError && $mode === "results") {
               $playerId = (int)$player["id"];
               $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
               $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
+              $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
+              $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
               $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
               if ($avgWeightSum > 0) {
                 $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
@@ -1021,7 +1075,13 @@ if (!$pageError && !$combineError && $mode === "results") {
               $overallScoresAvg[$playerId] = $score / $count;
             }
           }
-          $overallScores = $overallMode === "avg" ? $overallScoresAvg : $overallScoresSum;
+          if ($overallMode === "avg") {
+            $overallScores = $overallScoresAvg;
+          } elseif ($overallMode === "abs") {
+            $overallScores = $overallScoresAbs;
+          } else {
+            $overallScores = $overallScoresSum;
+          }
           $overallRankValues = $overallScores;
           arsort($overallRankValues, SORT_NUMERIC);
           $overallRanks = [];
@@ -1049,6 +1109,7 @@ if (!$pageError && !$combineError && $mode === "results") {
           $overallBaseUrl = "combine.php?" . http_build_query($overallBaseParams);
           $overallSumUrl = $overallBaseUrl . "&overall=sum";
           $overallAvgUrl = $overallBaseUrl . "&overall=avg";
+          $overallAbsUrl = $overallBaseUrl . "&overall=abs";
         ?>
         <div class="info-card">
           <h3>Filter</h3>
@@ -1089,12 +1150,15 @@ if (!$pageError && !$combineError && $mode === "results") {
             <div class="card-actions">
               <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>">Summe</a>
               <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Kategorien</a>
+              <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
             <p class="help">Summe: Nicht absolvierte Disziplinen zählen als 0 in den Kategorien. Punkte werden relativ zu den Teilnehmern berechnet.</p>
-          <?php else: ?>
+          <?php elseif ($overallMode === "avg"): ?>
             <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die der Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+          <?php else: ?>
+            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max, fehlende Werte zählen als 0.</p>
           <?php endif; ?>
           <?php if (empty($filteredPlayers)): ?>
             <p class="help">Keine Spieler für den gewählten Filter.</p>
