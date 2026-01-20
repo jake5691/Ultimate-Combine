@@ -694,7 +694,7 @@ if (!$pageError) {
         <?php endif; ?>
         <div class="form-actions">
           <button class="pill-button is-primary" type="submit">Speichern</button>
-          <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='team.php'">Abbrechen</button>
         </div>
       </form>
     </section>

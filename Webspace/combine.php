@@ -717,7 +717,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
         <div class="card-header">
           <h1><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></h1>
           <?php if (!$editMode): ?>
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&edit=1">Edit</a>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
           <?php endif; ?>
         </div>
         <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
@@ -729,10 +729,10 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
         <?php endif; ?>
         <?php if (!$editMode): ?>
           <div class="action-row">
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>">Setup</a>
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start">Eintragen</a>
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=results">Ergebnisse</a>
-            <a class="pill-button" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=h2h">H2H</a>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'">Setup</button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=start'">Eintragen</button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=results'">Ergebnisse</button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=h2h'">H2H</button>
           </div>
         <?php endif; ?>
       <?php endif; ?>
@@ -881,7 +881,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
             <?php endforeach; ?>
             <div class="form-actions">
               <button class="primary-button" type="submit">Bestätigen und speichern</button>
-              <a class="text-link" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>">Abbrechen</a>
+              <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>">Abbrechen</a>
             </div>
           </form>
         </section>
@@ -1171,7 +1171,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
             <div class="form-actions">
               <button class="primary-button" type="submit">Filter anwenden</button>
               <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
-                <a class="text-link" href="<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>">Zurücksetzen</a>
+                <a class="pill-button is-muted" href="<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>">Zurücksetzen</a>
               <?php endif; ?>
             </div>
           </form>
@@ -1180,9 +1180,9 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
           <div class="card-header">
             <h3>Overall Ranking</h3>
             <div class="card-actions">
-              <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>">Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
+              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
+              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
+              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
@@ -1288,7 +1288,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
                 Ergebnisse: <?php echo htmlspecialchars($selectedPlayer["first_name"], ENT_QUOTES, "UTF-8"); ?>
                 <?php echo " " . htmlspecialchars($selectedPlayer["last_name"], ENT_QUOTES, "UTF-8"); ?>
               </h3>
-              <a class="text-link" href="<?php echo htmlspecialchars($resetUrl, ENT_QUOTES, "UTF-8"); ?>">Schließen</a>
+              <a class="pill-button is-muted" href="<?php echo htmlspecialchars($resetUrl, ENT_QUOTES, "UTF-8"); ?>">Schließen</a>
             </div>
             <?php if (empty($radarData)): ?>
               <p class="help">Keine Kategorien für die Anzeige.</p>
@@ -1711,9 +1711,9 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
         <div class="info-card">
           <div class="card-header">
             <div class="card-actions">
-              <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>">Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Relativ</a>
-              <a class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>">Absolut</a>
+              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
+              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
+              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
@@ -2232,7 +2232,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
 
           <div class="form-actions">
             <button class="primary-button" type="submit">Speichern</button>
-            <a class="text-link" href="combine.php?id=<?php echo (int)$combineId; ?>">Abbrechen</a>
+            <button class="pill-button is-muted" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'">Abbrechen</button>
           </div>
           <?php if ($combineFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
