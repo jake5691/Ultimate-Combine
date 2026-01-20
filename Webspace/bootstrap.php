@@ -122,6 +122,8 @@ function uc_ensure_schema(PDO $pdo): void {
       unit VARCHAR(60) NOT NULL,
       category VARCHAR(80) NOT NULL,
       rating_direction VARCHAR(12) NOT NULL,
+      expected_min DECIMAL(8,2) NULL,
+      expected_max DECIMAL(8,2) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_disciplines_team
         FOREIGN KEY (team_id) REFERENCES teams(id)
@@ -142,6 +144,26 @@ function uc_ensure_schema(PDO $pdo): void {
     if ($column["column_name"] === "team_id" && $column["is_nullable"] === "NO") {
       $pdo->exec("ALTER TABLE disciplines MODIFY COLUMN team_id INT NULL");
       break;
+    }
+  }
+
+  $disciplineColumnNames = array_column($disciplineColumns, "column_name");
+  if (!in_array("expected_min", $disciplineColumnNames, true)) {
+    try {
+      $pdo->exec("ALTER TABLE disciplines ADD COLUMN expected_min DECIMAL(8,2) NULL AFTER rating_direction");
+    } catch (PDOException $e) {
+      if (($e->errorInfo[1] ?? null) !== 1060) {
+        throw $e;
+      }
+    }
+  }
+  if (!in_array("expected_max", $disciplineColumnNames, true)) {
+    try {
+      $pdo->exec("ALTER TABLE disciplines ADD COLUMN expected_max DECIMAL(8,2) NULL AFTER expected_min");
+    } catch (PDOException $e) {
+      if (($e->errorInfo[1] ?? null) !== 1060) {
+        throw $e;
+      }
     }
   }
 
@@ -252,5 +274,10 @@ $dbError = null;
 $pdo = uc_get_pdo($env, $dbError);
 
 if ($pdo) {
-  uc_ensure_schema($pdo);
+  try {
+    uc_ensure_schema($pdo);
+  } catch (Throwable $e) {
+    $dbError = "Datenbankschema konnte nicht aktualisiert werden: " . $e->getMessage();
+    $pdo = null;
+  }
 }

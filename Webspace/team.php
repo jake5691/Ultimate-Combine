@@ -164,13 +164,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $unit = trim($_POST["unit"] ?? "");
     $category = trim($_POST["category"] ?? "");
     $direction = $_POST["rating_direction"] ?? "";
+    $expectedMinRaw = trim($_POST["expected_min"] ?? "");
+    $expectedMaxRaw = trim($_POST["expected_max"] ?? "");
+    $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
+    $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
 
     if (
       $disciplineName === "" ||
       $description === "" ||
       $unit === "" ||
       $category === "" ||
-      !isset($validDirections[$direction])
+      !isset($validDirections[$direction]) ||
+      ($expectedMinRaw !== "" && $expectedMin === false) ||
+      ($expectedMaxRaw !== "" && $expectedMax === false) ||
+      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null)) ||
+      ($expectedMin !== null && $expectedMax !== null && $expectedMin >= $expectedMax)
     ) {
       $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
     } else {
@@ -191,8 +199,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $disciplineFeedback = "Diese Disziplin existiert bereits.";
       } else {
         $stmt = $pdo->prepare(
-          "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction)
-           VALUES (:team_id, :discipline_name, :description, :unit, :category, :rating_direction)"
+          "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max)
+           VALUES (:team_id, :discipline_name, :description, :unit, :category, :rating_direction, :expected_min, :expected_max)"
         );
         $stmt->execute([
           ":team_id" => $teamId,
@@ -201,6 +209,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":unit" => $unit,
           ":category" => $category,
           ":rating_direction" => $direction,
+          ":expected_min" => $expectedMin,
+          ":expected_max" => $expectedMax,
         ]);
         $disciplineFeedback = "Disziplin wurde angelegt.";
       }
@@ -410,6 +420,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $unit = trim($_POST["unit"] ?? "");
     $category = trim($_POST["category"] ?? "");
     $direction = $_POST["rating_direction"] ?? "";
+    $expectedMinRaw = trim($_POST["expected_min"] ?? "");
+    $expectedMaxRaw = trim($_POST["expected_max"] ?? "");
+    $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
+    $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
 
     if (
       !$editId ||
@@ -417,7 +431,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $description === "" ||
       $unit === "" ||
       $category === "" ||
-      !isset($validDirections[$direction])
+      !isset($validDirections[$direction]) ||
+      ($expectedMinRaw !== "" && $expectedMin === false) ||
+      ($expectedMaxRaw !== "" && $expectedMax === false) ||
+      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null)) ||
+      ($expectedMin !== null && $expectedMax !== null && $expectedMin >= $expectedMax)
     ) {
       $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
     } else {
@@ -445,7 +463,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
                description = :description,
                unit = :unit,
                category = :category,
-               rating_direction = :rating_direction
+               rating_direction = :rating_direction,
+               expected_min = :expected_min,
+               expected_max = :expected_max
            WHERE id = :id AND team_id = :team_id"
         );
         $stmt->execute([
@@ -454,6 +474,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":unit" => $unit,
           ":category" => $category,
           ":rating_direction" => $direction,
+          ":expected_min" => $expectedMin,
+          ":expected_max" => $expectedMax,
           ":id" => $editId,
           ":team_id" => $teamId,
         ]);
@@ -512,7 +534,7 @@ if (!$pageError) {
       $editRecord = $stmt->fetch();
     } elseif ($editType === "discipline") {
       $stmt = $pdo->prepare(
-        "SELECT id, discipline_name, description, unit, category, rating_direction
+        "SELECT id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max
          FROM disciplines
          WHERE id = :id AND team_id = :team_id"
       );
@@ -891,6 +913,14 @@ if (!$pageError) {
             <option value="less">Weniger ist besser</option>
           </select>
         </label>
+        <label class="field">
+          <span>Erwartung Minimum (1 Punkt)</span>
+          <input type="number" name="expected_min" step="0.1" placeholder="Optional">
+        </label>
+        <label class="field">
+          <span>Erwartung Maximum (2 Punkte)</span>
+          <input type="number" name="expected_max" step="0.1" placeholder="Optional">
+        </label>
         <button class="primary-button" type="submit">Disziplin speichern</button>
         <?php if ($disciplineFeedback): ?>
           <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -1021,6 +1051,14 @@ if (!$pageError) {
                   </option>
                 <?php endforeach; ?>
               </select>
+            </label>
+            <label class="field">
+              <span>Erwartung Minimum (1 Punkt)</span>
+              <input type="number" name="expected_min" step="0.1" value="<?php echo htmlspecialchars($editRecord["expected_min"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+            </label>
+            <label class="field">
+              <span>Erwartung Maximum (2 Punkte)</span>
+              <input type="number" name="expected_max" step="0.1" value="<?php echo htmlspecialchars($editRecord["expected_max"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
