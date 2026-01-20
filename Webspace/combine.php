@@ -2067,8 +2067,15 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
                       $displayB = uc_display_value($playerBValue, "-");
                       if ($displayA !== "-" && $unit !== "") { $displayA .= " " . $unit; }
                       if ($displayB !== "-" && $unit !== "") { $displayB .= " " . $unit; }
-                      $percentA = max(0, min(100, ($pointsA / 2) * 100));
-                      $percentB = max(0, min(100, ($pointsB / 2) * 100));
+                      $scaleScore = function ($value) {
+                        $value = max(0, min(2, (float)$value));
+                        if ($value <= 1) {
+                          return ($value / 1) * 30;
+                        }
+                        return 30 + (($value - 1) / 1) * 70;
+                      };
+                      $percentA = $scaleScore($pointsA);
+                      $percentB = $scaleScore($pointsB);
                     ?>
                     <li class="list-item">
                       <div class="result-name">
