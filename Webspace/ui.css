@@ -187,6 +187,10 @@ body {
   line-height: 1;
 }
 
+.pill-button.is-active {
+  background: var(--accent);
+}
+
 .auth {
   display: grid;
   gap: 32px;

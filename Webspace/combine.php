@@ -123,6 +123,10 @@ $filterPosition = $_GET["position"] ?? "";
 if (!in_array($filterPosition, ["handler", "cutter"], true)) {
   $filterPosition = "";
 }
+$overallMode = $_GET["overall"] ?? "sum";
+if (!in_array($overallMode, ["sum", "avg"], true)) {
+  $overallMode = "sum";
+}
 
 $formCombineName = "";
 $formEventDate = "";
@@ -905,13 +909,18 @@ if (!$pageError && !$combineError && $mode === "results") {
               $selectedPlayerId = null;
             }
           }
-          $overallScores = [];
+          $overallScoresSum = [];
+          $overallScoresAvg = [];
+          $overallCategoryCounts = [];
           $categoryAverages = [];
           $categoryTeamAverages = [];
           $categoryTeamWeightedAverages = [];
           $categoryWeights = [];
           foreach ($filteredPlayers as $player) {
-            $overallScores[(int)$player["id"]] = 0;
+            $playerId = (int)$player["id"];
+            $overallScoresSum[$playerId] = 0;
+            $overallScoresAvg[$playerId] = 0;
+            $overallCategoryCounts[$playerId] = 0;
           }
           foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
             $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
@@ -921,10 +930,14 @@ if (!$pageError && !$combineError && $mode === "results") {
             $categoryWeights[$category] = $categoryWeight;
             $disciplineCount = 0;
             $categoryTotals = [];
-            $categoryWeightSums = [];
+            $categoryTotalsAvg = [];
+            $categoryWeightSumAll = 0.0;
+            $categoryWeightSumsAvg = [];
             foreach ($filteredPlayers as $player) {
-              $categoryTotals[(int)$player["id"]] = 0;
-              $categoryWeightSums[(int)$player["id"]] = 0.0;
+              $playerId = (int)$player["id"];
+              $categoryTotals[$playerId] = 0;
+              $categoryTotalsAvg[$playerId] = 0;
+              $categoryWeightSumsAvg[$playerId] = 0.0;
             }
             foreach ($categoryDisciplines as $discipline) {
               $discId = (int)$discipline["id"];
@@ -950,6 +963,7 @@ if (!$pageError && !$combineError && $mode === "results") {
               $worstValue = null;
               if (!empty($rankValues)) {
                 $disciplineCount++;
+                $categoryWeightSumAll += $disciplineWeight;
                 $values = array_values($rankValues);
                 if ($direction === "less") {
                   $bestValue = min($values);
@@ -963,32 +977,35 @@ if (!$pageError && !$combineError && $mode === "results") {
                 $playerId = (int)$player["id"];
                 $numericValue = $rankValues[$playerId] ?? null;
                 if ($numericValue === null || $bestValue === null || $worstValue === null) {
-                  continue;
-                }
-                if ($bestValue == $worstValue) {
+                  $points = 0;
+                } elseif ($bestValue == $worstValue) {
                   $points = 2;
                 } else {
                   $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
                   $points = 1 + $ratio;
                 }
                 $categoryTotals[$playerId] += $points * $disciplineWeight;
-                $categoryWeightSums[$playerId] += $disciplineWeight;
+                if ($numericValue !== null && $bestValue !== null && $worstValue !== null) {
+                  $categoryTotalsAvg[$playerId] += $points * $disciplineWeight;
+                  $categoryWeightSumsAvg[$playerId] += $disciplineWeight;
+                }
               }
             }
-            if ($disciplineCount === 0) {
+            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
               continue;
             }
             $teamSum = 0;
             $teamCount = 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
-              $weightSum = $categoryWeightSums[$playerId] ?? 0.0;
-              if ($weightSum <= 0) {
-                $categoryAverage = 0;
-              } else {
-                $categoryAverage = $categoryTotals[$playerId] / $weightSum;
+              $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
+              $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
+              $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
+              if ($avgWeightSum > 0) {
+                $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
+                $overallScoresAvg[$playerId] += $categoryAverageAvg;
+                $overallCategoryCounts[$playerId] += 1;
               }
-              $overallScores[$playerId] += $categoryAverage * $categoryWeight;
               $categoryAverages[$category][$playerId] = $categoryAverage;
               $teamSum += $categoryAverage;
               $teamCount++;
@@ -998,6 +1015,13 @@ if (!$pageError && !$combineError && $mode === "results") {
               $categoryTeamWeightedAverages[$category] = ($teamSum / $teamCount) * $categoryWeight;
             }
           }
+          foreach ($overallScoresAvg as $playerId => $score) {
+            $count = $overallCategoryCounts[$playerId] ?? 0;
+            if ($count > 0) {
+              $overallScoresAvg[$playerId] = $score / $count;
+            }
+          }
+          $overallScores = $overallMode === "avg" ? $overallScoresAvg : $overallScoresSum;
           $overallRankValues = $overallScores;
           arsort($overallRankValues, SORT_NUMERIC);
           $overallRanks = [];
@@ -1012,12 +1036,26 @@ if (!$pageError && !$combineError && $mode === "results") {
             }
             $overallRanks[$playerId] = $rank;
           }
+          $overallBaseParams = [
+            "id" => (int)$combineId,
+            "mode" => "results",
+          ];
+          if ($filterGender !== "") {
+            $overallBaseParams["gender"] = $filterGender;
+          }
+          if ($filterPosition !== "") {
+            $overallBaseParams["position"] = $filterPosition;
+          }
+          $overallBaseUrl = "combine.php?" . http_build_query($overallBaseParams);
+          $overallSumUrl = $overallBaseUrl . "&overall=sum";
+          $overallAvgUrl = $overallBaseUrl . "&overall=avg";
         ?>
         <div class="info-card">
           <h3>Filter</h3>
           <form class="form" method="get" action="combine.php">
             <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
             <input type="hidden" name="mode" value="results">
+            <input type="hidden" name="overall" value="<?php echo htmlspecialchars($overallMode, ENT_QUOTES, "UTF-8"); ?>">
             <label class="field">
               <span>Geschlecht</span>
               <select name="gender">
@@ -1040,13 +1078,24 @@ if (!$pageError && !$combineError && $mode === "results") {
             <div class="form-actions">
               <button class="primary-button" type="submit">Filter anwenden</button>
               <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
-                <a class="text-link" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=results">Zurücksetzen</a>
+                <a class="text-link" href="<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>">Zurücksetzen</a>
               <?php endif; ?>
             </div>
           </form>
         </div>
         <div class="info-card">
-          <h3>Overall Ranking</h3>
+          <div class="card-header">
+            <h3>Overall Ranking</h3>
+            <div class="card-actions">
+              <a class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>">Summe</a>
+              <a class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>">Ø Kategorien</a>
+            </div>
+          </div>
+          <?php if ($overallMode === "sum"): ?>
+            <p class="help">Summe: Nicht absolvierte Disziplinen zählen als 0 in den Kategorien. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+          <?php else: ?>
+            <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die der Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+          <?php endif; ?>
           <?php if (empty($filteredPlayers)): ?>
             <p class="help">Keine Spieler für den gewählten Filter.</p>
           <?php else: ?>
@@ -1078,6 +1127,7 @@ if (!$pageError && !$combineError && $mode === "results") {
                   if ($filterPosition !== "") {
                     $detailUrl .= "&position=" . urlencode($filterPosition);
                   }
+                  $detailUrl .= "&overall=" . urlencode($overallMode);
                   $detailUrl .= "&player_id=" . $playerId;
                 ?>
                 <li class="list-item<?php echo ($selectedPlayerId && (int)$selectedPlayerId === $playerId) ? " is-active" : ""; ?>">
@@ -1119,6 +1169,7 @@ if (!$pageError && !$combineError && $mode === "results") {
             if ($filterPosition !== "") {
               $resetUrl .= "&position=" . urlencode($filterPosition);
             }
+            $resetUrl .= "&overall=" . urlencode($overallMode);
           ?>
           <div class="info-card player-detail">
             <div class="card-header">
