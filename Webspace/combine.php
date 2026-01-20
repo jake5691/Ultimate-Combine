@@ -1158,7 +1158,7 @@ if (!$pageError && !$combineError && $mode === "results") {
           <?php elseif ($overallMode === "avg"): ?>
             <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die der Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
           <?php else: ?>
-            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max, fehlende Werte zählen als 0.</p>
+            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max, fehlende Werte zählen als 0. Bei fehlenden Erwartungswertungen Fallback auf relative Punktevergabe.</p>
           <?php endif; ?>
           <?php if (empty($filteredPlayers)): ?>
             <p class="help">Keine Spieler für den gewählten Filter.</p>
