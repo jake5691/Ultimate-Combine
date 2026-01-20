@@ -951,8 +951,13 @@ if (!$pageError && !$combineError && $mode === "results") {
           $overallScoresAbs = [];
           $overallCategoryCounts = [];
           $categoryAverages = [];
+          $categoryAveragesAbs = [];
+          $categoryAveragesAvg = [];
           $categoryTeamAverages = [];
           $categoryTeamWeightedAverages = [];
+          $categoryTeamAveragesAbs = [];
+          $categoryTeamWeightedAveragesAbs = [];
+          $categoryTeamAveragesAvg = [];
           $categoryWeights = [];
           foreach ($filteredPlayers as $player) {
             $playerId = (int)$player["id"];
@@ -1047,22 +1052,35 @@ if (!$pageError && !$combineError && $mode === "results") {
                 }
               }
             }
-            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0 || $categoryWeightSumAllAbs <= 0) {
+            if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
               continue;
             }
             $teamSum = 0;
             $teamCount = 0;
+            $teamSumAbs = 0;
+            $teamCountAbs = 0;
+            $teamSumAvg = 0;
+            $teamCountAvg = 0;
+            $hasAbsoluteCategory = $categoryWeightSumAllAbs > 0;
             foreach ($filteredPlayers as $player) {
               $playerId = (int)$player["id"];
               $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
               $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
-              $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
-              $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
+              if ($hasAbsoluteCategory) {
+                $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
+                $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
+                $categoryAveragesAbs[$category][$playerId] = $categoryAverageAbs;
+                $teamSumAbs += $categoryAverageAbs;
+                $teamCountAbs++;
+              }
               $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
               if ($avgWeightSum > 0) {
                 $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
                 $overallScoresAvg[$playerId] += $categoryAverageAvg;
                 $overallCategoryCounts[$playerId] += 1;
+                $categoryAveragesAvg[$category][$playerId] = $categoryAverageAvg;
+                $teamSumAvg += $categoryAverageAvg;
+                $teamCountAvg++;
               }
               $categoryAverages[$category][$playerId] = $categoryAverage;
               $teamSum += $categoryAverage;
@@ -1071,6 +1089,13 @@ if (!$pageError && !$combineError && $mode === "results") {
             if ($teamCount > 0) {
               $categoryTeamAverages[$category] = $teamSum / $teamCount;
               $categoryTeamWeightedAverages[$category] = ($teamSum / $teamCount) * $categoryWeight;
+            }
+            if ($teamCountAbs > 0) {
+              $categoryTeamAveragesAbs[$category] = $teamSumAbs / $teamCountAbs;
+              $categoryTeamWeightedAveragesAbs[$category] = ($teamSumAbs / $teamCountAbs) * $categoryWeight;
+            }
+            if ($teamCountAvg > 0) {
+              $categoryTeamAveragesAvg[$category] = $teamSumAvg / $teamCountAvg;
             }
           }
           foreach ($overallScoresAvg as $playerId => $score) {
@@ -1217,13 +1242,28 @@ if (!$pageError && !$combineError && $mode === "results") {
         <?php if ($selectedPlayerId && $selectedPlayer): ?>
           <?php
             $radarData = [];
-            foreach ($categoryAverages as $category => $playerAverages) {
+            $radarPlayerAverages = $categoryAverages;
+            $radarTeamAverages = $categoryTeamWeightedAverages;
+            $radarApplyWeight = true;
+            if ($overallMode === "abs") {
+              $radarPlayerAverages = $categoryAveragesAbs;
+              $radarTeamAverages = $categoryTeamWeightedAveragesAbs;
+              $radarApplyWeight = true;
+            } elseif ($overallMode === "avg") {
+              $radarPlayerAverages = $categoryAveragesAvg;
+              $radarTeamAverages = $categoryTeamAveragesAvg;
+              $radarApplyWeight = false;
+            }
+            foreach ($radarPlayerAverages as $category => $playerAverages) {
               $categoryWeight = $combineCategoryWeights[$category] ?? 1;
               if ($categoryWeight <= 0) {
                 $categoryWeight = 1;
               }
-              $playerAverage = ($playerAverages[$selectedPlayerId] ?? 0) * $categoryWeight;
-              $teamAverage = $categoryTeamWeightedAverages[$category] ?? ($categoryTeamAverages[$category] ?? 0);
+              $playerAverage = $playerAverages[$selectedPlayerId] ?? 0;
+              if ($radarApplyWeight) {
+                $playerAverage *= $categoryWeight;
+              }
+              $teamAverage = $radarTeamAverages[$category] ?? 0;
               $radarData[] = [
                 "label" => $category,
                 "player" => $playerAverage,
