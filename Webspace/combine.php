@@ -701,7 +701,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
     </div>
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">
-      <button class="pill-button" type="submit">Logout</button>
+      <button class="pill-button is-logout" type="submit">Abmelden</button>
     </form>
   </header>
 

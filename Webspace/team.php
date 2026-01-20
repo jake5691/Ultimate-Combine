@@ -621,7 +621,7 @@ if (!$pageError) {
   <header class="topbar">
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">
-      <button class="pill-button" type="submit">Logout</button>
+      <button class="pill-button is-logout" type="submit">Abmelden</button>
     </form>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">

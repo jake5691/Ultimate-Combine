@@ -202,6 +202,11 @@ body {
   color: var(--ink);
 }
 
+.pill-button.is-logout {
+  background: #cd6755;
+  color: #000000;
+}
+
 .auth {
   display: grid;
   gap: 32px;
