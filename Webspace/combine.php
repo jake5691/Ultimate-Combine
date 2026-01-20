@@ -680,7 +680,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ultimate Combine - Combine</title>
+  <title><?php echo htmlspecialchars($combine["combine_name"] ?? "Combine", ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
