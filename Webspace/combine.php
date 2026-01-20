@@ -1731,7 +1731,8 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
               <select name="player_a" required>
                 <option value="">Bitte wählen</option>
                 <?php foreach ($assignedPlayers as $player): ?>
-                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerAId ? " selected" : ""; ?>>
+                  <?php $isDisabled = (int)$player["id"] === (int)$h2hPlayerBId; ?>
+                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerAId ? " selected" : ""; ?><?php echo $isDisabled ? " disabled" : ""; ?>>
                     <?php echo htmlspecialchars($player["first_name"] . " " . $player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                   </option>
                 <?php endforeach; ?>
@@ -1741,7 +1742,8 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
               <select name="player_b" required>
                 <option value="">Bitte wählen</option>
                 <?php foreach ($assignedPlayers as $player): ?>
-                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerBId ? " selected" : ""; ?>>
+                  <?php $isDisabled = (int)$player["id"] === (int)$h2hPlayerAId; ?>
+                  <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerBId ? " selected" : ""; ?><?php echo $isDisabled ? " disabled" : ""; ?>>
                     <?php echo htmlspecialchars($player["first_name"] . " " . $player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                   </option>
                 <?php endforeach; ?>
@@ -2408,6 +2410,27 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
     const radarCanvasH2h = document.getElementById("radar-chart-h2h");
     if (radarDataH2h && radarCanvasH2h) {
       drawRadarChart(radarDataH2h, radarCanvasH2h);
+    }
+
+    const h2hPlayerA = document.querySelector("select[name=\"player_a\"]");
+    const h2hPlayerB = document.querySelector("select[name=\"player_b\"]");
+    if (h2hPlayerA && h2hPlayerB) {
+      const syncH2hOptions = () => {
+        const aValue = h2hPlayerA.value;
+        const bValue = h2hPlayerB.value;
+        Array.from(h2hPlayerA.options).forEach((option) => {
+          option.disabled = option.value !== "" && option.value === bValue;
+        });
+        Array.from(h2hPlayerB.options).forEach((option) => {
+          option.disabled = option.value !== "" && option.value === aValue;
+        });
+        if (aValue !== "" && aValue === bValue) {
+          h2hPlayerB.value = "";
+        }
+      };
+      h2hPlayerA.addEventListener("change", syncH2hOptions);
+      h2hPlayerB.addEventListener("change", syncH2hOptions);
+      syncH2hOptions();
     }
   </script></body>
 </html>
