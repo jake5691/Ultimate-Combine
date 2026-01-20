@@ -52,6 +52,14 @@ body {
   width: 100%;
 }
 
+.topbar > * {
+  min-width: 0;
+}
+
+.topbar form {
+  justify-self: end;
+}
+
 .topbar.is-simple {
   grid-template-columns: 1fr;
   justify-items: center;
