@@ -1158,11 +1158,11 @@ if (!$pageError && !$combineError && $mode === "results") {
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
-            <p class="help">Relativ: Nicht absolvierte Disziplinen zählen als 0 in den Kategorien. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+            <p class="help">Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.</p>
           <?php elseif ($overallMode === "avg"): ?>
-            <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die der Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+            <p class="help">Ø Kategorien: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
           <?php else: ?>
-            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max, fehlende Werte zählen als 0. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt.</p>
+            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt.</p>
           <?php endif; ?>
           <?php if (empty($filteredPlayers)): ?>
             <p class="help">Keine Spieler für den gewählten Filter.</p>
