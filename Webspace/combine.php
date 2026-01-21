@@ -91,6 +91,44 @@ function uc_slug($value): string {
   return $value === "" ? "value" : $value;
 }
 
+function uc_gd_color($image, int $r, int $g, int $b) {
+  return imagecolorallocate($image, $r, $g, $b);
+}
+
+function uc_gd_text($image, int $x, int $y, string $text, $color, int $size = 12, string $align = "left") {
+  $fontPath = __DIR__ . "/assets/SpaceGrotesk-Regular.ttf";
+  if (file_exists($fontPath)) {
+    $bbox = imagettfbbox($size, 0, $fontPath, $text);
+    $textWidth = $bbox[2] - $bbox[0];
+    if ($align === "center") {
+      $x -= (int)round($textWidth / 2);
+    } elseif ($align === "right") {
+      $x -= $textWidth;
+    }
+    imagettftext($image, $size, 0, $x, $y + $size, $color, $fontPath, $text);
+    return;
+  }
+  $font = 3;
+  if ($size >= 16) {
+    $font = 5;
+  } elseif ($size >= 14) {
+    $font = 4;
+  }
+  $textWidth = imagefontwidth($font) * strlen($text);
+  $textHeight = imagefontheight($font);
+  if ($align === "center") {
+    $x -= (int)round($textWidth / 2);
+  } elseif ($align === "right") {
+    $x -= $textWidth;
+  }
+  imagestring($image, $font, $x, $y, $text, $color);
+}
+
+function uc_wrap_text(string $text, int $maxChars): array {
+  $wrapped = wordwrap($text, $maxChars, "\n", true);
+  return explode("\n", $wrapped);
+}
+
 if (!$pdo) {
   $pageError = $dbError ?? "Datenbank ist nicht erreichbar.";
 } else {
@@ -892,16 +930,18 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $overallRanks[$playerId] = $rank;
   }
 
-  $imageWidth = 1080;
-  $padding = 40;
-  $lineHeight = 20;
-  $cardGap = 22;
-  $headerHeight = 96;
-  $cardPadding = 20;
+  $baseWidth = 1080;
+  $scale = 1.33;
+  $imageWidth = (int)round($baseWidth * $scale);
+  $padding = (int)round(40 * $scale);
+  $lineHeight = (int)round(20 * $scale);
+  $cardGap = (int)round(22 * $scale);
+  $headerHeight = (int)round(96 * $scale);
+  $cardPadding = (int)round(20 * $scale);
   $cardWidth = $imageWidth - ($padding * 2);
-  $categoryTitleHeight = 22;
-  $disciplineTitleHeight = 22;
-  $disciplineGap = 14;
+  $categoryTitleHeight = (int)round(22 * $scale);
+  $disciplineTitleHeight = (int)round(22 * $scale);
+  $disciplineGap = (int)round(14 * $scale);
 
   $rowsOverall = max(1, count($filteredPlayers));
   $heightOverall = 48 + ($rowsOverall * $lineHeight) + $cardPadding * 2;
@@ -1026,23 +1066,63 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       "weight" => $categoryWeight,
       "show_weight" => $showCategoryWeight,
       "disciplines" => $discEntries,
+      "discipline_count" => count($discEntries),
       "height" => $blockHeight,
     ];
   }
+  $modeLabel = $overallMode === "abs" ? "Absolut" : ($overallMode === "avg" ? "Ø Relativ" : "Relativ");
+  $modeHelp = $overallMode === "abs"
+    ? "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt."
+    : ($overallMode === "avg"
+      ? "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."
+      : "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.");
+  $modeHelpLines = uc_wrap_text($modeHelp, 80);
+  $headerHeight = (int)round(96 * $scale) + (count($modeHelpLines) * (int)round(14 * $scale));
+
   $height = $padding + $headerHeight + $cardGap + $heightOverall;
   foreach ($categoryBlocks as $block) {
     $height += $cardGap + $block["height"];
   }
   $height += $padding;
 
-  header("Content-Type: image/svg+xml; charset=utf-8");
-  header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".svg\"");
-  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  echo "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" . $imageWidth . "\" height=\"" . $height . "\" viewBox=\"0 0 " . $imageWidth . " " . $height . "\">\n";
-  echo "<rect width=\"100%\" height=\"100%\" fill=\"#f7f4ef\" />\n";
+  $colGap = (int)round(20 * $scale);
+  $colWidth = (int)floor(($cardWidth - $colGap) / 2);
+  $colHeights = [0, 0];
+  $colDisciplineCounts = [0, 0];
+  $totalDisciplines = 0;
+  foreach ($categoryBlocks as $block) {
+    $totalDisciplines += $block["discipline_count"];
+  }
+  $targetLeft = (int)ceil($totalDisciplines / 2);
+  $categoryColumns = [[], []];
+  foreach ($categoryBlocks as $block) {
+    $takeLeft = ($colDisciplineCounts[0] + $block["discipline_count"]) <= $targetLeft;
+    $colIndex = $takeLeft ? 0 : 1;
+    $categoryColumns[$colIndex][] = $block;
+    $colHeights[$colIndex] += $block["height"] + $cardGap;
+    $colDisciplineCounts[$colIndex] += $block["discipline_count"];
+  }
+  $categoriesHeight = max($colHeights[0], $colHeights[1]);
+  $height = $padding + $headerHeight + $cardGap + $heightOverall + $cardGap + $categoriesHeight + $padding;
+
+  $image = imagecreatetruecolor($imageWidth, $height);
+  imageantialias($image, true);
+  $bg = uc_gd_color($image, 247, 244, 239);
+  $white = uc_gd_color($image, 255, 255, 255);
+  $ink = uc_gd_color($image, 31, 26, 20);
+  $muted = uc_gd_color($image, 111, 98, 89);
+  $accent = uc_gd_color($image, 255, 123, 75);
+  $accentDark = uc_gd_color($image, 44, 42, 74);
+  $rankGold = uc_gd_color($image, 212, 175, 55);
+  $rankSilver = uc_gd_color($image, 192, 192, 192);
+  $rankBronze = uc_gd_color($image, 205, 127, 50);
+  $whiteText = uc_gd_color($image, 255, 255, 255);
+
+  imagefilledrectangle($image, 0, 0, $imageWidth, $height, $bg);
+
   $x = $padding;
   $y = $padding;
-  $title = htmlspecialchars($combine["combine_name"] ?? "Combine", ENT_QUOTES | ENT_XML1, "UTF-8");
+  $title = $combine["combine_name"] ?? "Combine";
   $metaParts = [];
   if ($teamName) {
     $metaParts[] = $teamName;
@@ -1053,73 +1133,128 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   if (!empty($combine["combine_location"])) {
     $metaParts[] = $combine["combine_location"];
   }
-  $subtitle = htmlspecialchars(implode(" · ", $metaParts), ENT_QUOTES | ENT_XML1, "UTF-8");
-  $modeLabel = $overallMode === "abs" ? "Absolut" : ($overallMode === "avg" ? "Ø Relativ" : "Relativ");
-  $modeHelp = $overallMode === "abs"
-    ? "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt."
-    : ($overallMode === "avg"
-      ? "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."
-      : "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.");
-  echo "<image href=\"assets/FrisbeeCatch.png\" x=\"" . $x . "\" y=\"" . ($y + 4) . "\" width=\"28\" height=\"28\" />\n";
-  echo "<text x=\"" . ($x + 38) . "\" y=\"" . ($y + 24) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"16\" fill=\"#1f1a14\">Ultimate Combine</text>\n";
-  echo "<text x=\"" . $x . "\" y=\"" . ($y + 58) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"26\" fill=\"#1f1a14\">" . $title . "</text>\n";
-  echo "<text x=\"" . $x . "\" y=\"" . ($y + 82) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#6f6259\">" . $subtitle . "</text>\n";
-  echo "<text x=\"" . $x . "\" y=\"" . ($y + 102) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"12\" fill=\"#6f6259\">" . htmlspecialchars($modeHelp, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-  echo "<text x=\"" . $imageWidth - $padding . "\" y=\"" . ($y + 24) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#6f6259\" text-anchor=\"end\">" . $modeLabel . "</text>\n";
+  $subtitle = implode(" · ", $metaParts);
+  $brandX = $x;
+  $brandY = $y;
+  $logoPath = __DIR__ . "/assets/FrisbeeCatch.png";
+  if (file_exists($logoPath)) {
+    $logo = @imagecreatefrompng($logoPath);
+    if ($logo) {
+      $logoSize = (int)round(36 * $scale);
+      imagecopyresampled($image, $logo, $brandX, $brandY, 0, 0, $logoSize, $logoSize, imagesx($logo), imagesy($logo));
+      if ($logo instanceof GdImage || is_resource($logo)) {
+        imagedestroy($logo);
+      } else {
+        unset($logo);
+      }
+      $brandX += $logoSize + (int)round(10 * $scale);
+    }
+  }
+  uc_gd_text($image, $brandX, $brandY + (int)round(4 * $scale), "Ultimate-Combine.de", $accentDark, (int)round(16 * $scale), "left");
+  uc_gd_text($image, $x, $y + (int)round(36 * $scale), $title, $ink, (int)round(26 * $scale), "left");
+  uc_gd_text($image, $x, $y + (int)round(66 * $scale), $subtitle, $muted, (int)round(13 * $scale), "left");
+  $helpY = $y + (int)round(88 * $scale);
+  foreach ($modeHelpLines as $line) {
+    uc_gd_text($image, $x, $helpY, $line, $muted, (int)round(11 * $scale), "left");
+    $helpY += (int)round(14 * $scale);
+  }
+  uc_gd_text($image, $imageWidth - $padding, $y, $modeLabel, $accentDark, (int)round(13 * $scale), "right");
+
   $y += $headerHeight + $cardGap;
 
   $cardY = $y;
-  echo "<rect x=\"" . $x . "\" y=\"" . $cardY . "\" width=\"" . $cardWidth . "\" height=\"" . $heightOverall . "\" rx=\"18\" fill=\"#ffffff\" />\n";
-  echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($cardY + $cardPadding + 20) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"18\" fill=\"#1f1a14\">Overall</text>\n";
-  $rowY = $cardY + $cardPadding + 44;
+  imagefilledrectangle($image, $x, $cardY, $x + $cardWidth, $cardY + $heightOverall, $white);
+  uc_gd_text($image, $x + $cardPadding, $cardY + $cardPadding, "Overall", $accentDark, (int)round(16 * $scale), "left");
+  $rowY = $cardY + $cardPadding + (int)round(26 * $scale);
   foreach ($overallRankValues as $playerId => $score) {
     foreach ($filteredPlayers as $player) {
       if ((int)$player["id"] === (int)$playerId) {
         $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
         $rankLabel = $overallRanks[$playerId] ?? "-";
         $scoreLabel = uc_format_points($score) . " P";
-        echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#1f1a14\">" . htmlspecialchars($rankLabel . ". " . $playerName, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-        echo "<text x=\"" . ($x + $cardWidth - $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#1f1a14\" text-anchor=\"end\">" . htmlspecialchars($scoreLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+        $textX = $x + $cardPadding;
+        if (in_array((int)$rankLabel, [1, 2, 3], true)) {
+          $rankColor = $rankGold;
+          if ((int)$rankLabel === 2) {
+            $rankColor = $rankSilver;
+          } elseif ((int)$rankLabel === 3) {
+            $rankColor = $rankBronze;
+          }
+          $circleX = $textX + (int)round(8 * $scale);
+          $circleY = $rowY + (int)round(6 * $scale);
+          $circleSize = (int)round(18 * $scale);
+          imagefilledellipse($image, $circleX, $circleY, $circleSize, $circleSize, $rankColor);
+          uc_gd_text($image, $circleX, $circleY - (int)round(6 * $scale), (string)$rankLabel, $whiteText, (int)round(11 * $scale), "center");
+          $textX += (int)round(22 * $scale);
+          uc_gd_text($image, $textX, $rowY, $playerName, $ink, (int)round(12 * $scale), "left");
+        } else {
+          uc_gd_text($image, $textX, $rowY, $rankLabel . ". " . $playerName, $ink, (int)round(12 * $scale), "left");
+        }
+        uc_gd_text($image, $x + $cardWidth - $cardPadding, $rowY, $scoreLabel, $ink, (int)round(12 * $scale), "right");
         $rowY += $lineHeight;
         break;
       }
     }
   }
-  $y = $cardY + $heightOverall + $cardGap;
 
-  foreach ($categoryBlocks as $block) {
-    $categoryLabel = $block["category"];
-    if ($block["show_weight"]) {
-      $categoryLabel .= " (" . uc_display_value($block["weight"], "") . "x)";
-    }
-    echo "<rect x=\"" . $x . "\" y=\"" . $y . "\" width=\"" . $cardWidth . "\" height=\"" . $block["height"] . "\" rx=\"18\" fill=\"#ffffff\" />\n";
-    echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($y + $cardPadding + 16) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"12\" fill=\"#6f6259\" text-transform=\"uppercase\">" . htmlspecialchars($categoryLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-    $cursorY = $y + $cardPadding + 36;
-    foreach ($block["disciplines"] as $disc) {
-      $discLabel = $disc["label"];
-      if ($disc["show_weight"]) {
-        $discLabel .= " (" . uc_display_value($disc["weight"], "") . "x)";
+  $y = $cardY + $heightOverall + $cardGap;
+  for ($col = 0; $col < 2; $col++) {
+    $colX = $x + ($col === 0 ? 0 : $colWidth + $colGap);
+    $colY = $y;
+    foreach ($categoryColumns[$col] as $block) {
+      $categoryLabel = $block["category"];
+      if ($block["show_weight"]) {
+        $categoryLabel .= " (" . uc_display_value($block["weight"], "") . "x)";
       }
-      echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($cursorY + 14) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"16\" fill=\"#1f1a14\">" . htmlspecialchars($discLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-      $rowY = $cursorY + 34;
-      foreach ($disc["rows"] as $row) {
-        $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
-        $playerName = $row["name"];
-        $display = uc_display_value($row["value"], "-");
-        if ($display !== "-" && $disc["unit"] !== "") {
-          $display .= " " . $disc["unit"];
+      imagefilledrectangle($image, $colX, $colY, $colX + $colWidth, $colY + $block["height"], $white);
+      uc_gd_text($image, $colX + $cardPadding, $colY + $cardPadding, strtoupper($categoryLabel), $accentDark, (int)round(11 * $scale), "left");
+      $cursorY = $colY + $cardPadding + (int)round(18 * $scale);
+      foreach ($block["disciplines"] as $disc) {
+        $discLabel = $disc["label"];
+        if ($disc["show_weight"]) {
+          $discLabel .= " (" . uc_display_value($disc["weight"], "") . "x)";
         }
-        $pointsLabel = uc_format_points($row["points"]) . " P";
-        echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"13\" fill=\"#1f1a14\">" . htmlspecialchars($rankLabel . ". " . $playerName, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-        echo "<text x=\"" . ($x + $cardWidth - $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"13\" fill=\"#1f1a14\" text-anchor=\"end\">" . htmlspecialchars($display . " · " . $pointsLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
-        $rowY += $lineHeight;
+        uc_gd_text($image, $colX + $cardPadding, $cursorY, $discLabel, $accentDark, (int)round(13 * $scale), "left");
+        $rowY = $cursorY + (int)round(18 * $scale);
+        foreach ($disc["rows"] as $row) {
+          $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
+          $playerName = $row["name"];
+          $display = uc_display_value($row["value"], "-");
+          if ($display !== "-" && $disc["unit"] !== "") {
+            $display .= " " . $disc["unit"];
+          }
+          $pointsLabel = uc_format_points($row["points"]) . " P";
+          $textX = $colX + $cardPadding;
+          if (in_array((int)$rankLabel, [1, 2, 3], true)) {
+            $rankColor = $rankGold;
+            if ((int)$rankLabel === 2) {
+              $rankColor = $rankSilver;
+            } elseif ((int)$rankLabel === 3) {
+              $rankColor = $rankBronze;
+            }
+            $circleX = $textX + (int)round(8 * $scale);
+            $circleY = $rowY + (int)round(6 * $scale);
+            $circleSize = (int)round(18 * $scale);
+            imagefilledellipse($image, $circleX, $circleY, $circleSize, $circleSize, $rankColor);
+            uc_gd_text($image, $circleX, $circleY - (int)round(6 * $scale), (string)$rankLabel, $whiteText, (int)round(10 * $scale), "center");
+            $textX += (int)round(22 * $scale);
+            uc_gd_text($image, $textX, $rowY, $playerName, $ink, (int)round(11 * $scale), "left");
+          } else {
+            uc_gd_text($image, $textX, $rowY, $rankLabel . ". " . $playerName, $ink, (int)round(11 * $scale), "left");
+          }
+          uc_gd_text($image, $colX + $colWidth - $cardPadding, $rowY, $display . " · " . $pointsLabel, $ink, (int)round(11 * $scale), "right");
+          $rowY += $lineHeight;
+        }
+        $cursorY = $rowY + $disciplineGap;
       }
-      $cursorY = $rowY + $disciplineGap;
+      $colY += $block["height"] + $cardGap;
     }
-    $y += $block["height"] + $cardGap;
   }
 
-  echo "</svg>";
+  header("Content-Type: image/png");
+  header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".png\"");
+  imagepng($image);
+  imagedestroy($image);
   exit;
 }
 ?>
