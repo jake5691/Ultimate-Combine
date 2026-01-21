@@ -232,7 +232,7 @@ body {
   gap: 32px;
   padding: 20px;
   max-width: 1000px;
-  margin: 0 auto 80px;
+  margin: 0 auto 0px;
   width: 100%;
 }
 
@@ -245,7 +245,7 @@ body {
   gap: 32px;
   padding: 20px;
   max-width: 1100px;
-  margin: 0 auto 80px;
+  margin: 0 auto 0px;
   width: 100%;
 }
 
@@ -992,4 +992,19 @@ body {
   padding: 4px 10px;
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.site-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 20px 28px;
+}
+
+.site-footer .bmc-btn {
+  transform: scale(0.5);
+  transform-origin: right center;
+  display: inline-flex;
 }
