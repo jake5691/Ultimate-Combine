@@ -3577,6 +3577,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       </section>
     <?php endif; ?>
   </main>
+  <footer class="site-footer">
+    <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
+  </footer>
   <script>
     const disciplineSelect = document.querySelector("[data-discipline-select]");
     if (disciplineSelect) {
