@@ -124,6 +124,8 @@ function uc_ensure_schema(PDO $pdo): void {
       rating_direction VARCHAR(12) NOT NULL,
       expected_min DECIMAL(8,2) NULL,
       expected_max DECIMAL(8,2) NULL,
+      bonus_relative DECIMAL(8,2) NULL,
+      bonus_absolute DECIMAL(8,2) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_disciplines_team
         FOREIGN KEY (team_id) REFERENCES teams(id)
@@ -160,6 +162,24 @@ function uc_ensure_schema(PDO $pdo): void {
   if (!in_array("expected_max", $disciplineColumnNames, true)) {
     try {
       $pdo->exec("ALTER TABLE disciplines ADD COLUMN expected_max DECIMAL(8,2) NULL AFTER expected_min");
+    } catch (PDOException $e) {
+      if (($e->errorInfo[1] ?? null) !== 1060) {
+        throw $e;
+      }
+    }
+  }
+  if (!in_array("bonus_relative", $disciplineColumnNames, true)) {
+    try {
+      $pdo->exec("ALTER TABLE disciplines ADD COLUMN bonus_relative DECIMAL(8,2) NULL AFTER expected_max");
+    } catch (PDOException $e) {
+      if (($e->errorInfo[1] ?? null) !== 1060) {
+        throw $e;
+      }
+    }
+  }
+  if (!in_array("bonus_absolute", $disciplineColumnNames, true)) {
+    try {
+      $pdo->exec("ALTER TABLE disciplines ADD COLUMN bonus_absolute DECIMAL(8,2) NULL AFTER bonus_relative");
     } catch (PDOException $e) {
       if (($e->errorInfo[1] ?? null) !== 1060) {
         throw $e;
