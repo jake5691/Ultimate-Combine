@@ -890,11 +890,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     }
     $headers[] = $label;
   }
+  $filteredPlayers = array_values(array_filter($assignedPlayers, function ($player) use ($filterGender, $filterPosition) {
+    if ($filterGender !== "" && ($player["gender"] ?? "") !== $filterGender) {
+      return false;
+    }
+    if ($filterPosition === "handler" && empty($player["position_handler"])) {
+      return false;
+    }
+    if ($filterPosition === "cutter" && empty($player["position_cutter"])) {
+      return false;
+    }
+    return true;
+  }));
   if ($shareFormat === "csv") {
     header("Content-Type: text/csv; charset=utf-8");
     header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".csv\"");
     echo implode(",", array_map("uc_csv_escape", $headers)) . "\r\n";
-    foreach ($assignedPlayers as $player) {
+    foreach ($filteredPlayers as $player) {
       $playerId = (int)$player["id"];
       $row = [
         trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
