@@ -1039,7 +1039,7 @@ if (!$pageError) {
             <label class="field">
               <span>Geschlecht</span>
               <select name="gender" required>
-                <option value="">Bitte waehlen</option>
+                <option value="">Bitte wählen</option>
                 <?php foreach ($validGenders as $key => $label): ?>
                   <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $editRecord["gender"] === $key ? " selected" : ""; ?>>
                     <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
@@ -1119,7 +1119,7 @@ if (!$pageError) {
             <label class="field">
               <span>Bewertung</span>
               <select name="rating_direction" required>
-                <option value="">Bitte waehlen</option>
+                <option value="">Bitte wählen</option>
                 <?php foreach ($validDirections as $key => $label): ?>
                   <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $editRecord["rating_direction"] === $key ? " selected" : ""; ?>>
                     <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
