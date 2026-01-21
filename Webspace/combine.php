@@ -930,8 +930,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $overallRanks[$playerId] = $rank;
   }
 
-  $baseWidth = 1080;
-  $scale = 1.33;
+  $baseWidth = 720;
+  $scale = 2;
   $imageWidth = (int)round($baseWidth * $scale);
   $padding = (int)round(40 * $scale);
   $lineHeight = (int)round(20 * $scale);
@@ -1077,7 +1077,20 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       ? "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."
       : "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.");
   $modeHelpLines = uc_wrap_text($modeHelp, 80);
-  $headerHeight = (int)round(96 * $scale) + (count($modeHelpLines) * (int)round(14 * $scale));
+  $headerExtraLines = count($modeHelpLines);
+  $filterLinesCount = 0;
+  if ($filterGender !== "" || $filterPosition !== "") {
+    $filterParts = [];
+    if ($filterGender !== "") {
+      $filterParts[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+    }
+    if ($filterPosition !== "") {
+      $filterParts[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+    }
+    $filterLabel = "Filter: " . implode(" · ", $filterParts);
+    $filterLinesCount = count(uc_wrap_text($filterLabel, 80));
+  }
+  $headerHeight = (int)round(96 * $scale) + (($headerExtraLines + $filterLinesCount) * (int)round(14 * $scale));
 
   $height = $padding + $headerHeight + $cardGap + $heightOverall;
   foreach ($categoryBlocks as $block) {
@@ -1134,6 +1147,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $metaParts[] = $combine["combine_location"];
   }
   $subtitle = implode(" · ", $metaParts);
+  $filterParts = [];
+  if ($filterGender !== "") {
+    $filterParts[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+  }
+  if ($filterPosition !== "") {
+    $filterParts[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+  }
+  $filterLabel = "";
+  if (!empty($filterParts)) {
+    $filterLabel = "Filter: " . implode(" · ", $filterParts);
+  }
   $brandX = $x;
   $brandY = $y;
   $logoPath = __DIR__ . "/assets/FrisbeeCatch.png";
@@ -1157,6 +1181,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   foreach ($modeHelpLines as $line) {
     uc_gd_text($image, $x, $helpY, $line, $muted, (int)round(11 * $scale), "left");
     $helpY += (int)round(14 * $scale);
+  }
+  if ($filterLabel !== "") {
+    $filterLines = uc_wrap_text($filterLabel, 80);
+    foreach ($filterLines as $line) {
+      uc_gd_text($image, $x, $helpY, $line, $muted, (int)round(11 * $scale), "left");
+      $helpY += (int)round(14 * $scale);
+    }
   }
   uc_gd_text($image, $imageWidth - $padding, $y, $modeLabel, $accentDark, (int)round(13 * $scale), "right");
 
@@ -1726,7 +1757,43 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $overallAvgUrl = $overallBaseUrl . "&overall=avg";
           $overallAbsUrl = $overallBaseUrl . "&overall=abs";
         ?>
-        <div class="info-card">
+        <div class="section-header">
+          <div class="card-actions">
+            <button class="pill-button is-muted" type="button" data-target="results-filters" aria-expanded="false">Filter</button>
+            <button class="pill-button is-share" type="button" data-target="share-combine" aria-expanded="false">Teilen</button>
+          </div>
+        </div>
+        <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
+          <?php
+            $activeFilters = [];
+            if ($filterGender !== "") {
+              $activeFilters[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+            }
+            if ($filterPosition !== "") {
+              $activeFilters[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+            }
+          ?>
+          <p class="help">Filter aktiv: <?php echo htmlspecialchars(implode(" · ", $activeFilters), ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+        <?php
+          $shareBaseParams = [
+            "id" => (int)$combineId,
+            "mode" => "results",
+            "overall" => $overallMode,
+          ];
+          if ($filterGender !== "") {
+            $shareBaseParams["gender"] = $filterGender;
+          }
+          if ($filterPosition !== "") {
+            $shareBaseParams["position"] = $filterPosition;
+          }
+          $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
+        ?>
+        <div class="share-panel is-hidden" id="share-combine">
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
+        </div>
+        <div class="info-card is-hidden" id="results-filters">
           <h3>Filter</h3>
           <form class="form" method="get" action="combine.php">
             <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
@@ -1754,7 +1821,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <div class="form-actions">
               <button class="primary-button" type="submit">Filter anwenden</button>
               <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
-                <a class="pill-button is-muted" href="<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>">Zurücksetzen</a>
+                <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>'">Zurücksetzen</button>
               <?php endif; ?>
             </div>
           </form>
@@ -1766,31 +1833,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
               <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
               <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
-              <?php if (!$editMode): ?>
-                <button class="pill-button is-share js-toggle" type="button" data-target="share-combine" aria-expanded="false" aria-controls="share-combine">Teilen</button>
-              <?php endif; ?>
             </div>
           </div>
-          <?php if (!$editMode): ?>
-            <?php
-              $shareBaseParams = [
-                "id" => (int)$combineId,
-                "mode" => "results",
-                "overall" => $overallMode,
-              ];
-              if ($filterGender !== "") {
-                $shareBaseParams["gender"] = $filterGender;
-              }
-              if ($filterPosition !== "") {
-                $shareBaseParams["position"] = $filterPosition;
-              }
-              $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
-            ?>
-            <div class="share-panel is-hidden" id="share-combine">
-              <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
-              <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
-            </div>
-          <?php endif; ?>
           <?php if ($overallMode === "sum"): ?>
             <p class="help">Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.</p>
           <?php elseif ($overallMode === "avg"): ?>
@@ -3046,14 +3090,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       syncH2hOptions();
     }
 
-    const shareToggle = document.querySelector("[data-target=\"share-combine\"]");
-    if (shareToggle) {
-      const sharePanel = document.getElementById("share-combine");
-      shareToggle.addEventListener("click", () => {
-        if (!sharePanel) return;
-        const isHidden = sharePanel.classList.toggle("is-hidden");
-        shareToggle.setAttribute("aria-expanded", String(!isHidden));
+    const toggleButtons = document.querySelectorAll("[data-target]");
+    toggleButtons.forEach((button) => {
+      const targetId = button.getAttribute("data-target");
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (!target) return;
+      button.addEventListener("click", () => {
+        const isHidden = target.classList.toggle("is-hidden");
+        button.setAttribute("aria-expanded", String(!isHidden));
       });
-    }
+    });
   </script></body>
 </html>
