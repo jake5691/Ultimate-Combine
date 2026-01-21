@@ -215,6 +215,18 @@ body {
   color: #000000;
 }
 
+.pill-button.is-share {
+  background: var(--bg-strong);
+  color: var(--ink);
+}
+
+.share-panel {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
 .auth {
   display: grid;
   gap: 32px;

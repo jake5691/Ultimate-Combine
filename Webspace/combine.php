@@ -75,6 +75,22 @@ function uc_format_unit($unit, array $unitMap): string {
   return $unit;
 }
 
+function uc_csv_escape($value): string {
+  $value = (string)$value;
+  if (strpbrk($value, "\",\r\n") !== false) {
+    $value = str_replace("\"", "\"\"", $value);
+    return "\"" . $value . "\"";
+  }
+  return $value;
+}
+
+function uc_slug($value): string {
+  $value = strtolower((string)$value);
+  $value = preg_replace('/[^a-z0-9]+/', '-', $value);
+  $value = trim($value ?? "", "-");
+  return $value === "" ? "value" : $value;
+}
+
 if (!$pdo) {
   $pageError = $dbError ?? "Datenbank ist nicht erreichbar.";
 } else {
@@ -104,6 +120,13 @@ $editMode = isset($_GET["edit"]);
 $mode = $_GET["mode"] ?? "view";
 if (!in_array($mode, ["view", "start", "results", "h2h"], true)) {
   $mode = "view";
+}
+$shareFormat = $_GET["share"] ?? "";
+if (!in_array($shareFormat, ["csv", "img"], true)) {
+  $shareFormat = "";
+}
+if ($shareFormat !== "") {
+  $mode = "results";
 }
 if ($editMode) {
   $mode = "view";
@@ -674,6 +697,83 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
     $combineError = "Ergebnisse konnten nicht geladen werden.";
   }
 }
+
+if ($shareFormat !== "" && !$pageError && !$combineError) {
+  $shareTeam = uc_slug($teamName);
+  $shareCombine = uc_slug($combine["combine_name"] ?? "combine");
+  $shareDate = uc_slug($combine["event_date"] ?? "");
+  $shareFileBase = $shareTeam . "-" . $shareCombine;
+  if ($shareDate !== "value") {
+    $shareFileBase .= "-" . $shareDate;
+  }
+  $disciplinesForExport = $assignedDisciplines;
+  $headers = ["Spieler"];
+  foreach ($disciplinesForExport as $discipline) {
+    $label = $discipline["discipline_name"] ?? "Disziplin";
+    $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+    if ($unitLabel !== "") {
+      $label .= " (" . $unitLabel . ")";
+    }
+    $headers[] = $label;
+  }
+  if ($shareFormat === "csv") {
+    header("Content-Type: text/csv; charset=utf-8");
+    header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".csv\"");
+    echo implode(",", array_map("uc_csv_escape", $headers)) . "\r\n";
+    foreach ($assignedPlayers as $player) {
+      $playerId = (int)$player["id"];
+      $row = [
+        trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
+      ];
+      foreach ($disciplinesForExport as $discipline) {
+        $discId = (int)$discipline["id"];
+        $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+        $row[] = uc_display_value($value, "-");
+      }
+      echo implode(",", array_map("uc_csv_escape", $row)) . "\r\n";
+    }
+    exit;
+  }
+
+  $lines = [];
+  $combineLabel = $combine["combine_name"] ?? "Combine";
+  $eventDate = $combine["event_date"] ?? "";
+  $lines[] = $combineLabel . ($eventDate ? " (" . $eventDate . ")" : "");
+  foreach ($assignedPlayers as $player) {
+    $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+    $lines[] = $playerName;
+    foreach ($disciplinesForExport as $discipline) {
+      $discId = (int)$discipline["id"];
+      $label = $discipline["discipline_name"] ?? "Disziplin";
+      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $value = $resultsByDiscipline[$discId][$player["id"]] ?? null;
+      $display = uc_display_value($value, "-");
+      if ($display !== "-" && $unitLabel !== "") {
+        $display .= " " . $unitLabel;
+      }
+      $lines[] = " - " . $label . ": " . $display;
+    }
+  }
+
+  $lineHeight = 22;
+  $padding = 24;
+  $height = max(200, $padding * 2 + count($lines) * $lineHeight);
+  $width = 900;
+  header("Content-Type: image/svg+xml; charset=utf-8");
+  header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".svg\"");
+  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  echo "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" . $width . "\" height=\"" . $height . "\" viewBox=\"0 0 " . $width . " " . $height . "\">\n";
+  echo "<rect width=\"100%\" height=\"100%\" fill=\"#ffffff\" />\n";
+  echo "<text x=\"" . $padding . "\" y=\"" . ($padding + 4) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"18\" fill=\"#1f1a14\">\n";
+  $y = $padding;
+  foreach ($lines as $index => $line) {
+    $text = htmlspecialchars($line, ENT_QUOTES | ENT_XML1, "UTF-8");
+    $lineY = $y + ($index + 1) * $lineHeight;
+    echo "<tspan x=\"" . $padding . "\" y=\"" . $lineY . "\">" . $text . "</tspan>\n";
+  }
+  echo "</text>\n</svg>";
+  exit;
+}
 ?>
 <!doctype html>
 <html lang="de">
@@ -717,7 +817,10 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
         <div class="card-header">
           <h1><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></h1>
           <?php if (!$editMode): ?>
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
+            <div class="card-actions">
+              <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
+              <button class="pill-button is-share js-toggle" type="button" data-target="share-combine" aria-expanded="false" aria-controls="share-combine">Teilen</button>
+            </div>
           <?php endif; ?>
         </div>
         <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
@@ -726,6 +829,20 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
         <?php endif; ?>
         <?php if (!empty($combine["combine_notes"])): ?>
           <p class="help"><?php echo htmlspecialchars($combine["combine_notes"], ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+        <?php if (!$editMode): ?>
+          <?php
+            $shareBaseParams = [
+              "id" => (int)$combineId,
+              "mode" => "results",
+              "overall" => $overallMode,
+            ];
+            $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
+          ?>
+          <div class="share-panel is-hidden" id="share-combine">
+            <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
+            <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
+          </div>
         <?php endif; ?>
         <?php if (!$editMode): ?>
           <div class="action-row">
@@ -2438,6 +2555,16 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
       h2hPlayerA.addEventListener("change", syncH2hOptions);
       h2hPlayerB.addEventListener("change", syncH2hOptions);
       syncH2hOptions();
+    }
+
+    const shareToggle = document.querySelector("[data-target=\"share-combine\"]");
+    if (shareToggle) {
+      const sharePanel = document.getElementById("share-combine");
+      shareToggle.addEventListener("click", () => {
+        if (!sharePanel) return;
+        const isHidden = sharePanel.classList.toggle("is-hidden");
+        shareToggle.setAttribute("aria-expanded", String(!isHidden));
+      });
     }
   </script></body>
 </html>
