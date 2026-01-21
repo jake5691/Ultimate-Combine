@@ -85,8 +85,8 @@ function uc_csv_escape($value): string {
 }
 
 function uc_slug($value): string {
-  $value = strtolower((string)$value);
-  $value = preg_replace('/[^a-z0-9]+/', '-', $value);
+  $value = (string)$value;
+  $value = preg_replace('/[^A-Za-z0-9]+/', '-', $value);
   $value = trim($value ?? "", "-");
   return $value === "" ? "value" : $value;
 }
@@ -735,43 +735,391 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     exit;
   }
 
-  $lines = [];
-  $combineLabel = $combine["combine_name"] ?? "Combine";
-  $eventDate = $combine["event_date"] ?? "";
-  $lines[] = $combineLabel . ($eventDate ? " (" . $eventDate . ")" : "");
-  foreach ($assignedPlayers as $player) {
-    $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
-    $lines[] = $playerName;
-    foreach ($disciplinesForExport as $discipline) {
-      $discId = (int)$discipline["id"];
-      $label = $discipline["discipline_name"] ?? "Disziplin";
-      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
-      $value = $resultsByDiscipline[$discId][$player["id"]] ?? null;
-      $display = uc_display_value($value, "-");
-      if ($display !== "-" && $unitLabel !== "") {
-        $display .= " " . $unitLabel;
-      }
-      $lines[] = " - " . $label . ": " . $display;
+  $filteredPlayers = array_values(array_filter($assignedPlayers, function ($player) use ($filterGender, $filterPosition) {
+    if ($filterGender !== "" && ($player["gender"] ?? "") !== $filterGender) {
+      return false;
     }
+    if ($filterPosition === "handler" && empty($player["position_handler"])) {
+      return false;
+    }
+    if ($filterPosition === "cutter" && empty($player["position_cutter"])) {
+      return false;
+    }
+    return true;
+  }));
+
+  $overallScoresSum = [];
+  $overallScoresAvg = [];
+  $overallScoresAbs = [];
+  $overallCategoryCounts = [];
+  foreach ($filteredPlayers as $player) {
+    $playerId = (int)$player["id"];
+    $overallScoresSum[$playerId] = 0;
+    $overallScoresAvg[$playerId] = 0;
+    $overallScoresAbs[$playerId] = 0;
+    $overallCategoryCounts[$playerId] = 0;
   }
 
-  $lineHeight = 22;
-  $padding = 24;
-  $height = max(200, $padding * 2 + count($lines) * $lineHeight);
-  $width = 900;
+  foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+    $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+    if ($categoryWeight <= 0) {
+      $categoryWeight = 1.0;
+    }
+    $categoryTotals = [];
+    $categoryTotalsAbs = [];
+    $categoryTotalsAvg = [];
+    $categoryWeightSumAll = 0.0;
+    $categoryWeightSumAllAbs = 0.0;
+    $categoryWeightSumsAvg = [];
+    foreach ($filteredPlayers as $player) {
+      $playerId = (int)$player["id"];
+      $categoryTotals[$playerId] = 0;
+      $categoryTotalsAbs[$playerId] = 0;
+      $categoryTotalsAvg[$playerId] = 0;
+      $categoryWeightSumsAvg[$playerId] = 0.0;
+    }
+    foreach ($categoryDisciplines as $discipline) {
+      $discId = (int)$discipline["id"];
+      $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+      if ($disciplineWeight <= 0) {
+        $disciplineWeight = 1.0;
+      }
+      $direction = $discipline["rating_direction"] ?? "more";
+      if ($direction !== "less" && $direction !== "more") {
+        $direction = "more";
+      }
+      $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+      $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+      $hasAbsolute = $expectedMinValue !== null && $expectedMaxValue !== null;
+      if ($overallMode === "abs" && !$hasAbsolute) {
+        continue;
+      }
+      $rankValues = [];
+      foreach ($filteredPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+        $numeric = uc_value_to_float($value);
+        if ($numeric === null) {
+          continue;
+        }
+        $rankValues[$playerId] = $numeric;
+      }
+      $bestValue = null;
+      $worstValue = null;
+      if (!empty($rankValues)) {
+        $categoryWeightSumAll += $disciplineWeight;
+        $values = array_values($rankValues);
+        if ($direction === "less") {
+          $bestValue = min($values);
+          $worstValue = max($values);
+        } else {
+          $bestValue = max($values);
+          $worstValue = min($values);
+        }
+      }
+      if ($hasAbsolute) {
+        $categoryWeightSumAllAbs += $disciplineWeight;
+      }
+      foreach ($filteredPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $numericValue = $rankValues[$playerId] ?? null;
+        if ($numericValue === null || $bestValue === null || $worstValue === null) {
+          $points = 0;
+        } elseif ($bestValue == $worstValue) {
+          $points = 2;
+        } else {
+          $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+          $points = 1 + $ratio;
+        }
+        $categoryTotals[$playerId] += $points * $disciplineWeight;
+        if ($hasAbsolute) {
+          $absolutePoints = uc_absolute_points($numericValue, $expectedMinValue, $expectedMaxValue, $direction);
+          if ($absolutePoints === null) {
+            $absolutePoints = 0;
+          }
+          $categoryTotalsAbs[$playerId] += $absolutePoints * $disciplineWeight;
+        }
+        if ($numericValue !== null && $bestValue !== null && $worstValue !== null) {
+          $categoryTotalsAvg[$playerId] += $points * $disciplineWeight;
+          $categoryWeightSumsAvg[$playerId] += $disciplineWeight;
+        }
+      }
+    }
+    if ($categoryWeightSumAll <= 0) {
+      continue;
+    }
+    foreach ($filteredPlayers as $player) {
+      $playerId = (int)$player["id"];
+      $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
+      $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
+      if ($categoryWeightSumAllAbs > 0) {
+        $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
+        $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
+      }
+      $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
+      if ($avgWeightSum > 0) {
+        $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
+        $overallScoresAvg[$playerId] += $categoryAverageAvg;
+        $overallCategoryCounts[$playerId] += 1;
+      }
+    }
+  }
+  foreach ($overallScoresAvg as $playerId => $score) {
+    $count = $overallCategoryCounts[$playerId] ?? 0;
+    if ($count > 0) {
+      $overallScoresAvg[$playerId] = $score / $count;
+    }
+  }
+  if ($overallMode === "avg") {
+    $overallScores = $overallScoresAvg;
+  } elseif ($overallMode === "abs") {
+    $overallScores = $overallScoresAbs;
+  } else {
+    $overallScores = $overallScoresSum;
+  }
+  $overallRankValues = $overallScores;
+  arsort($overallRankValues, SORT_NUMERIC);
+  $overallRanks = [];
+  $pos = 0;
+  $rank = 0;
+  $prev = null;
+  foreach ($overallRankValues as $playerId => $val) {
+    $pos++;
+    if ($prev === null || $val != $prev) {
+      $rank = $pos;
+      $prev = $val;
+    }
+    $overallRanks[$playerId] = $rank;
+  }
+
+  $imageWidth = 1080;
+  $padding = 40;
+  $lineHeight = 20;
+  $cardGap = 22;
+  $headerHeight = 96;
+  $cardPadding = 20;
+  $cardWidth = $imageWidth - ($padding * 2);
+  $categoryTitleHeight = 22;
+  $disciplineTitleHeight = 22;
+  $disciplineGap = 14;
+
+  $rowsOverall = max(1, count($filteredPlayers));
+  $heightOverall = 48 + ($rowsOverall * $lineHeight) + $cardPadding * 2;
+
+  $categoryBlocks = [];
+  foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+    $displayDisciplines = $categoryDisciplines;
+    if ($overallMode === "abs") {
+      $displayDisciplines = array_values(array_filter($categoryDisciplines, function ($discipline) {
+        $minValue = uc_value_to_float($discipline["expected_min"] ?? null);
+        $maxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+        return $minValue !== null && $maxValue !== null;
+      }));
+    }
+    if (empty($displayDisciplines)) {
+      continue;
+    }
+    $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+    if ($categoryWeight <= 0) {
+      $categoryWeight = 1.0;
+    }
+    $showCategoryWeight = (float)$categoryWeight !== 1.0;
+    $discEntries = [];
+    $blockHeight = $cardPadding * 2 + $categoryTitleHeight;
+    foreach ($displayDisciplines as $discipline) {
+      $discId = (int)$discipline["id"];
+      $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+      if ($disciplineWeight <= 0) {
+        $disciplineWeight = 1.0;
+      }
+      $showDisciplineWeight = (float)$disciplineWeight !== 1.0;
+      $direction = $discipline["rating_direction"] ?? "more";
+      if ($direction !== "less" && $direction !== "more") {
+        $direction = "more";
+      }
+      $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+      $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+      $rankValues = [];
+      foreach ($filteredPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+        $numeric = uc_value_to_float($value);
+        if ($numeric === null) {
+          continue;
+        }
+        $rankValues[$playerId] = $numeric;
+      }
+      $bestValue = null;
+      $worstValue = null;
+      if (!empty($rankValues)) {
+        $values = array_values($rankValues);
+        if ($direction === "less") {
+          $bestValue = min($values);
+          $worstValue = max($values);
+        } else {
+          $bestValue = max($values);
+          $worstValue = min($values);
+        }
+      }
+      $rows = [];
+      foreach ($filteredPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+        $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+        $numericValue = uc_value_to_float($value);
+        if ($overallMode === "abs") {
+          $points = uc_absolute_points($numericValue, $expectedMinValue, $expectedMaxValue, $direction);
+          if ($points === null) {
+            $points = 0;
+          }
+        } elseif ($numericValue === null || $bestValue === null || $worstValue === null) {
+          $points = 0;
+        } elseif ($bestValue == $worstValue) {
+          $points = 2;
+        } else {
+          $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+          $points = 1 + $ratio;
+        }
+        $rows[] = [
+          "player_id" => $playerId,
+          "name" => $playerName,
+          "value" => $value,
+          "points" => $points,
+        ];
+      }
+      usort($rows, function ($a, $b) {
+        if ($a["points"] == $b["points"]) {
+          return strcasecmp($a["name"], $b["name"]);
+        }
+        return $a["points"] < $b["points"] ? 1 : -1;
+      });
+      $ranks = [];
+      $pos = 0;
+      $rank = 0;
+      $prev = null;
+      foreach ($rows as $row) {
+        $pos++;
+        if ($prev === null || $row["points"] != $prev) {
+          $rank = $pos;
+          $prev = $row["points"];
+        }
+        $ranks[$row["player_id"]] = $rank;
+      }
+      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $discLabel = $discipline["discipline_name"] ?? "Disziplin";
+      if ($unitLabel !== "") {
+        $discLabel .= " (" . $unitLabel . ")";
+      }
+      $discHeight = $disciplineTitleHeight + (max(1, count($rows)) * $lineHeight);
+      $blockHeight += $discHeight + $disciplineGap;
+      $discEntries[] = [
+        "label" => $discLabel,
+        "weight" => $disciplineWeight,
+        "show_weight" => $showDisciplineWeight,
+        "rows" => $rows,
+        "ranks" => $ranks,
+        "unit" => $unitLabel,
+      ];
+    }
+    $categoryBlocks[] = [
+      "category" => $category,
+      "weight" => $categoryWeight,
+      "show_weight" => $showCategoryWeight,
+      "disciplines" => $discEntries,
+      "height" => $blockHeight,
+    ];
+  }
+  $height = $padding + $headerHeight + $cardGap + $heightOverall;
+  foreach ($categoryBlocks as $block) {
+    $height += $cardGap + $block["height"];
+  }
+  $height += $padding;
+
   header("Content-Type: image/svg+xml; charset=utf-8");
   header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".svg\"");
   echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  echo "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" . $width . "\" height=\"" . $height . "\" viewBox=\"0 0 " . $width . " " . $height . "\">\n";
-  echo "<rect width=\"100%\" height=\"100%\" fill=\"#ffffff\" />\n";
-  echo "<text x=\"" . $padding . "\" y=\"" . ($padding + 4) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"18\" fill=\"#1f1a14\">\n";
+  echo "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" . $imageWidth . "\" height=\"" . $height . "\" viewBox=\"0 0 " . $imageWidth . " " . $height . "\">\n";
+  echo "<rect width=\"100%\" height=\"100%\" fill=\"#f7f4ef\" />\n";
+  $x = $padding;
   $y = $padding;
-  foreach ($lines as $index => $line) {
-    $text = htmlspecialchars($line, ENT_QUOTES | ENT_XML1, "UTF-8");
-    $lineY = $y + ($index + 1) * $lineHeight;
-    echo "<tspan x=\"" . $padding . "\" y=\"" . $lineY . "\">" . $text . "</tspan>\n";
+  $title = htmlspecialchars($combine["combine_name"] ?? "Combine", ENT_QUOTES | ENT_XML1, "UTF-8");
+  $metaParts = [];
+  if ($teamName) {
+    $metaParts[] = $teamName;
   }
-  echo "</text>\n</svg>";
+  if (!empty($combine["event_date"])) {
+    $metaParts[] = $combine["event_date"];
+  }
+  if (!empty($combine["combine_location"])) {
+    $metaParts[] = $combine["combine_location"];
+  }
+  $subtitle = htmlspecialchars(implode(" · ", $metaParts), ENT_QUOTES | ENT_XML1, "UTF-8");
+  $modeLabel = $overallMode === "abs" ? "Absolut" : ($overallMode === "avg" ? "Ø Relativ" : "Relativ");
+  $modeHelp = $overallMode === "abs"
+    ? "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt."
+    : ($overallMode === "avg"
+      ? "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."
+      : "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.");
+  echo "<image href=\"assets/FrisbeeCatch.png\" x=\"" . $x . "\" y=\"" . ($y + 4) . "\" width=\"28\" height=\"28\" />\n";
+  echo "<text x=\"" . ($x + 38) . "\" y=\"" . ($y + 24) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"16\" fill=\"#1f1a14\">Ultimate Combine</text>\n";
+  echo "<text x=\"" . $x . "\" y=\"" . ($y + 58) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"26\" fill=\"#1f1a14\">" . $title . "</text>\n";
+  echo "<text x=\"" . $x . "\" y=\"" . ($y + 82) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#6f6259\">" . $subtitle . "</text>\n";
+  echo "<text x=\"" . $x . "\" y=\"" . ($y + 102) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"12\" fill=\"#6f6259\">" . htmlspecialchars($modeHelp, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+  echo "<text x=\"" . $imageWidth - $padding . "\" y=\"" . ($y + 24) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#6f6259\" text-anchor=\"end\">" . $modeLabel . "</text>\n";
+  $y += $headerHeight + $cardGap;
+
+  $cardY = $y;
+  echo "<rect x=\"" . $x . "\" y=\"" . $cardY . "\" width=\"" . $cardWidth . "\" height=\"" . $heightOverall . "\" rx=\"18\" fill=\"#ffffff\" />\n";
+  echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($cardY + $cardPadding + 20) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"18\" fill=\"#1f1a14\">Overall</text>\n";
+  $rowY = $cardY + $cardPadding + 44;
+  foreach ($overallRankValues as $playerId => $score) {
+    foreach ($filteredPlayers as $player) {
+      if ((int)$player["id"] === (int)$playerId) {
+        $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+        $rankLabel = $overallRanks[$playerId] ?? "-";
+        $scoreLabel = uc_format_points($score) . " P";
+        echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#1f1a14\">" . htmlspecialchars($rankLabel . ". " . $playerName, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+        echo "<text x=\"" . ($x + $cardWidth - $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"14\" fill=\"#1f1a14\" text-anchor=\"end\">" . htmlspecialchars($scoreLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+        $rowY += $lineHeight;
+        break;
+      }
+    }
+  }
+  $y = $cardY + $heightOverall + $cardGap;
+
+  foreach ($categoryBlocks as $block) {
+    $categoryLabel = $block["category"];
+    if ($block["show_weight"]) {
+      $categoryLabel .= " (" . uc_display_value($block["weight"], "") . "x)";
+    }
+    echo "<rect x=\"" . $x . "\" y=\"" . $y . "\" width=\"" . $cardWidth . "\" height=\"" . $block["height"] . "\" rx=\"18\" fill=\"#ffffff\" />\n";
+    echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($y + $cardPadding + 16) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"12\" fill=\"#6f6259\" text-transform=\"uppercase\">" . htmlspecialchars($categoryLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+    $cursorY = $y + $cardPadding + 36;
+    foreach ($block["disciplines"] as $disc) {
+      $discLabel = $disc["label"];
+      if ($disc["show_weight"]) {
+        $discLabel .= " (" . uc_display_value($disc["weight"], "") . "x)";
+      }
+      echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . ($cursorY + 14) . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"16\" fill=\"#1f1a14\">" . htmlspecialchars($discLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+      $rowY = $cursorY + 34;
+      foreach ($disc["rows"] as $row) {
+        $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
+        $playerName = $row["name"];
+        $display = uc_display_value($row["value"], "-");
+        if ($display !== "-" && $disc["unit"] !== "") {
+          $display .= " " . $disc["unit"];
+        }
+        $pointsLabel = uc_format_points($row["points"]) . " P";
+        echo "<text x=\"" . ($x + $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"13\" fill=\"#1f1a14\">" . htmlspecialchars($rankLabel . ". " . $playerName, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+        echo "<text x=\"" . ($x + $cardWidth - $cardPadding) . "\" y=\"" . $rowY . "\" font-family=\"Space Grotesk, sans-serif\" font-size=\"13\" fill=\"#1f1a14\" text-anchor=\"end\">" . htmlspecialchars($display . " · " . $pointsLabel, ENT_QUOTES | ENT_XML1, "UTF-8") . "</text>\n";
+        $rowY += $lineHeight;
+      }
+      $cursorY = $rowY + $disciplineGap;
+    }
+    $y += $block["height"] + $cardGap;
+  }
+
+  echo "</svg>";
   exit;
 }
 ?>
@@ -817,10 +1165,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         <div class="card-header">
           <h1><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></h1>
           <?php if (!$editMode): ?>
-            <div class="card-actions">
-              <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
-              <button class="pill-button is-share js-toggle" type="button" data-target="share-combine" aria-expanded="false" aria-controls="share-combine">Teilen</button>
-            </div>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
           <?php endif; ?>
         </div>
         <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
@@ -829,20 +1174,6 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         <?php endif; ?>
         <?php if (!empty($combine["combine_notes"])): ?>
           <p class="help"><?php echo htmlspecialchars($combine["combine_notes"], ENT_QUOTES, "UTF-8"); ?></p>
-        <?php endif; ?>
-        <?php if (!$editMode): ?>
-          <?php
-            $shareBaseParams = [
-              "id" => (int)$combineId,
-              "mode" => "results",
-              "overall" => $overallMode,
-            ];
-            $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
-          ?>
-          <div class="share-panel is-hidden" id="share-combine">
-            <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
-            <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
-          </div>
         <?php endif; ?>
         <?php if (!$editMode): ?>
           <div class="action-row">
@@ -1300,8 +1631,31 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
               <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
               <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
+              <?php if (!$editMode): ?>
+                <button class="pill-button is-share js-toggle" type="button" data-target="share-combine" aria-expanded="false" aria-controls="share-combine">Teilen</button>
+              <?php endif; ?>
             </div>
           </div>
+          <?php if (!$editMode): ?>
+            <?php
+              $shareBaseParams = [
+                "id" => (int)$combineId,
+                "mode" => "results",
+                "overall" => $overallMode,
+              ];
+              if ($filterGender !== "") {
+                $shareBaseParams["gender"] = $filterGender;
+              }
+              if ($filterPosition !== "") {
+                $shareBaseParams["position"] = $filterPosition;
+              }
+              $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
+            ?>
+            <div class="share-panel is-hidden" id="share-combine">
+              <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
+              <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
+            </div>
+          <?php endif; ?>
           <?php if ($overallMode === "sum"): ?>
             <p class="help">Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.</p>
           <?php elseif ($overallMode === "avg"): ?>
