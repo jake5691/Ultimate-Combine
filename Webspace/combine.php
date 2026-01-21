@@ -2627,8 +2627,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             $display = uc_display_value($playerValue, "-");
                             if ($display !== "-" && $unit !== "") { $display .= " " . $unit; }
                             $numericValue = $rankValues[$selectedPlayerId] ?? null;
-                            $minLabel = $expectedMinValue === null ? "-" : uc_display_value($expectedMinValue, "-");
-                            $maxLabel = $expectedMaxValue === null ? "-" : uc_display_value($expectedMaxValue, "-");
+                            $bestExpected = $expectedMinValue;
+                            $worstExpected = $expectedMaxValue;
+                            if ($direction === "less") {
+                              $bestExpected = $expectedMaxValue;
+                              $worstExpected = $expectedMinValue;
+                            }
+                            $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
+                            $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
                             if ($overallMode === "abs" && $unit !== "") {
                               if ($minLabel !== "-") { $minLabel .= " " . $unit; }
                               if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
@@ -2659,7 +2665,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                                 <span class="meta"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
                               <?php if ($overallMode === "abs"): ?>
-                                <span class="meta">Min: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Max: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                                <span class="meta">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
                             </div>
                             <span class="badge">
@@ -2783,8 +2789,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $worstValue = min($values);
                     }
                   }
-                  $minLabel = $expectedMinValue === null ? "-" : uc_display_value($expectedMinValue, "-");
-                  $maxLabel = $expectedMaxValue === null ? "-" : uc_display_value($expectedMaxValue, "-");
+                  $bestExpected = $expectedMinValue;
+                  $worstExpected = $expectedMaxValue;
+                  if ($direction === "less") {
+                    $bestExpected = $expectedMaxValue;
+                    $worstExpected = $expectedMinValue;
+                  }
+                  $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
+                  $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
                   if ($overallMode === "abs" && $unit !== "") {
                     if ($minLabel !== "-") { $minLabel .= " " . $unit; }
                     if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
@@ -2798,7 +2810,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
                       <?php endif; ?>
                       <?php if ($overallMode === "abs"): ?>
-                        <span class="meta">Min: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Max: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                        <span class="meta">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                       <?php endif; ?>
                       <span class="meta">
                         <?php

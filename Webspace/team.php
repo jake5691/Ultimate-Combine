@@ -169,6 +169,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $expectedMaxRaw = trim($_POST["expected_max"] ?? "");
     $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
     $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
+    $invalidExpectedRange = false;
+    if ($expectedMin !== null && $expectedMax !== null) {
+      if ($direction === "less") {
+        $invalidExpectedRange = $expectedMin <= $expectedMax;
+      } else {
+        $invalidExpectedRange = $expectedMin >= $expectedMax;
+      }
+    }
 
     if (
       $disciplineName === "" ||
@@ -178,10 +186,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       !isset($validDirections[$direction]) ||
       ($expectedMinRaw !== "" && $expectedMin === false) ||
       ($expectedMaxRaw !== "" && $expectedMax === false) ||
-      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null)) ||
-      ($expectedMin !== null && $expectedMax !== null && $expectedMin >= $expectedMax)
+      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null))
     ) {
       $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
+    } elseif ($invalidExpectedRange) {
+      if ($direction === "less") {
+        $disciplineFeedback = "Bei \"weniger ist besser\" muss der beste Wert kleiner als der schlechteste Wert sein.";
+      } else {
+        $disciplineFeedback = "Bei \"mehr ist besser\" muss der beste Wert größer als der schlechteste Wert sein.";
+      }
     } else {
       $stmt = $pdo->prepare(
         "SELECT 1
@@ -426,6 +439,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $expectedMaxRaw = trim($_POST["expected_max"] ?? "");
     $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
     $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
+    $invalidExpectedRange = false;
+    if ($expectedMin !== null && $expectedMax !== null) {
+      if ($direction === "less") {
+        $invalidExpectedRange = $expectedMin <= $expectedMax;
+      } else {
+        $invalidExpectedRange = $expectedMin >= $expectedMax;
+      }
+    }
 
     if (
       !$editId ||
@@ -436,10 +457,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       !isset($validDirections[$direction]) ||
       ($expectedMinRaw !== "" && $expectedMin === false) ||
       ($expectedMaxRaw !== "" && $expectedMax === false) ||
-      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null)) ||
-      ($expectedMin !== null && $expectedMax !== null && $expectedMin >= $expectedMax)
+      (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null))
     ) {
       $disciplineFeedback = "Bitte alle Felder für die Disziplin ausfüllen.";
+    } elseif ($invalidExpectedRange) {
+      if ($direction === "less") {
+        $disciplineFeedback = "Bei \"weniger ist besser\" muss der beste Wert kleiner als der schlechteste Wert sein.";
+      } else {
+        $disciplineFeedback = "Bei \"mehr ist besser\" muss der beste Wert größer als der schlechteste Wert sein.";
+      }
     } else {
       $stmt = $pdo->prepare(
         "SELECT 1
@@ -937,12 +963,12 @@ if (!$pageError) {
           </select>
         </label>
         <label class="field">
-          <span>Erwartung Minimum (1 Punkt)</span>
-          <input type="number" name="expected_min" step="0.1" placeholder="Optional">
+          <span>Erwartung Schlechtester (1 Punkt)</span>
+          <input type="number" name="expected_min" step="any" placeholder="Optional">
         </label>
         <label class="field">
-          <span>Erwartung Maximum (2 Punkte)</span>
-          <input type="number" name="expected_max" step="0.1" placeholder="Optional">
+          <span>Erwartung Bester (2 Punkte)</span>
+          <input type="number" name="expected_max" step="any" placeholder="Optional">
         </label>
         <button class="primary-button" type="submit">Disziplin speichern</button>
         <?php if ($disciplineFeedback): ?>
@@ -1076,12 +1102,12 @@ if (!$pageError) {
               </select>
             </label>
             <label class="field">
-              <span>Erwartung Minimum (1 Punkt)</span>
-              <input type="number" name="expected_min" step="0.1" value="<?php echo htmlspecialchars($editRecord["expected_min"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+              <span>Erwartung Schlechtester (1 Punkt)</span>
+              <input type="number" name="expected_min" step="any" value="<?php echo htmlspecialchars($editRecord["expected_min"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
             </label>
             <label class="field">
-              <span>Erwartung Maximum (2 Punkte)</span>
-              <input type="number" name="expected_max" step="0.1" value="<?php echo htmlspecialchars($editRecord["expected_max"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+              <span>Erwartung Bester (2 Punkte)</span>
+              <input type="number" name="expected_max" step="any" value="<?php echo htmlspecialchars($editRecord["expected_max"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
