@@ -52,6 +52,14 @@ body {
   width: 100%;
 }
 
+.topbar > * {
+  min-width: 0;
+}
+
+.topbar form {
+  justify-self: end;
+}
+
 .topbar.is-simple {
   grid-template-columns: 1fr;
   justify-items: center;
@@ -190,6 +198,21 @@ body {
 
 .pill-button.is-active {
   background: var(--accent);
+}
+
+.pill-button.is-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pill-button.is-muted {
+  background: var(--bg-strong);
+  color: var(--ink);
+}
+
+.pill-button.is-logout {
+  background: #f5735c;
+  color: #000000;
 }
 
 .auth {

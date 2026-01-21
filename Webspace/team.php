@@ -46,6 +46,7 @@ $formatLabel = static function (string $text): string {
 $teamContact = "";
 $teamKeyHash = "";
 $teamEditFeedback = null;
+$teamEditSuccess = false;
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
 $editRecord = null;
@@ -288,6 +289,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ]);
         }
         $teamEditFeedback = "Team wurde aktualisiert.";
+        $teamEditSuccess = true;
         $teamName = $teamNameInput;
         $teamContact = $teamContactInput;
         $_SESSION["team_name"] = $teamNameInput;
@@ -607,7 +609,7 @@ if (!$pageError) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ultimate Combine – Team</title>
+  <title><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -621,7 +623,7 @@ if (!$pageError) {
   <header class="topbar">
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">
-      <button class="pill-button" type="submit">Logout</button>
+      <button class="pill-button is-logout" type="submit">Abmelden</button>
     </form>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
@@ -633,20 +635,41 @@ if (!$pageError) {
   </header>
 
   <main class="team">
+    <?php $teamEditOpen = ($teamEditFeedback !== null && !$teamEditSuccess); ?>
     <section class="auth-card">
       <div class="section-header">
         <h1><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?>-Übersicht</h1>
-        <button class="pill-button js-toggle" type="button" data-target="edit-team" aria-expanded="false" aria-controls="edit-team">Bearbeiten</button>
+        <div class="card-actions">
+          <button
+            class="pill-button is-primary<?php echo $teamEditOpen ? "" : " is-hidden"; ?> js-edit-save"
+            type="submit"
+            form="team-edit-form"
+          >
+            Speichern
+          </button>
+          <button
+            class="pill-button js-toggle<?php echo $teamEditOpen ? " is-muted" : ""; ?>"
+            type="button"
+            data-target="edit-team"
+            aria-expanded="<?php echo $teamEditOpen ? "true" : "false"; ?>"
+            aria-controls="edit-team"
+          >
+            <?php echo $teamEditOpen ? "Abbrechen" : "Bearbeiten"; ?>
+          </button>
+        </div>
       </div>
       <p class="lead">Verwalte Spieler, Disziplinen und Combines für dein Team.</p>
+      <?php if ($teamEditFeedback && $teamEditSuccess): ?>
+        <p class="help js-flash"><?php echo htmlspecialchars($teamEditFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+      <?php endif; ?>
       <?php if ($pageError): ?>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
     </section>
 
-    <section class="auth-card<?php echo $teamEditFeedback ? "" : " is-hidden"; ?>" id="edit-team">
+    <section class="auth-card<?php echo $teamEditOpen ? "" : " is-hidden"; ?>" id="edit-team">
       <h2>Team bearbeiten</h2>
-      <form class="form" method="post" action="">
+      <form class="form" id="team-edit-form" method="post" action="">
         <input type="hidden" name="action" value="update_team">
         <label class="field">
           <span>Name</span>
@@ -672,13 +695,13 @@ if (!$pageError) {
             <input type="password" name="team_key_repeat" autocomplete="new-password">
           </label>
         </div>
-        <div class="form-actions">
-          <button class="primary-button" type="submit">Speichern</button>
-          <a class="text-link" href="team.php">Abbrechen</a>
-        </div>
-        <?php if ($teamEditFeedback): ?>
+        <?php if ($teamEditFeedback && !$teamEditSuccess): ?>
           <p class="help"><?php echo htmlspecialchars($teamEditFeedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
+        <div class="form-actions">
+          <button class="pill-button is-primary" type="submit">Speichern</button>
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='team.php'">Abbrechen</button>
+        </div>
       </form>
     </section>
 
@@ -1082,6 +1105,14 @@ if (!$pageError) {
         if (!target) return;
         const isHidden = target.classList.toggle("is-hidden");
         btn.setAttribute("aria-expanded", String(!isHidden));
+        if (targetId === "edit-team") {
+          const saveButton = document.querySelector(".js-edit-save");
+          btn.textContent = isHidden ? "Bearbeiten" : "Abbrechen";
+          btn.classList.toggle("is-muted", !isHidden);
+          if (saveButton) {
+            saveButton.classList.toggle("is-hidden", isHidden);
+          }
+        }
         if (!isHidden) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -1117,6 +1148,13 @@ if (!$pageError) {
         closeAllInfos();
       }
     });
+
+    const flashMessage = document.querySelector(".js-flash");
+    if (flashMessage) {
+      window.setTimeout(() => {
+        flashMessage.classList.add("is-hidden");
+      }, 10000);
+    }
 
     const keyToggle = document.querySelector(".js-toggle-key");
     if (keyToggle) {
