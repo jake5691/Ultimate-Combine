@@ -547,6 +547,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       }
     }
   }
+
+  if ($action === "delete_discipline") {
+    $editType = "discipline";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$editId) {
+      $disciplineFeedback = "Disziplin konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM disciplines WHERE id = :id AND team_id = :team_id");
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $disciplineFeedback = "Disziplin wurde gelöscht.";
+      $editType = null;
+      $editId = null;
+      $editRecord = null;
+    }
+  }
 }
 
 $players = [];
@@ -1113,7 +1131,7 @@ if (!$pageError) {
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
             </div>
             <?php if ($combineFeedback && $editType === "combine"): ?>
               <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -1168,11 +1186,16 @@ if (!$pageError) {
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
             </div>
             <?php if ($disciplineFeedback && $editType === "discipline"): ?>
               <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
+          </form>
+          <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.');">
+            <input type="hidden" name="action" value="delete_discipline">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>
         <?php endif; ?>
       </section>
