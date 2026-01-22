@@ -383,6 +383,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
   }
 
+  if ($action === "delete_player") {
+    $editType = "player";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$editId) {
+      $playerFeedback = "Spieler konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM players WHERE id = :id AND team_id = :team_id");
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $playerFeedback = "Spieler wurde gelöscht.";
+      $editType = null;
+      $editId = null;
+      $editRecord = null;
+    }
+  }
+
   if ($action === "update_combine") {
     $editType = "combine";
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
@@ -1062,11 +1080,16 @@ if (!$pageError) {
             </div>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+              <button class="pill-button is-danger" type="submit" form="delete-player-form">Spieler löschen</button>
             </div>
             <?php if ($playerFeedback && $editType === "player"): ?>
               <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
+          </form>
+          <form id="delete-player-form" method="post" action="" onsubmit="return confirm('Spieler wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.');">
+            <input type="hidden" name="action" value="delete_player">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>
         <?php elseif ($editType === "combine" && $editRecord): ?>
           <form class="form" method="post" action="">

@@ -210,6 +210,11 @@ body {
   color: var(--ink);
 }
 
+.pill-button.is-danger {
+  background: rgba(179, 50, 39, 0.15);
+  color: #b33227;
+}
+
 .pill-button.is-logout {
   background: #f5735c;
   color: #000000;
