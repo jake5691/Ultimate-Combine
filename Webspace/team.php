@@ -656,7 +656,7 @@ if (!$pageError) {
     "SELECT id, combine_name, event_date, combine_location, combine_notes, created_at
      FROM combines
      WHERE team_id = :team_id
-     ORDER BY created_at DESC"
+     ORDER BY event_date DESC, created_at DESC"
   );
   $stmt->execute([":team_id" => $teamId]);
   $combines = $stmt->fetchAll();
