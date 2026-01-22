@@ -318,6 +318,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
   }
 
+  if ($action === "delete_team") {
+    $stmt = $pdo->prepare("DELETE FROM teams WHERE id = :id");
+    $stmt->execute([":id" => $teamId]);
+    session_unset();
+    session_destroy();
+    header("Location: index.php");
+    exit;
+  }
+
   if ($action === "update_player") {
     $editType = "player";
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
@@ -780,8 +789,12 @@ if (!$pageError) {
         <?php endif; ?>
         <div class="form-actions">
           <button class="pill-button is-primary" type="submit">Speichern</button>
+          <button class="pill-button is-danger" type="submit" form="delete-team-form">Team löschen</button>
           <button class="pill-button is-muted" type="button" onclick="window.location.href='team.php'">Abbrechen</button>
         </div>
+      </form>
+      <form id="delete-team-form" method="post" action="" onsubmit="return confirm('Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+        <input type="hidden" name="action" value="delete_team">
       </form>
     </section>
 
