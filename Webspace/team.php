@@ -318,6 +318,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
   }
 
+  if ($action === "delete_team") {
+    $stmt = $pdo->prepare("DELETE FROM teams WHERE id = :id");
+    $stmt->execute([":id" => $teamId]);
+    session_unset();
+    session_destroy();
+    header("Location: index.php");
+    exit;
+  }
+
   if ($action === "update_player") {
     $editType = "player";
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
@@ -380,6 +389,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         ]);
         $playerFeedback = "Spieler wurde aktualisiert.";
       }
+    }
+  }
+
+  if ($action === "delete_player") {
+    $editType = "player";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$editId) {
+      $playerFeedback = "Spieler konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM players WHERE id = :id AND team_id = :team_id");
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $playerFeedback = "Spieler wurde gelöscht.";
+      $editType = null;
+      $editId = null;
+      $editRecord = null;
     }
   }
 
@@ -527,6 +554,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         ]);
         $disciplineFeedback = "Disziplin wurde aktualisiert.";
       }
+    }
+  }
+
+  if ($action === "delete_discipline") {
+    $editType = "discipline";
+    $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$editId) {
+      $disciplineFeedback = "Disziplin konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM disciplines WHERE id = :id AND team_id = :team_id");
+      $stmt->execute([
+        ":id" => $editId,
+        ":team_id" => $teamId,
+      ]);
+      $disciplineFeedback = "Disziplin wurde gelöscht.";
+      $editType = null;
+      $editId = null;
+      $editRecord = null;
     }
   }
 }
@@ -744,8 +789,12 @@ if (!$pageError) {
         <?php endif; ?>
         <div class="form-actions">
           <button class="pill-button is-primary" type="submit">Speichern</button>
+          <button class="pill-button is-danger" type="submit" form="delete-team-form">Team löschen</button>
           <button class="pill-button is-muted" type="button" onclick="window.location.href='team.php'">Abbrechen</button>
         </div>
+      </form>
+      <form id="delete-team-form" method="post" action="" onsubmit="return confirm('Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+        <input type="hidden" name="action" value="delete_team">
       </form>
     </section>
 
@@ -1062,11 +1111,16 @@ if (!$pageError) {
             </div>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+              <button class="pill-button is-danger" type="submit" form="delete-player-form">Spieler löschen</button>
             </div>
             <?php if ($playerFeedback && $editType === "player"): ?>
               <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
+          </form>
+          <form id="delete-player-form" method="post" action="" onsubmit="return confirm('Spieler wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+            <input type="hidden" name="action" value="delete_player">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>
         <?php elseif ($editType === "combine" && $editRecord): ?>
           <form class="form" method="post" action="">
@@ -1090,7 +1144,7 @@ if (!$pageError) {
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
             </div>
             <?php if ($combineFeedback && $editType === "combine"): ?>
               <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -1145,11 +1199,16 @@ if (!$pageError) {
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <a class="text-link" href="team.php">Abbrechen</a>
+              <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+              <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
             </div>
             <?php if ($disciplineFeedback && $editType === "discipline"): ?>
               <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
+          </form>
+          <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+            <input type="hidden" name="action" value="delete_discipline">
+            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>
         <?php endif; ?>
       </section>
