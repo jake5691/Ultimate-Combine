@@ -1105,7 +1105,7 @@ if (!$pageError) {
               <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
           </form>
-          <form id="delete-player-form" method="post" action="" onsubmit="return confirm('Spieler wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.');">
+          <form id="delete-player-form" method="post" action="" onsubmit="return confirm('Spieler wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
             <input type="hidden" name="action" value="delete_player">
             <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>
@@ -1186,14 +1186,14 @@ if (!$pageError) {
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
-              <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
               <a class="pill-button is-muted" href="team.php">Abbrechen</a>
+              <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
             </div>
             <?php if ($disciplineFeedback && $editType === "discipline"): ?>
               <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
           </form>
-          <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.');">
+          <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
             <input type="hidden" name="action" value="delete_discipline">
             <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
           </form>

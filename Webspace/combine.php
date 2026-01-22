@@ -391,6 +391,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     header("Location: index.php");
     exit;
   }
+
+  if ($action === "delete_combine") {
+    $deleteId = filter_var($_POST["combine_id"] ?? null, FILTER_VALIDATE_INT);
+    if ($deleteId) {
+      $stmt = $pdo->prepare("DELETE FROM combines WHERE id = :id AND team_id = :team_id");
+      $stmt->execute([
+        ":id" => $deleteId,
+        ":team_id" => $teamId,
+      ]);
+      header("Location: team.php");
+      exit;
+    }
+  }
 }
 
 if (!$pageError) {
@@ -1958,8 +1971,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           <h1><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></h1>
           <?php if (!$editMode): ?>
             <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
+          <?php else: ?>
+            <button class="pill-button is-danger" type="submit" form="delete-combine-form">Combine löschen</button>
           <?php endif; ?>
         </div>
+        <?php if ($editMode): ?>
+          <form id="delete-combine-form" method="post" action="" onsubmit="return confirm('Combine wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+            <input type="hidden" name="action" value="delete_combine">
+            <input type="hidden" name="combine_id" value="<?php echo (int)$combineId; ?>">
+          </form>
+        <?php endif; ?>
         <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
         <?php if (!empty($combine["combine_location"])): ?>
           <p class="lead">Ort: <?php echo htmlspecialchars($combine["combine_location"], ENT_QUOTES, "UTF-8"); ?></p>
