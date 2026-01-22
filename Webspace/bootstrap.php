@@ -190,11 +190,42 @@ function uc_ensure_schema(PDO $pdo): void {
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS units (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NULL,
       unit_name VARCHAR(80) NOT NULL,
       unit_abbreviation VARCHAR(24) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_units_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $unitColumns = $pdo
+    ->query(
+      "SELECT column_name, is_nullable
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'units'"
+    )
+    ->fetchAll(PDO::FETCH_ASSOC);
+  $unitColumnNames = array_column($unitColumns, "column_name");
+  if (!in_array("team_id", $unitColumnNames, true)) {
+    try {
+      $pdo->exec("ALTER TABLE units ADD COLUMN team_id INT NULL AFTER id");
+      $pdo->exec("ALTER TABLE units ADD CONSTRAINT fk_units_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE");
+    } catch (PDOException $e) {
+      if (($e->errorInfo[1] ?? null) !== 1060) {
+        throw $e;
+      }
+    }
+  } else {
+    foreach ($unitColumns as $column) {
+      if ($column["column_name"] === "team_id" && $column["is_nullable"] === "NO") {
+        $pdo->exec("ALTER TABLE units MODIFY COLUMN team_id INT NULL");
+        break;
+      }
+    }
+  }
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS admins (

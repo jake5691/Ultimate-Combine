@@ -492,11 +492,12 @@ if (!$pageError) {
   }
 
   $stmt = $pdo->prepare(
-    "SELECT unit_name, unit_abbreviation
+    "SELECT unit_name, unit_abbreviation, team_id
      FROM units
-     ORDER BY unit_name ASC"
+     WHERE team_id = :team_id OR team_id IS NULL
+     ORDER BY (team_id IS NULL) ASC, unit_name ASC"
   );
-  $stmt->execute();
+  $stmt->execute([":team_id" => $teamId]);
   $units = $stmt->fetchAll();
   foreach ($units as $unitRow) {
     $unitName = trim((string)($unitRow["unit_name"] ?? ""));
@@ -504,9 +505,16 @@ if (!$pageError) {
     if ($unitName === "" || $unitAbbr === "") {
       continue;
     }
-    $unitAbbrMap[$unitName] = $unitAbbr;
-    $unitAbbrMap[$unitAbbr] = $unitAbbr;
-    $unitAbbrMap[$unitName . " (" . $unitAbbr . ")"] = $unitAbbr;
+    if (!isset($unitAbbrMap[$unitName])) {
+      $unitAbbrMap[$unitName] = $unitAbbr;
+    }
+    if (!isset($unitAbbrMap[$unitAbbr])) {
+      $unitAbbrMap[$unitAbbr] = $unitAbbr;
+    }
+    $comboKey = $unitName . " (" . $unitAbbr . ")";
+    if (!isset($unitAbbrMap[$comboKey])) {
+      $unitAbbrMap[$comboKey] = $unitAbbr;
+    }
   }
 
   if (!$combineError) {
@@ -4521,7 +4529,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
-                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                          <?php
+                            $unitName = trim((string)($discipline["unit"] ?? ""));
+                            $unitAbbr = uc_format_unit($unitName, $unitAbbrMap);
+                            $unitLabel = $unitName;
+                            if ($unitAbbr !== "" && $unitAbbr !== $unitName) {
+                              $unitLabel .= " (" . $unitAbbr . ")";
+                            }
+                          ?>
+                          <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
                         </span>
                       </span>
                     </label>
