@@ -473,7 +473,7 @@ if (!$pageError) {
 
   try {
     $stmt = $pdo->prepare(
-      "SELECT id, discipline_name, description, category, unit, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute
+      "SELECT id, team_id, discipline_name, description, category, unit, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute
        FROM disciplines
        WHERE team_id = :team_id OR team_id IS NULL
        ORDER BY created_at DESC"
@@ -4499,21 +4499,53 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <?php if (empty($disciplines)): ?>
               <p class="help">Noch keine Disziplinen angelegt.</p>
             <?php else: ?>
-              <div class="check-grid">
-                <?php foreach ($disciplines as $discipline): ?>
-                  <label class="check-item">
-                    <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
-                    <span>
-                      <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
-                      <span class="meta">
-                        <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
-                        &middot;
-                        <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+              <?php
+                $globalDisciplines = [];
+                $teamDisciplines = [];
+                foreach ($disciplines as $discipline) {
+                  if (empty($discipline["team_id"])) {
+                    $globalDisciplines[] = $discipline;
+                  } else {
+                    $teamDisciplines[] = $discipline;
+                  }
+                }
+              ?>
+              <?php if (!empty($teamDisciplines)): ?>
+                <p class="help">Team-Disziplinen</p>
+                <div class="check-grid">
+                  <?php foreach ($teamDisciplines as $discipline): ?>
+                    <label class="check-item">
+                      <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
+                      <span>
+                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <span class="meta">
+                          <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                          &middot;
+                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                        </span>
                       </span>
-                    </span>
-                  </label>
-                <?php endforeach; ?>
-              </div>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+              <?php if (!empty($globalDisciplines)): ?>
+                <p class="help">Globale Disziplinen</p>
+                <div class="check-grid">
+                  <?php foreach ($globalDisciplines as $discipline): ?>
+                    <label class="check-item">
+                      <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
+                      <span>
+                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <span class="meta">
+                          <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                          &middot;
+                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                        </span>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
             <?php endif; ?>
           </div>
 
