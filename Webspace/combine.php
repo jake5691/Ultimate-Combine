@@ -146,6 +146,23 @@ function uc_gd_text($image, int $x, int $y, string $text, $color, int $size = 12
   imagestring($image, $font, $x, $y, $text, $color);
 }
 
+function uc_gd_text_box(string $text, int $size): array {
+  $fontPath = __DIR__ . "/assets/SpaceGrotesk-Regular.ttf";
+  if (file_exists($fontPath)) {
+    $bbox = imagettfbbox($size, 0, $fontPath, $text);
+    $width = abs($bbox[2] - $bbox[0]);
+    $height = abs($bbox[7] - $bbox[1]);
+    return [$width, $height];
+  }
+  $font = 3;
+  if ($size >= 16) {
+    $font = 5;
+  } elseif ($size >= 14) {
+    $font = 4;
+  }
+  return [imagefontwidth($font) * strlen($text), imagefontheight($font)];
+}
+
 function uc_truncate_text(string $text, int $maxChars): string {
   $text = trim($text);
   if ($maxChars <= 0 || $text === "") {
@@ -188,6 +205,8 @@ function uc_gd_draw_radar($image, int $centerX, int $centerY, int $size, array $
   $axisColor = $colors["axis"] ?? null;
   $teamStroke = $colors["teamStroke"] ?? null;
   $teamFill = $colors["teamFill"] ?? null;
+  $compareStroke = $colors["compareStroke"] ?? null;
+  $compareFill = $colors["compareFill"] ?? null;
   $playerStroke = $colors["playerStroke"] ?? null;
   $playerFill = $colors["playerFill"] ?? null;
   $labelColor = $colors["label"] ?? null;
@@ -244,13 +263,25 @@ function uc_gd_draw_radar($image, int $centerX, int $centerY, int $size, array $
   };
 
   $teamValues = [];
+  $compareValues = [];
   $playerValues = [];
+  $hasCompare = false;
   foreach ($data as $item) {
     $teamValues[] = isset($item["team"]) ? (float)$item["team"] : 0.0;
+    if (isset($item["playerB"])) {
+      $hasCompare = true;
+    }
+    $compareValues[] = isset($item["playerB"]) ? (float)$item["playerB"] : 0.0;
     $playerValues[] = isset($item["player"]) ? (float)$item["player"] : 0.0;
   }
-  $drawShape($teamValues, $teamStroke, $teamFill);
-  $drawShape($playerValues, $playerStroke, $playerFill);
+  if ($hasCompare) {
+    $drawShape($teamValues, $teamStroke, $teamFill);
+    $drawShape($compareValues, $compareStroke, $compareFill);
+    $drawShape($playerValues, $playerStroke, $playerFill);
+  } else {
+    $drawShape($teamValues, $teamStroke, $teamFill);
+    $drawShape($playerValues, $playerStroke, $playerFill);
+  }
 
   if ($labelColor !== null) {
     $labelSize = (int)round(11 * $scale);
@@ -321,7 +352,7 @@ $shareFormat = $_GET["share"] ?? "";
 if (!in_array($shareFormat, ["csv", "img"], true)) {
   $shareFormat = "";
 }
-if ($shareFormat !== "") {
+if ($shareFormat !== "" && $mode !== "h2h") {
   $mode = "results";
 }
 if ($editMode) {
@@ -1731,6 +1762,746 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     exit;
   }
 
+  $h2hShareRequested = $shareFormat === "img" && $mode === "h2h" && $h2hPlayerAId && $h2hPlayerBId;
+  if ($h2hShareRequested) {
+    $playerMap = [];
+    foreach ($assignedPlayers as $player) {
+      $playerMap[(int)$player["id"]] = $player;
+    }
+    $h2hPlayerA = $playerMap[$h2hPlayerAId] ?? null;
+    $h2hPlayerB = $playerMap[$h2hPlayerBId] ?? null;
+    if (!$h2hPlayerA || !$h2hPlayerB || $h2hPlayerAId === $h2hPlayerBId) {
+      $h2hShareRequested = false;
+    } else {
+      $overallScoresSum = [];
+      $overallScoresAvg = [];
+      $overallScoresAbs = [];
+      $overallCategoryCounts = [];
+      foreach ($assignedPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $overallScoresSum[$playerId] = 0;
+        $overallScoresAvg[$playerId] = 0;
+        $overallScoresAbs[$playerId] = 0;
+        $overallCategoryCounts[$playerId] = 0;
+      }
+      foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+        $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+        if ($categoryWeight <= 0) {
+          $categoryWeight = 1.0;
+        }
+        $disciplineCount = 0;
+        $categoryTotals = [];
+        $categoryTotalsAbs = [];
+        $categoryTotalsAvg = [];
+        $categoryWeightSumAll = 0.0;
+        $categoryWeightSumAllAbs = 0.0;
+        $categoryWeightSumsAvg = [];
+        foreach ($assignedPlayers as $player) {
+          $playerId = (int)$player["id"];
+          $categoryTotals[$playerId] = 0;
+          $categoryTotalsAbs[$playerId] = 0;
+          $categoryTotalsAvg[$playerId] = 0;
+          $categoryWeightSumsAvg[$playerId] = 0.0;
+        }
+        foreach ($categoryDisciplines as $discipline) {
+          $discId = (int)$discipline["id"];
+          $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+          if ($disciplineWeight <= 0) {
+            $disciplineWeight = 1.0;
+          }
+          $direction = $discipline["rating_direction"] ?? "more";
+          if ($direction !== "less" && $direction !== "more") {
+            $direction = "more";
+          }
+          $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+          $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+          $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
+          $bonusAbs = uc_bonus_value($discipline["bonus_absolute"] ?? null);
+          $hasAbsolute = $expectedMinValue !== null && $expectedMaxValue !== null;
+          if ($overallMode === "abs" && !$hasAbsolute) {
+            continue;
+          }
+          $rankValues = [];
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+            $numeric = uc_value_to_float($value);
+            if ($numeric === null) {
+              continue;
+            }
+            $rankValues[$playerId] = $numeric;
+          }
+          $bestValue = null;
+          $worstValue = null;
+          if (!empty($rankValues)) {
+            $disciplineCount++;
+            $categoryWeightSumAll += $disciplineWeight;
+            $values = array_values($rankValues);
+            if ($direction === "less") {
+              $bestValue = min($values);
+              $worstValue = max($values);
+            } else {
+              $bestValue = max($values);
+              $worstValue = min($values);
+            }
+          }
+          if ($hasAbsolute) {
+            $categoryWeightSumAllAbs += $disciplineWeight;
+          }
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $numericValue = $rankValues[$playerId] ?? null;
+            $pointsBase = 0;
+            if ($numericValue === null || $bestValue === null || $worstValue === null) {
+              $pointsBase = 0;
+            } elseif ($bestValue == $worstValue) {
+              $pointsBase = 2;
+            } else {
+              $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+              $pointsBase = 1 + $ratio;
+            }
+            $pointsSum = $pointsBase;
+            if ($overallMode === "sum" && $bonusRel > 0 && $numericValue !== null && $bestValue !== null && $numericValue == $bestValue) {
+              $pointsSum += $bonusRel;
+            }
+            $categoryTotals[$playerId] += $pointsSum * $disciplineWeight;
+            if ($hasAbsolute) {
+              $absolutePoints = uc_absolute_points($numericValue, $expectedMinValue, $expectedMaxValue, $direction);
+              if ($absolutePoints === null) {
+                $absolutePoints = 0;
+              }
+              if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericValue, $expectedMaxValue, $direction)) {
+                $absolutePoints += $bonusAbs;
+              }
+              $categoryTotalsAbs[$playerId] += $absolutePoints * $disciplineWeight;
+            }
+            if ($numericValue !== null && $bestValue !== null && $worstValue !== null) {
+              $categoryTotalsAvg[$playerId] += $pointsBase * $disciplineWeight;
+              $categoryWeightSumsAvg[$playerId] += $disciplineWeight;
+            }
+          }
+        }
+        if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
+          continue;
+        }
+        foreach ($assignedPlayers as $player) {
+          $playerId = (int)$player["id"];
+          $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
+          $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
+          if ($categoryWeightSumAllAbs > 0) {
+            $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
+            $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
+          }
+          $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
+          if ($avgWeightSum > 0) {
+            $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
+            $overallScoresAvg[$playerId] += $categoryAverageAvg;
+            $overallCategoryCounts[$playerId] += 1;
+          }
+        }
+      }
+      foreach ($overallScoresAvg as $playerId => $score) {
+        $count = $overallCategoryCounts[$playerId] ?? 0;
+        if ($count > 0) {
+          $overallScoresAvg[$playerId] = $score / $count;
+        }
+      }
+      if ($overallMode === "avg") {
+        $overallScores = $overallScoresAvg;
+      } elseif ($overallMode === "abs") {
+        $overallScores = $overallScoresAbs;
+      } else {
+        $overallScores = $overallScoresSum;
+      }
+      $overallRankValues = $overallScores;
+      arsort($overallRankValues, SORT_NUMERIC);
+      $overallRanks = [];
+      $pos = 0;
+      $rank = 0;
+      $prev = null;
+      foreach ($overallRankValues as $playerId => $val) {
+        $pos++;
+        if ($prev === null || $val != $prev) {
+          $rank = $pos;
+          $prev = $val;
+        }
+        $overallRanks[$playerId] = $rank;
+      }
+
+      $playerALabel = trim(($h2hPlayerA["first_name"] ?? "") . " " . ($h2hPlayerA["last_name"] ?? ""));
+      $playerBLabel = trim(($h2hPlayerB["first_name"] ?? "") . " " . ($h2hPlayerB["last_name"] ?? ""));
+      $overallPointsPrefix = $overallMode === "avg" ? "Ø " : "";
+      $overallPointsA = $overallScores[$h2hPlayerAId] ?? 0;
+      $overallPointsB = $overallScores[$h2hPlayerBId] ?? 0;
+      $overallRankA = $overallRanks[$h2hPlayerAId] ?? "-";
+      $overallRankB = $overallRanks[$h2hPlayerBId] ?? "-";
+
+      $h2hRadarData = [];
+      foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+        $displayDisciplines = $categoryDisciplines;
+        if ($overallMode === "abs") {
+          $displayDisciplines = array_values(array_filter($categoryDisciplines, function ($discipline) {
+            $minValue = uc_value_to_float($discipline["expected_min"] ?? null);
+            $maxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+            return $minValue !== null && $maxValue !== null;
+          }));
+        }
+        if (empty($displayDisciplines)) {
+          continue;
+        }
+        $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+        if ($categoryWeight <= 0) {
+          $categoryWeight = 1.0;
+        }
+        $weightSum = 0.0;
+        $weightSumAbs = 0.0;
+        $sumA = 0.0;
+        $sumB = 0.0;
+        $sumAbsA = 0.0;
+        $sumAbsB = 0.0;
+        $sumAvgA = 0.0;
+        $sumAvgB = 0.0;
+        $sumAvgWeightA = 0.0;
+        $sumAvgWeightB = 0.0;
+        $categoryTotalsTeam = [];
+        $categoryTotalsAbsTeam = [];
+        $categoryTotalsAvgTeam = [];
+        $categoryWeightSumsAvgTeam = [];
+        foreach ($assignedPlayers as $player) {
+          $playerId = (int)$player["id"];
+          $categoryTotalsTeam[$playerId] = 0.0;
+          $categoryTotalsAbsTeam[$playerId] = 0.0;
+          $categoryTotalsAvgTeam[$playerId] = 0.0;
+          $categoryWeightSumsAvgTeam[$playerId] = 0.0;
+        }
+        foreach ($displayDisciplines as $discipline) {
+          $discId = (int)$discipline["id"];
+          $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+          if ($disciplineWeight <= 0) {
+            $disciplineWeight = 1.0;
+          }
+          $direction = $discipline["rating_direction"] ?? "more";
+          if ($direction !== "less" && $direction !== "more") {
+            $direction = "more";
+          }
+          $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+          $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+          $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
+          $bonusAbs = uc_bonus_value($discipline["bonus_absolute"] ?? null);
+          $hasAbsolute = $expectedMinValue !== null && $expectedMaxValue !== null;
+          $rankValues = [];
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+            $numeric = uc_value_to_float($value);
+            if ($numeric === null) {
+              continue;
+            }
+            $rankValues[$playerId] = $numeric;
+          }
+          $bestValue = null;
+          $worstValue = null;
+          if (!empty($rankValues)) {
+            $weightSum += $disciplineWeight;
+            if ($hasAbsolute) {
+              $weightSumAbs += $disciplineWeight;
+            }
+            $values = array_values($rankValues);
+            if ($direction === "less") {
+              $bestValue = min($values);
+              $worstValue = max($values);
+            } else {
+              $bestValue = max($values);
+              $worstValue = min($values);
+            }
+          }
+          $numericA = isset($rankValues[$h2hPlayerAId]) ? $rankValues[$h2hPlayerAId] : null;
+          $numericB = isset($rankValues[$h2hPlayerBId]) ? $rankValues[$h2hPlayerBId] : null;
+          $pointsBaseA = 0;
+          $pointsBaseB = 0;
+          if ($numericA === null || $bestValue === null || $worstValue === null) {
+            $pointsBaseA = 0;
+          } elseif ($bestValue == $worstValue) {
+            $pointsBaseA = 2;
+          } else {
+            $ratioA = ($numericA - $worstValue) / ($bestValue - $worstValue);
+            $pointsBaseA = 1 + $ratioA;
+          }
+          if ($numericB === null || $bestValue === null || $worstValue === null) {
+            $pointsBaseB = 0;
+          } elseif ($bestValue == $worstValue) {
+            $pointsBaseB = 2;
+          } else {
+            $ratioB = ($numericB - $worstValue) / ($bestValue - $worstValue);
+            $pointsBaseB = 1 + $ratioB;
+          }
+          $pointsSumA = $pointsBaseA;
+          $pointsSumB = $pointsBaseB;
+          if ($overallMode === "sum" && $bonusRel > 0 && $bestValue !== null) {
+            if ($numericA !== null && $numericA == $bestValue) {
+              $pointsSumA += $bonusRel;
+            }
+            if ($numericB !== null && $numericB == $bestValue) {
+              $pointsSumB += $bonusRel;
+            }
+          }
+          $sumA += $pointsSumA * $disciplineWeight;
+          $sumB += $pointsSumB * $disciplineWeight;
+          if ($hasAbsolute) {
+            $pointsAbsA = uc_absolute_points($numericA, $expectedMinValue, $expectedMaxValue, $direction);
+            $pointsAbsB = uc_absolute_points($numericB, $expectedMinValue, $expectedMaxValue, $direction);
+            if ($pointsAbsA === null) { $pointsAbsA = 0; }
+            if ($pointsAbsB === null) { $pointsAbsB = 0; }
+            if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericA, $expectedMaxValue, $direction)) {
+              $pointsAbsA += $bonusAbs;
+            }
+            if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericB, $expectedMaxValue, $direction)) {
+              $pointsAbsB += $bonusAbs;
+            }
+            $sumAbsA += $pointsAbsA * $disciplineWeight;
+            $sumAbsB += $pointsAbsB * $disciplineWeight;
+          }
+          if ($numericA !== null && $bestValue !== null && $worstValue !== null) {
+            $sumAvgA += $pointsBaseA * $disciplineWeight;
+            $sumAvgWeightA += $disciplineWeight;
+          }
+          if ($numericB !== null && $bestValue !== null && $worstValue !== null) {
+            $sumAvgB += $pointsBaseB * $disciplineWeight;
+            $sumAvgWeightB += $disciplineWeight;
+          }
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $numeric = $rankValues[$playerId] ?? null;
+            $pointsBase = 0;
+            if ($numeric === null || $bestValue === null || $worstValue === null) {
+              $pointsBase = 0;
+            } elseif ($bestValue == $worstValue) {
+              $pointsBase = 2;
+            } else {
+              $ratio = ($numeric - $worstValue) / ($bestValue - $worstValue);
+              $pointsBase = 1 + $ratio;
+            }
+            $pointsSum = $pointsBase;
+            if ($overallMode === "sum" && $bonusRel > 0 && $bestValue !== null && $numeric !== null && $numeric == $bestValue) {
+              $pointsSum += $bonusRel;
+            }
+            $categoryTotalsTeam[$playerId] += $pointsSum * $disciplineWeight;
+            if ($hasAbsolute) {
+              $pointsAbs = uc_absolute_points($numeric, $expectedMinValue, $expectedMaxValue, $direction);
+              if ($pointsAbs === null) {
+                $pointsAbs = 0;
+              }
+              if ($bonusAbs > 0 && uc_absolute_bonus_applies($numeric, $expectedMaxValue, $direction)) {
+                $pointsAbs += $bonusAbs;
+              }
+              $categoryTotalsAbsTeam[$playerId] += $pointsAbs * $disciplineWeight;
+            }
+            if ($numeric !== null && $bestValue !== null && $worstValue !== null) {
+              $categoryTotalsAvgTeam[$playerId] += $pointsBase * $disciplineWeight;
+              $categoryWeightSumsAvgTeam[$playerId] += $disciplineWeight;
+            }
+          }
+        }
+        $radarA = 0.0;
+        $radarB = 0.0;
+        $radarTeam = 0.0;
+        $hasRadar = false;
+        if ($overallMode === "avg") {
+          if ($sumAvgWeightA > 0 || $sumAvgWeightB > 0) {
+            $radarA = $sumAvgWeightA > 0 ? $sumAvgA / $sumAvgWeightA : 0;
+            $radarB = $sumAvgWeightB > 0 ? $sumAvgB / $sumAvgWeightB : 0;
+            $hasRadar = true;
+          }
+          $teamSum = 0.0;
+          $teamCount = 0;
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $teamWeightSum = $categoryWeightSumsAvgTeam[$playerId] ?? 0.0;
+            if ($teamWeightSum > 0) {
+              $teamSum += $categoryTotalsAvgTeam[$playerId] / $teamWeightSum;
+              $teamCount++;
+            }
+          }
+          if ($teamCount > 0) {
+            $radarTeam = $teamSum / $teamCount;
+            $hasRadar = true;
+          }
+        } elseif ($overallMode === "abs") {
+          if ($weightSumAbs > 0) {
+            $radarA = $sumAbsA / $weightSumAbs;
+            $radarB = $sumAbsB / $weightSumAbs;
+            $hasRadar = true;
+          }
+          if ($weightSumAbs > 0) {
+            $teamSum = 0.0;
+            $teamCount = 0;
+            foreach ($assignedPlayers as $player) {
+              $playerId = (int)$player["id"];
+              $teamSum += $categoryTotalsAbsTeam[$playerId] / $weightSumAbs;
+              $teamCount++;
+            }
+            if ($teamCount > 0) {
+              $radarTeam = $teamSum / $teamCount;
+              $hasRadar = true;
+            }
+          }
+        } else {
+          if ($weightSum > 0) {
+            $radarA = $sumA / $weightSum;
+            $radarB = $sumB / $weightSum;
+            $hasRadar = true;
+          }
+          if ($weightSum > 0) {
+            $teamSum = 0.0;
+            $teamCount = 0;
+            foreach ($assignedPlayers as $player) {
+              $playerId = (int)$player["id"];
+              $teamSum += $categoryTotalsTeam[$playerId] / $weightSum;
+              $teamCount++;
+            }
+            if ($teamCount > 0) {
+              $radarTeam = $teamSum / $teamCount;
+              $hasRadar = true;
+            }
+          }
+        }
+        if ($hasRadar) {
+          if ($overallMode !== "avg") {
+            $radarA *= $categoryWeight;
+            $radarB *= $categoryWeight;
+            $radarTeam *= $categoryWeight;
+          }
+          $h2hRadarData[] = [
+            "label" => $category,
+            "player" => $radarA,
+            "playerB" => $radarB,
+            "team" => $radarTeam,
+          ];
+        }
+      }
+
+      $h2hCategoryBlocks = [];
+      $rowHeight = (int)round(20 * $scale);
+      $categoryTitleHeight = (int)round(22 * $scale);
+      $barHeight = (int)round(18 * $scale);
+      $barGap = (int)round(10 * $scale);
+      $barValueOffset = (int)round(4 * $scale);
+      foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+        $displayDisciplines = $categoryDisciplines;
+        if ($overallMode === "abs") {
+          $displayDisciplines = array_values(array_filter($categoryDisciplines, function ($discipline) {
+            $minValue = uc_value_to_float($discipline["expected_min"] ?? null);
+            $maxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+            return $minValue !== null && $maxValue !== null;
+          }));
+        }
+        if (empty($displayDisciplines)) {
+          continue;
+        }
+        $rows = [];
+        foreach ($displayDisciplines as $discipline) {
+          $discId = (int)$discipline["id"];
+          $direction = $discipline["rating_direction"] ?? "more";
+          if ($direction !== "less" && $direction !== "more") {
+            $direction = "more";
+          }
+          $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+          $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+          $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+          $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
+          $bonusAbs = uc_bonus_value($discipline["bonus_absolute"] ?? null);
+          $rankValues = [];
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+            $numeric = uc_value_to_float($value);
+            if ($numeric === null) {
+              continue;
+            }
+            $rankValues[$playerId] = $numeric;
+          }
+          $bestValue = null;
+          $worstValue = null;
+          if (!empty($rankValues)) {
+            $values = array_values($rankValues);
+            if ($direction === "less") {
+              $bestValue = min($values);
+              $worstValue = max($values);
+            } else {
+              $bestValue = max($values);
+              $worstValue = min($values);
+            }
+          }
+          $playerAValue = $resultsByDiscipline[$discId][$h2hPlayerAId] ?? null;
+          $playerBValue = $resultsByDiscipline[$discId][$h2hPlayerBId] ?? null;
+          $numericA = uc_value_to_float($playerAValue);
+          $numericB = uc_value_to_float($playerBValue);
+          if ($overallMode === "abs") {
+            $pointsA = uc_absolute_points($numericA, $expectedMinValue, $expectedMaxValue, $direction);
+            $pointsB = uc_absolute_points($numericB, $expectedMinValue, $expectedMaxValue, $direction);
+            if ($pointsA === null) { $pointsA = 0; }
+            if ($pointsB === null) { $pointsB = 0; }
+            if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericA, $expectedMaxValue, $direction)) {
+              $pointsA += $bonusAbs;
+            }
+            if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericB, $expectedMaxValue, $direction)) {
+              $pointsB += $bonusAbs;
+            }
+          } else {
+            if ($numericA === null || $bestValue === null || $worstValue === null) {
+              $pointsA = 0;
+            } elseif ($bestValue == $worstValue) {
+              $pointsA = 2;
+            } else {
+              $ratioA = ($numericA - $worstValue) / ($bestValue - $worstValue);
+              $pointsA = 1 + $ratioA;
+            }
+            if ($numericB === null || $bestValue === null || $worstValue === null) {
+              $pointsB = 0;
+            } elseif ($bestValue == $worstValue) {
+              $pointsB = 2;
+            } else {
+              $ratioB = ($numericB - $worstValue) / ($bestValue - $worstValue);
+              $pointsB = 1 + $ratioB;
+            }
+            if ($overallMode === "sum" && $bonusRel > 0 && $bestValue !== null) {
+              if ($numericA !== null && $numericA == $bestValue) {
+                $pointsA += $bonusRel;
+              }
+              if ($numericB !== null && $numericB == $bestValue) {
+                $pointsB += $bonusRel;
+              }
+            }
+          }
+          $displayA = uc_display_value($playerAValue, "-");
+          $displayB = uc_display_value($playerBValue, "-");
+          if ($displayA !== "-" && $unit !== "") { $displayA .= " " . $unit; }
+          if ($displayB !== "-" && $unit !== "") { $displayB .= " " . $unit; }
+          $scaleScore = function ($value) {
+            $value = max(0.0, min(2.0, (float)$value));
+            if ($value <= 1) {
+              return ($value / 1) * 30;
+            }
+            return 30 + (($value - 1) / 1) * 70;
+          };
+          $percentA = $scaleScore($pointsA);
+          $percentB = $scaleScore($pointsB);
+          $rows[] = [
+            "label" => $discipline["discipline_name"] ?? "Disziplin",
+            "a" => $displayA,
+            "b" => $displayB,
+            "percentA" => $percentA,
+            "percentB" => $percentB,
+          ];
+        }
+        if (empty($rows)) {
+          continue;
+        }
+        $blockHeight = $cardPadding * 2 + $categoryTitleHeight + (count($rows) * ($rowHeight + ($barHeight * 2) + $barGap));
+        $h2hCategoryBlocks[] = [
+          "category" => $category,
+          "rows" => $rows,
+          "height" => $blockHeight,
+        ];
+      }
+
+      $radarSize = (int)round(320 * $scale);
+      $summaryGap = (int)round(24 * $scale);
+      $summaryNameSize = (int)round(18 * $scale);
+      $summaryMetaSize = (int)round(13 * $scale);
+      $summaryLineGap = (int)round(8 * $scale);
+      $summaryHeight = ($summaryNameSize + $summaryLineGap) * 4;
+      $summaryHeight = max(0, $summaryHeight - $summaryLineGap);
+      $summaryCardHeight = max($radarSize + ($cardPadding * 2), $summaryHeight + ($cardPadding * 2));
+
+      $h2hTitleSize = (int)round(16 * $scale);
+      $h2hTitleHeight = (int)round(24 * $scale);
+      $height = $padding + $headerHeight + $cardGap + $h2hTitleHeight + $summaryCardHeight;
+      foreach ($h2hCategoryBlocks as $block) {
+        $height += $cardGap + $block["height"];
+      }
+      $height += $padding;
+
+      $image = imagecreatetruecolor($imageWidth, $height);
+      imageantialias($image, true);
+      imagealphablending($image, true);
+      imagesavealpha($image, true);
+      $bg = uc_gd_color($image, 247, 244, 239);
+      $white = uc_gd_color($image, 255, 255, 255);
+      $ink = uc_gd_color($image, 31, 26, 20);
+      $muted = uc_gd_color($image, 111, 98, 89);
+      $accent = uc_gd_color($image, 255, 123, 75);
+      $accentDark = uc_gd_color($image, 44, 42, 74);
+      $whiteText = uc_gd_color($image, 255, 255, 255);
+
+      imagefilledrectangle($image, 0, 0, $imageWidth, $height, $bg);
+
+      $x = $padding;
+      $y = $padding;
+      $title = $combine["combine_name"] ?? "Combine";
+      $metaParts = [];
+      if ($teamName) {
+        $metaParts[] = $teamName;
+      }
+      if (!empty($combine["event_date"])) {
+        $metaParts[] = $combine["event_date"];
+      }
+      if (!empty($combine["combine_location"])) {
+        $metaParts[] = $combine["combine_location"];
+      }
+      $subtitle = implode(" · ", $metaParts);
+      $brandX = $x;
+      $brandY = $y;
+      $logoPath = __DIR__ . "/assets/FrisbeeCatch.png";
+      if (file_exists($logoPath)) {
+        $logo = @imagecreatefrompng($logoPath);
+        if ($logo) {
+          $logoSize = (int)round(36 * $scale);
+          imagecopyresampled($image, $logo, $brandX, $brandY, 0, 0, $logoSize, $logoSize, imagesx($logo), imagesy($logo));
+          if ($logo instanceof GdImage || is_resource($logo)) {
+            imagedestroy($logo);
+          } else {
+            unset($logo);
+          }
+          $brandX += $logoSize + (int)round(10 * $scale);
+        }
+      }
+      uc_gd_text($image, $brandX, $brandY + (int)round(4 * $scale), "Ultimate-Combine.de", $accentDark, (int)round(16 * $scale), "left");
+      uc_gd_text($image, $x, $y + (int)round(36 * $scale), $title, $ink, (int)round(26 * $scale), "left");
+      uc_gd_text($image, $x, $y + (int)round(66 * $scale), $subtitle, $muted, (int)round(13 * $scale), "left");
+      $helpY = $y + (int)round(88 * $scale);
+      foreach ($modeHelpLines as $line) {
+        uc_gd_text($image, $x, $helpY, $line, $muted, (int)round(11 * $scale), "left");
+        $helpY += (int)round(14 * $scale);
+      }
+      uc_gd_text($image, $imageWidth - $padding, $y, $modeLabel, $accentDark, (int)round(13 * $scale), "right");
+
+      $y += $headerHeight + $cardGap;
+      $nameLine = $playerALabel . " vs. " . $playerBLabel;
+      $nameSize = $h2hTitleSize;
+      $minNameSize = (int)round(11 * $scale);
+      $maxNameWidth = $radarSize - (int)round(20 * $scale);
+      while ($nameSize > $minNameSize) {
+        [$nameWidth] = uc_gd_text_box($nameLine, $nameSize);
+        if ($nameWidth <= $maxNameWidth) {
+          break;
+        }
+        $nameSize -= 1;
+      }
+      $nameX = $x + (int)round($radarSize / 2) + $cardPadding;
+      $nameY = $y + (int)round(2 * $scale);
+      uc_gd_text($image, $nameX, $nameY, $nameLine, $accentDark, $nameSize, "center");
+
+      $y += $h2hTitleHeight;
+      imagefilledrectangle($image, $x, $y, $x + $cardWidth, $y + $summaryCardHeight, $white);
+
+      $radarX = $x + $cardPadding;
+      $radarY = $y + $cardPadding;
+      $radarCenterX = $radarX + (int)round($radarSize / 2);
+      $radarCenterY = $radarY + (int)round($radarSize / 2);
+      $radarColors = [
+        "grid" => uc_gd_color_alpha($image, 44, 42, 74, 0.2),
+        "axis" => uc_gd_color_alpha($image, 44, 42, 74, 0.25),
+        "teamStroke" => $muted,
+        "teamFill" => uc_gd_color_alpha($image, 111, 98, 89, 0.18),
+        "compareStroke" => $accentDark,
+        "compareFill" => uc_gd_color_alpha($image, 44, 42, 74, 0.2),
+        "playerStroke" => $accent,
+        "playerFill" => uc_gd_color_alpha($image, 255, 123, 75, 0.22),
+        "label" => $muted,
+      ];
+      if (!empty($h2hRadarData)) {
+        uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
+      } else {
+        uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
+      }
+
+      $legendX = $radarX + (int)round(12 * $scale);
+      $legendY = $radarY + (int)round(12 * $scale);
+      $legendDot = (int)round(8 * $scale);
+      imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accent);
+      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), $playerALabel, $muted, (int)round(11 * $scale), "left");
+      $legendY += (int)round(18 * $scale);
+      imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accentDark);
+      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), $playerBLabel, $muted, (int)round(11 * $scale), "left");
+      $legendY += (int)round(18 * $scale);
+      imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $muted);
+      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), "Team", $muted, (int)round(11 * $scale), "left");
+
+      $summaryX = $radarX + $radarSize + $summaryGap;
+      $summaryY = $y + $cardPadding;
+      uc_gd_text($image, $summaryX, $summaryY, $playerALabel, $ink, $summaryNameSize, "left");
+      $summaryY += $summaryNameSize + $summaryLineGap;
+      uc_gd_text($image, $summaryX, $summaryY, "Platz " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " P", $accentDark, $summaryMetaSize, "left");
+      $summaryY += $summaryMetaSize + (int)round(14 * $scale);
+      uc_gd_text($image, $summaryX, $summaryY, $playerBLabel, $ink, $summaryNameSize, "left");
+      $summaryY += $summaryNameSize + $summaryLineGap;
+      uc_gd_text($image, $summaryX, $summaryY, "Platz " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " P", $accentDark, $summaryMetaSize, "left");
+
+      $y += $summaryCardHeight + $cardGap;
+      foreach ($h2hCategoryBlocks as $block) {
+        imagefilledrectangle($image, $x, $y, $x + $cardWidth, $y + $block["height"], $white);
+        uc_gd_text($image, $x + $cardPadding, $y + $cardPadding, strtoupper($block["category"]), $accentDark, (int)round(11 * $scale), "left");
+        $cursorY = $y + $cardPadding + (int)round(18 * $scale);
+        foreach ($block["rows"] as $row) {
+          $label = uc_truncate_text($row["label"], 40);
+          uc_gd_text($image, $x + $cardPadding, $cursorY, $label, $ink, (int)round(11 * $scale), "left");
+          $cursorY += $rowHeight;
+
+          $barX = $x + $cardPadding;
+          $barWidth = $cardWidth - ($cardPadding * 2);
+          $barY = $cursorY;
+          imagefilledrectangle($image, $barX, $barY, $barX + $barWidth, $barY + $barHeight, uc_gd_color_alpha($image, 44, 42, 74, 0.08));
+          $fillA = (int)round($barWidth * ($row["percentA"] / 100));
+          imagefilledrectangle($image, $barX, $barY, $barX + $fillA, $barY + $barHeight, $accent);
+          $valueSize = (int)round(10 * $scale);
+          $valuePaddingX = (int)round(6 * $scale);
+          $valuePaddingY = (int)round(3 * $scale);
+          $valueX = $barX + $barValueOffset;
+          $valueY = $barY + (int)round(2 * $scale);
+          $valueText = (string)$row["a"];
+          [$valueW, $valueH] = uc_gd_text_box($valueText, $valueSize);
+          $valueBg = uc_gd_color_alpha($image, 255, 255, 255, 0.92);
+          imagefilledrectangle(
+            $image,
+            $valueX,
+            $valueY,
+            $valueX + $valueW + ($valuePaddingX * 2),
+            $valueY + $valueH + ($valuePaddingY * 2),
+            $valueBg
+          );
+          uc_gd_text($image, $valueX + $valuePaddingX, $valueY + $valuePaddingY, $valueText, $ink, $valueSize, "left");
+          $cursorY += $barHeight + $barGap;
+
+          $barY = $cursorY;
+          imagefilledrectangle($image, $barX, $barY, $barX + $barWidth, $barY + $barHeight, uc_gd_color_alpha($image, 44, 42, 74, 0.08));
+          $fillB = (int)round($barWidth * ($row["percentB"] / 100));
+          imagefilledrectangle($image, $barX, $barY, $barX + $fillB, $barY + $barHeight, $accentDark);
+          $valueText = (string)$row["b"];
+          [$valueW, $valueH] = uc_gd_text_box($valueText, $valueSize);
+          imagefilledrectangle(
+            $image,
+            $valueX,
+            $barY + (int)round(2 * $scale),
+            $valueX + $valueW + ($valuePaddingX * 2),
+            $barY + (int)round(2 * $scale) + $valueH + ($valuePaddingY * 2),
+            $valueBg
+          );
+          uc_gd_text($image, $valueX + $valuePaddingX, $barY + (int)round(2 * $scale) + $valuePaddingY, $valueText, $ink, $valueSize, "left");
+          $cursorY += $barHeight + $barGap;
+        }
+        $y += $block["height"] + $cardGap;
+      }
+
+      $shareFile = $shareFileBase . "-h2h-" . uc_slug($playerALabel) . "-" . uc_slug($playerBLabel);
+      header("Content-Type: image/png");
+      header("Content-Disposition: attachment; filename=\"" . $shareFile . ".png\"");
+      imagepng($image);
+      imagedestroy($image);
+      exit;
+    }
+  }
+
   $height = $padding + $headerHeight + $cardGap + $heightOverall;
   foreach ($categoryBlocks as $block) {
     $height += $cardGap + $block["height"];
@@ -3054,6 +3825,12 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
               <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
               <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
+              <?php if ($h2hReady): ?>
+                <?php
+                  $h2hShareUrl = $h2hBaseUrl . "&overall=" . urlencode($overallMode) . "&share=img";
+                ?>
+                <button class="pill-button is-share" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hShareUrl, ENT_QUOTES, "UTF-8"); ?>'">Teilen</button>
+              <?php endif; ?>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
@@ -3100,8 +3877,167 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
         <?php if ($h2hReady): ?>
           <?php
+            $overallScoresSum = [];
+            $overallScoresAvg = [];
+            $overallScoresAbs = [];
+            $overallCategoryCounts = [];
+            foreach ($assignedPlayers as $player) {
+              $playerId = (int)$player["id"];
+              $overallScoresSum[$playerId] = 0;
+              $overallScoresAvg[$playerId] = 0;
+              $overallScoresAbs[$playerId] = 0;
+              $overallCategoryCounts[$playerId] = 0;
+            }
+            foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
+              $categoryWeight = $combineCategoryWeights[$category] ?? 1.0;
+              if ($categoryWeight <= 0) {
+                $categoryWeight = 1.0;
+              }
+              $disciplineCount = 0;
+              $categoryTotals = [];
+              $categoryTotalsAbs = [];
+              $categoryTotalsAvg = [];
+              $categoryWeightSumAll = 0.0;
+              $categoryWeightSumAllAbs = 0.0;
+              $categoryWeightSumsAvg = [];
+              foreach ($assignedPlayers as $player) {
+                $playerId = (int)$player["id"];
+                $categoryTotals[$playerId] = 0;
+                $categoryTotalsAbs[$playerId] = 0;
+                $categoryTotalsAvg[$playerId] = 0;
+                $categoryWeightSumsAvg[$playerId] = 0.0;
+              }
+              foreach ($categoryDisciplines as $discipline) {
+                $discId = (int)$discipline["id"];
+                $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
+                if ($disciplineWeight <= 0) {
+                  $disciplineWeight = 1.0;
+                }
+                $direction = $discipline["rating_direction"] ?? "more";
+                if ($direction !== "less" && $direction !== "more") {
+                  $direction = "more";
+                }
+                $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
+                $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
+                $bonusAbs = uc_bonus_value($discipline["bonus_absolute"] ?? null);
+                $hasAbsolute = $expectedMinValue !== null && $expectedMaxValue !== null;
+                if ($overallMode === "abs" && !$hasAbsolute) {
+                  continue;
+                }
+                $rankValues = [];
+                foreach ($assignedPlayers as $player) {
+                  $playerId = (int)$player["id"];
+                  $value = $resultsByDiscipline[$discId][$playerId] ?? null;
+                  $numeric = uc_value_to_float($value);
+                  if ($numeric === null) {
+                    continue;
+                  }
+                  $rankValues[$playerId] = $numeric;
+                }
+                $bestValue = null;
+                $worstValue = null;
+                if (!empty($rankValues)) {
+                  $disciplineCount++;
+                  $categoryWeightSumAll += $disciplineWeight;
+                  $values = array_values($rankValues);
+                  if ($direction === "less") {
+                    $bestValue = min($values);
+                    $worstValue = max($values);
+                  } else {
+                    $bestValue = max($values);
+                    $worstValue = min($values);
+                  }
+                }
+                if ($hasAbsolute) {
+                  $categoryWeightSumAllAbs += $disciplineWeight;
+                }
+                foreach ($assignedPlayers as $player) {
+                  $playerId = (int)$player["id"];
+                  $numericValue = $rankValues[$playerId] ?? null;
+                  $pointsBase = 0;
+                  if ($numericValue === null || $bestValue === null || $worstValue === null) {
+                    $pointsBase = 0;
+                  } elseif ($bestValue == $worstValue) {
+                    $pointsBase = 2;
+                  } else {
+                    $ratio = ($numericValue - $worstValue) / ($bestValue - $worstValue);
+                    $pointsBase = 1 + $ratio;
+                  }
+                  $pointsSum = $pointsBase;
+                  if ($overallMode === "sum" && $bonusRel > 0 && $numericValue !== null && $bestValue !== null && $numericValue == $bestValue) {
+                    $pointsSum += $bonusRel;
+                  }
+                  $categoryTotals[$playerId] += $pointsSum * $disciplineWeight;
+                  if ($hasAbsolute) {
+                    $absolutePoints = uc_absolute_points($numericValue, $expectedMinValue, $expectedMaxValue, $direction);
+                    if ($absolutePoints === null) {
+                      $absolutePoints = 0;
+                    }
+                    if ($bonusAbs > 0 && uc_absolute_bonus_applies($numericValue, $expectedMaxValue, $direction)) {
+                      $absolutePoints += $bonusAbs;
+                    }
+                    $categoryTotalsAbs[$playerId] += $absolutePoints * $disciplineWeight;
+                  }
+                  if ($numericValue !== null && $bestValue !== null && $worstValue !== null) {
+                    $categoryTotalsAvg[$playerId] += $pointsBase * $disciplineWeight;
+                    $categoryWeightSumsAvg[$playerId] += $disciplineWeight;
+                  }
+                }
+              }
+              if ($disciplineCount === 0 || $categoryWeightSumAll <= 0) {
+                continue;
+              }
+              foreach ($assignedPlayers as $player) {
+                $playerId = (int)$player["id"];
+                $categoryAverage = $categoryTotals[$playerId] / $categoryWeightSumAll;
+                $overallScoresSum[$playerId] += $categoryAverage * $categoryWeight;
+                if ($categoryWeightSumAllAbs > 0) {
+                  $categoryAverageAbs = $categoryTotalsAbs[$playerId] / $categoryWeightSumAllAbs;
+                  $overallScoresAbs[$playerId] += $categoryAverageAbs * $categoryWeight;
+                }
+                $avgWeightSum = $categoryWeightSumsAvg[$playerId] ?? 0.0;
+                if ($avgWeightSum > 0) {
+                  $categoryAverageAvg = $categoryTotalsAvg[$playerId] / $avgWeightSum;
+                  $overallScoresAvg[$playerId] += $categoryAverageAvg;
+                  $overallCategoryCounts[$playerId] += 1;
+                }
+              }
+            }
+            foreach ($overallScoresAvg as $playerId => $score) {
+              $count = $overallCategoryCounts[$playerId] ?? 0;
+              if ($count > 0) {
+                $overallScoresAvg[$playerId] = $score / $count;
+              }
+            }
+            if ($overallMode === "avg") {
+              $overallScores = $overallScoresAvg;
+            } elseif ($overallMode === "abs") {
+              $overallScores = $overallScoresAbs;
+            } else {
+              $overallScores = $overallScoresSum;
+            }
+            $overallRankValues = $overallScores;
+            arsort($overallRankValues, SORT_NUMERIC);
+            $overallRanks = [];
+            $pos = 0;
+            $rank = 0;
+            $prev = null;
+            foreach ($overallRankValues as $playerId => $val) {
+              $pos++;
+              if ($prev === null || $val != $prev) {
+                $rank = $pos;
+                $prev = $val;
+              }
+              $overallRanks[$playerId] = $rank;
+            }
             $playerALabel = $h2hPlayerA["first_name"] . " " . $h2hPlayerA["last_name"];
             $playerBLabel = $h2hPlayerB["first_name"] . " " . $h2hPlayerB["last_name"];
+            $overallPointsPrefix = $overallMode === "avg" ? "Ø " : "";
+            $overallPointsA = $overallScores[$h2hPlayerAId] ?? 0;
+            $overallPointsB = $overallScores[$h2hPlayerBId] ?? 0;
+            $overallRankA = $overallRanks[$h2hPlayerAId] ?? "-";
+            $overallRankB = $overallRanks[$h2hPlayerBId] ?? "-";
             $h2hRadarData = [];
             foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
               $displayDisciplines = $categoryDisciplines;
@@ -3346,6 +4282,29 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               }
             }
           ?>
+          <div class="info-card">
+            <div class="card-header">
+              <h3>Overall</h3>
+            </div>
+            <ul class="list">
+              <li class="list-item">
+                <div class="result-name">
+                  <strong><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></strong>
+                </div>
+                <span class="badge">
+                  <?php echo htmlspecialchars("Platz " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " P", ENT_QUOTES, "UTF-8"); ?>
+                </span>
+              </li>
+              <li class="list-item">
+                <div class="result-name">
+                  <strong><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></strong>
+                </div>
+                <span class="badge">
+                  <?php echo htmlspecialchars("Platz " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " P", ENT_QUOTES, "UTF-8"); ?>
+                </span>
+              </li>
+            </ul>
+          </div>
           <?php if (empty($assignedDisciplines)): ?>
             <p class="help">Keine Disziplinen zugeordnet.</p>
           <?php else: ?>
