@@ -390,6 +390,15 @@ $genderOptions = [
   "w" => "Weiblich",
   "d" => "Divers",
 ];
+$infoTexts = [
+  "weights" => "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie.",
+];
+$formatTooltip = static function (string $text): string {
+  return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
+};
+$formatLabel = static function (string $text): string {
+  return htmlspecialchars(str_replace("\n", " ", $text), ENT_QUOTES, "UTF-8");
+};
 
 $filterGender = $_GET["gender"] ?? "";
 if (!isset($genderOptions[$filterGender])) {
@@ -4525,7 +4534,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
           <?php if (!empty($selectedDisciplinesByCategory)): ?>
             <div class="field">
-              <span>Gewichtungen</span>
+              <div class="section-header">
+                <span>Gewichtungen</span>
+                <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen. 1x entspricht der Standardgewichtung."); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\n1x entspricht der Standardgewichtung.\nKategorien gewichten den Mittelwert der Disziplinen, Disziplinen gewichten innerhalb der Kategorie."); ?>">i</button>
+              </div>
               <div class="category-block">
                 <?php foreach ($selectedDisciplinesByCategory as $category => $categoryDisciplines): ?>
                   <?php $categoryWeight = $formCategoryWeights[$category] ?? 1; ?>
@@ -4779,6 +4791,28 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         const isHidden = target.classList.toggle("is-hidden");
         button.setAttribute("aria-expanded", String(!isHidden));
       });
+    });
+
+    const infoButtons = document.querySelectorAll(".js-info");
+    const closeAllInfos = (except) => {
+      infoButtons.forEach((btn) => {
+        if (btn === except) return;
+        btn.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+      });
+    };
+    infoButtons.forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = btn.classList.toggle("is-open");
+        btn.setAttribute("aria-expanded", String(isOpen));
+        if (isOpen) {
+          closeAllInfos(btn);
+        }
+      });
+    });
+    document.addEventListener("click", () => {
+      closeAllInfos();
     });
   </script></body>
 </html>
