@@ -903,7 +903,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $shareFileBase .= "-" . $shareDate;
   }
   $disciplinesForExport = $assignedDisciplines;
-  $headers = ["Spieler"];
+  $headers = ["Spieler", "Trikotnummer", "Geschlecht", "Positionen"];
   foreach ($disciplinesForExport as $discipline) {
     $label = $discipline["discipline_name"] ?? "Disziplin";
     $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
@@ -930,8 +930,19 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     echo implode(",", array_map("uc_csv_escape", $headers)) . "\r\n";
     foreach ($filteredPlayers as $player) {
       $playerId = (int)$player["id"];
+      $positions = [];
+      if (!empty($player["position_handler"])) {
+        $positions[] = "Handler";
+      }
+      if (!empty($player["position_cutter"])) {
+        $positions[] = "Cutter";
+      }
+      $positionsLabel = empty($positions) ? "-" : implode(" / ", $positions);
       $row = [
         trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
+        $player["jersey_number"] !== null ? (string)$player["jersey_number"] : "-",
+        $player["gender"] ?? "-",
+        $positionsLabel,
       ];
       foreach ($disciplinesForExport as $discipline) {
         $discId = (int)$discipline["id"];
