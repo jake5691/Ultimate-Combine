@@ -176,9 +176,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
            FROM disciplines
            WHERE team_id IS NULL
              AND discipline_name = :discipline_name
+             AND description = :description
+             AND unit = :unit
+             AND category = :category
            LIMIT 1"
         );
-        $stmt->execute([":discipline_name" => $disciplineName]);
+        $stmt->execute([
+          ":discipline_name" => $disciplineName,
+          ":description" => $description,
+          ":unit" => $unit,
+          ":category" => $category,
+        ]);
         $exists = (bool)$stmt->fetchColumn();
 
         if ($exists) {
