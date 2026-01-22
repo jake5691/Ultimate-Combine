@@ -647,7 +647,7 @@ if (!$pageError) {
     "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
      FROM players
      WHERE team_id = :team_id
-     ORDER BY created_at DESC"
+     ORDER BY first_name ASC, last_name ASC"
   );
   $stmt->execute([":team_id" => $teamId]);
   $players = $stmt->fetchAll();
