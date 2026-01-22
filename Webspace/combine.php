@@ -390,6 +390,15 @@ $genderOptions = [
   "w" => "Weiblich",
   "d" => "Divers",
 ];
+$infoTexts = [
+  "weights" => "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie.",
+];
+$formatTooltip = static function (string $text): string {
+  return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
+};
+$formatLabel = static function (string $text): string {
+  return htmlspecialchars(str_replace("\n", " ", $text), ENT_QUOTES, "UTF-8");
+};
 
 $filterGender = $_GET["gender"] ?? "";
 if (!isset($genderOptions[$filterGender])) {
@@ -464,7 +473,7 @@ if (!$pageError) {
 
   try {
     $stmt = $pdo->prepare(
-      "SELECT id, discipline_name, description, category, unit, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute
+      "SELECT id, team_id, discipline_name, description, category, unit, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute
        FROM disciplines
        WHERE team_id = :team_id OR team_id IS NULL
        ORDER BY created_at DESC"
@@ -4490,21 +4499,53 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <?php if (empty($disciplines)): ?>
               <p class="help">Noch keine Disziplinen angelegt.</p>
             <?php else: ?>
-              <div class="check-grid">
-                <?php foreach ($disciplines as $discipline): ?>
-                  <label class="check-item">
-                    <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
-                    <span>
-                      <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
-                      <span class="meta">
-                        <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
-                        &middot;
-                        <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+              <?php
+                $globalDisciplines = [];
+                $teamDisciplines = [];
+                foreach ($disciplines as $discipline) {
+                  if (empty($discipline["team_id"])) {
+                    $globalDisciplines[] = $discipline;
+                  } else {
+                    $teamDisciplines[] = $discipline;
+                  }
+                }
+              ?>
+              <?php if (!empty($teamDisciplines)): ?>
+                <p class="help">Team-Disziplinen</p>
+                <div class="check-grid">
+                  <?php foreach ($teamDisciplines as $discipline): ?>
+                    <label class="check-item">
+                      <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
+                      <span>
+                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <span class="meta">
+                          <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                          &middot;
+                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                        </span>
                       </span>
-                    </span>
-                  </label>
-                <?php endforeach; ?>
-              </div>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+              <?php if (!empty($globalDisciplines)): ?>
+                <p class="help">Globale Disziplinen</p>
+                <div class="check-grid">
+                  <?php foreach ($globalDisciplines as $discipline): ?>
+                    <label class="check-item">
+                      <input type="checkbox" name="disciplines[]" value="<?php echo (int)$discipline["id"]; ?>"<?php echo in_array((int)$discipline["id"], $formDisciplineIds, true) ? " checked" : ""; ?>>
+                      <span>
+                        <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
+                        <span class="meta">
+                          <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
+                          &middot;
+                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                        </span>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
             <?php endif; ?>
           </div>
 
@@ -4525,7 +4566,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
           <?php if (!empty($selectedDisciplinesByCategory)): ?>
             <div class="field">
-              <span>Gewichtungen</span>
+              <div class="section-header">
+                <span>Gewichtungen</span>
+                <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen. 1x entspricht der Standardgewichtung."); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\n1x entspricht der Standardgewichtung.\nKategorien gewichten den Mittelwert der Disziplinen, Disziplinen gewichten innerhalb der Kategorie."); ?>">i</button>
+              </div>
               <div class="category-block">
                 <?php foreach ($selectedDisciplinesByCategory as $category => $categoryDisciplines): ?>
                   <?php $categoryWeight = $formCategoryWeights[$category] ?? 1; ?>
@@ -4779,6 +4823,28 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         const isHidden = target.classList.toggle("is-hidden");
         button.setAttribute("aria-expanded", String(!isHidden));
       });
+    });
+
+    const infoButtons = document.querySelectorAll(".js-info");
+    const closeAllInfos = (except) => {
+      infoButtons.forEach((btn) => {
+        if (btn === except) return;
+        btn.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+      });
+    };
+    infoButtons.forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = btn.classList.toggle("is-open");
+        btn.setAttribute("aria-expanded", String(isOpen));
+        if (isOpen) {
+          closeAllInfos(btn);
+        }
+      });
+    });
+    document.addEventListener("click", () => {
+      closeAllInfos();
     });
   </script></body>
 </html>
