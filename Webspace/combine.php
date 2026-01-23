@@ -97,6 +97,25 @@ function uc_format_unit($unit, array $unitMap): string {
   return $unit;
 }
 
+function uc_format_unit_label($unit, array $unitMap): string {
+  $unitName = trim((string)$unit);
+  if ($unitName === "") {
+    return "";
+  }
+  $abbr = "";
+  if (isset($unitMap[$unitName])) {
+    $abbr = trim((string)$unitMap[$unitName]);
+  }
+  if ($abbr === "" && preg_match('/\(([^)]+)\)\s*$/', $unitName, $matches)) {
+    $abbr = trim($matches[1]);
+    $unitName = trim(preg_replace('/\s*\([^)]+\)\s*$/', '', $unitName));
+  }
+  if ($abbr === "" || $abbr === $unitName) {
+    return $unitName;
+  }
+  return $unitName . " (" . $abbr . ")";
+}
+
 function uc_csv_escape($value): string {
   $value = (string)$value;
   if (strpbrk($value, "\",\r\n") !== false) {
@@ -587,10 +606,12 @@ if (!$pageError) {
   $orderedPlayers = $assignedPlayers;
   $activeDisciplineDescription = "";
   $activeDisciplineUnit = "";
+  $activeDisciplineUnitAbbr = "";
   foreach ($assignedDisciplines as $discipline) {
     if ((int)$discipline["id"] === (int)$activeDisciplineId) {
       $activeDisciplineDescription = $discipline["description"] ?? "";
-      $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $activeDisciplineUnit = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
+      $activeDisciplineUnitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
       break;
     }
   }
@@ -898,10 +919,12 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
 
     $activeDisciplineDescription = "";
     $activeDisciplineUnit = "";
+    $activeDisciplineUnitAbbr = "";
     foreach ($assignedDisciplines as $discipline) {
       if ((int)$discipline["id"] === (int)$activeDisciplineId) {
         $activeDisciplineDescription = $discipline["description"] ?? "";
-        $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $activeDisciplineUnit = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
+        $activeDisciplineUnitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
         break;
       }
     }
@@ -2939,6 +2962,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       <?php if (!$startError && !empty($assignedDisciplines) && !empty($assignedPlayers) && $activeDisciplineId): ?>
         <section class="auth-card">
           <h3>Ergebnisse erfassen</h3>
+          <?php if (!empty($activeDisciplineUnit)): ?>
+            <p class="help"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
           <form class="form" method="post" action="">
             <input type="hidden" name="action" value="save_results">
             <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">
@@ -2952,8 +2978,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   </span>
                   <span class="result-value">
                     <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
-                    <?php if (!empty($activeDisciplineUnit)): ?>
-                      <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></span>
+                    <?php if (!empty($activeDisciplineUnitAbbr)): ?>
+                      <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnitAbbr, ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
                   </span>
                   <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
