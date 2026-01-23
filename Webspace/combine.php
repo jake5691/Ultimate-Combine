@@ -2240,6 +2240,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       $h2hCategoryBlocks = [];
       $rowHeight = (int)round(20 * $scale);
+      $unitLineHeight = (int)round(14 * $scale);
       $categoryTitleHeight = (int)round(22 * $scale);
       $barHeight = (int)round(18 * $scale);
       $barGap = (int)round(10 * $scale);
@@ -2263,7 +2264,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           if ($direction !== "less" && $direction !== "more") {
             $direction = "more";
           }
-          $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+          $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+          $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
           $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
           $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
           $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
@@ -2333,8 +2335,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           }
           $displayA = uc_display_value($playerAValue, "-");
           $displayB = uc_display_value($playerBValue, "-");
-          if ($displayA !== "-" && $unit !== "") { $displayA .= " " . $unit; }
-          if ($displayB !== "-" && $unit !== "") { $displayB .= " " . $unit; }
+          if ($displayA !== "-" && $unitAbbr !== "") { $displayA .= " " . $unitAbbr; }
+          if ($displayB !== "-" && $unitAbbr !== "") { $displayB .= " " . $unitAbbr; }
           $scaleScore = function ($value) {
             $value = max(0.0, min(2.0, (float)$value));
             if ($value <= 1) {
@@ -2350,12 +2352,19 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             "b" => $displayB,
             "percentA" => $percentA,
             "percentB" => $percentB,
+            "unit_label" => $unitLabel,
           ];
         }
         if (empty($rows)) {
           continue;
         }
-        $blockHeight = $cardPadding * 2 + $categoryTitleHeight + (count($rows) * ($rowHeight + ($barHeight * 2) + $barGap));
+        $unitRows = 0;
+        foreach ($rows as $row) {
+          if (!empty($row["unit_label"])) {
+            $unitRows++;
+          }
+        }
+        $blockHeight = $cardPadding * 2 + $categoryTitleHeight + (count($rows) * ($rowHeight + ($barHeight * 2) + $barGap)) + ($unitRows * $unitLineHeight);
         $h2hCategoryBlocks[] = [
           "category" => $category,
           "rows" => $rows,
@@ -2505,6 +2514,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $label = uc_truncate_text($row["label"], 40);
           uc_gd_text($image, $x + $cardPadding, $cursorY, $label, $ink, (int)round(11 * $scale), "left");
           $cursorY += $rowHeight;
+          if (!empty($row["unit_label"])) {
+            uc_gd_text($image, $x + $cardPadding, $cursorY, (string)$row["unit_label"], $muted, (int)round(10 * $scale), "left");
+            $cursorY += $unitLineHeight;
+          }
 
           $barX = $x + $cardPadding;
           $barWidth = $cardWidth - ($cardPadding * 2);
@@ -4399,7 +4412,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               ?>
               <div class="category-block">
                 <h3 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h3>
-                <ul class="list">
+                <ul class="list h2h-list">
                   <?php foreach ($displayDisciplines as $discipline): ?>
                     <?php
                       $discId = (int)$discipline["id"];
@@ -4408,6 +4421,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         $direction = "more";
                       }
                       $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                      $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                       $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                       $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
                       $rankValues = [];
@@ -4474,8 +4488,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $percentB = $scaleScore($pointsB);
                     ?>
                     <li class="list-item">
-                      <div class="result-name">
-                        <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                      <div class="h2h-discipline">
+                        <div class="result-name">
+                          <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                        </div>
+                        <?php if (!empty($unitLabel)): ?>
+                          <div class="detail h2h-unit">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                        <?php endif; ?>
                       </div>
                       <div class="h2h-bars">
                         <div class="h2h-bar is-a">
