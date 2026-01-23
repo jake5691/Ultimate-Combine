@@ -1262,6 +1262,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   $imageWidth = (int)round($baseWidth * $scale);
   $padding = (int)round(40 * $scale);
   $lineHeight = (int)round(20 * $scale);
+  $unitLineHeight = (int)round(14 * $scale);
   $cardGap = (int)round(22 * $scale);
   $headerHeight = (int)round(96 * $scale);
   $cardPadding = (int)round(20 * $scale);
@@ -1380,12 +1381,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         $ranks[$row["player_id"]] = $rank;
       }
-      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
       $discLabel = $discipline["discipline_name"] ?? "Disziplin";
-      if ($unitLabel !== "") {
-        $discLabel .= " (" . $unitLabel . ")";
-      }
       $discHeight = $disciplineTitleHeight + (max(1, count($rows)) * $lineHeight);
+      if ($unitLabel !== "") {
+        $discHeight += $unitLineHeight;
+      }
       $blockHeight += $discHeight + $disciplineGap;
       $discEntries[] = [
         "label" => $discLabel,
@@ -1393,7 +1395,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         "show_weight" => $showDisciplineWeight,
         "rows" => $rows,
         "ranks" => $ranks,
-        "unit" => $unitLabel,
+        "unit_abbr" => $unitAbbr,
+        "unit_label" => $unitLabel,
       ];
     }
     $categoryBlocks[] = [
@@ -1498,13 +1501,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
       }
       $rows = [];
+      $rowsHeightSum = 0;
       foreach ($displayDisciplines as $discipline) {
         $discId = (int)$discipline["id"];
         $direction = $discipline["rating_direction"] ?? "more";
         if ($direction !== "less" && $direction !== "more") {
           $direction = "more";
         }
-        $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
         $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
         if ($disciplineWeight <= 0) {
           $disciplineWeight = 1.0;
@@ -1555,8 +1560,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         $playerValue = $resultsByDiscipline[$discId][$selectedPlayerId] ?? null;
         $display = uc_display_value($playerValue, "-");
-        if ($display !== "-" && $unit !== "") {
-          $display .= " " . $unit;
+        if ($display !== "-" && $unitAbbr !== "") {
+          $display .= " " . $unitAbbr;
         }
         $numericValue = $rankValues[$selectedPlayerId] ?? null;
         if ($overallMode === "abs") {
@@ -1585,9 +1590,6 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         if ($showDisciplineWeights) {
           $leftText .= " (" . uc_display_value($disciplineWeight, "") . "x)";
         }
-        if ($display !== "-") {
-          $leftText .= " · " . $display;
-        }
         if ($overallMode !== "abs" && $numericValue === null) {
           $rightText = "0 P";
         } else {
@@ -1596,7 +1598,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         $rows[] = [
           "left" => $leftText,
           "right" => $rightText,
+          "value" => $display,
+          "unit_label" => $unitLabel,
         ];
+        $rowsHeightSum += (int)round($playerLineHeight * 2);
+        if ($unitLabel !== "") {
+          $rowsHeightSum += $unitLineHeight;
+        }
       }
       if (empty($rows)) {
         continue;
@@ -1607,7 +1615,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       }
       $categoryScore = $categoryAverages[$category][$selectedPlayerId] ?? null;
       $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " P";
-      $blockHeight = $cardPadding * 2 + $playerTitleHeight + (count($rows) * (int)round($playerLineHeight * 2));
+      $blockHeight = $cardPadding * 2 + $playerTitleHeight + $rowsHeightSum;
       if (count($rows) > 1) {
         $blockHeight += $playerScoreHeight;
       }
@@ -1787,7 +1795,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $leftText = uc_truncate_text($row["left"], 46);
           uc_gd_text($image, $colX + $cardPadding, $cursorY, $leftText, $ink, (int)round(11 * $scale), "left");
           $cursorY += (int)round($playerLineHeight * 0.9);
-          uc_gd_text($image, $colX + $cardPadding, $cursorY, $row["right"], $muted, (int)round(11 * $scale), "left");
+          if (!empty($row["unit_label"])) {
+            uc_gd_text($image, $colX + $cardPadding, $cursorY, (string)$row["unit_label"], $muted, (int)round(10 * $scale), "left");
+            $cursorY += $unitLineHeight;
+          }
+          $detailText = $row["value"];
+          if ($detailText !== "" && $row["right"] !== "") {
+            $detailText .= " · " . $row["right"];
+          } elseif ($row["right"] !== "") {
+            $detailText = $row["right"];
+          }
+          uc_gd_text($image, $colX + $cardPadding, $cursorY, $detailText, $muted, (int)round(11 * $scale), "left");
           $cursorY += (int)round($playerLineHeight * 1.1);
         }
         $colY += $block["height"] + $cardGap;
@@ -2697,12 +2715,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         uc_gd_text($image, $colX + $cardPadding, $cursorY, $discLabel, $accentDark, (int)round(13 * $scale), "left");
         $rowY = $cursorY + (int)round(18 * $scale);
+        if (!empty($disc["unit_label"])) {
+          uc_gd_text($image, $colX + $cardPadding, $rowY, (string)$disc["unit_label"], $muted, (int)round(10 * $scale), "left");
+          $rowY += $unitLineHeight;
+        }
         foreach ($disc["rows"] as $row) {
           $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
           $playerName = $row["name"];
           $display = uc_display_value($row["value"], "-");
-          if ($display !== "-" && $disc["unit"] !== "") {
-            $display .= " " . $disc["unit"];
+          if ($display !== "-" && $disc["unit_abbr"] !== "") {
+            $display .= " " . $disc["unit_abbr"];
           }
           $pointsLabel = uc_format_points($row["points"]) . " P";
           $textX = $colX + $cardPadding;
