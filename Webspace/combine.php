@@ -3646,6 +3646,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                     $direction = "more";
                   }
                   $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                  $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                   $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1;
                   $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                   $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
@@ -3761,6 +3762,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                     <?php if (empty($filteredPlayers)): ?>
                       <p class="help">Keine Spieler für den gewählten Filter.</p>
                     <?php else: ?>
+                      <?php if ($unitLabel !== ""): ?>
+                        <p class="help">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></p>
+                      <?php endif; ?>
                       <?php
                         $orderedPlayers = [];
                         $rankedIds = array_keys($rankValues);
