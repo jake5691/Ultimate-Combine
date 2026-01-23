@@ -4555,7 +4555,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
-                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                          <?php
+                            $unitName = trim((string)($discipline["unit"] ?? ""));
+                            $unitAbbr = uc_format_unit($unitName, $unitAbbrMap);
+                            $unitLabel = $unitName;
+                            if ($unitAbbr !== "" && $unitAbbr !== $unitName) {
+                              $unitLabel .= " (" . $unitAbbr . ")";
+                            }
+                          ?>
+                          <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
                         </span>
                       </span>
                     </label>

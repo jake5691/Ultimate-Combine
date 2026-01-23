@@ -136,12 +136,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $disciplineName = trim($_POST["discipline_name"] ?? "");
     $description = trim($_POST["description"] ?? "");
     $unit = trim($_POST["unit"] ?? "");
+    $unitAbbrRaw = trim($_POST["unit_abbreviation"] ?? "");
     $category = trim($_POST["category"] ?? "");
     $direction = $_POST["rating_direction"] ?? "";
     $expectedMinRaw = trim($_POST["expected_min"] ?? "");
     $expectedMaxRaw = trim($_POST["expected_max"] ?? "");
     $bonusRelRaw = trim($_POST["bonus_relative"] ?? "");
     $bonusAbsRaw = trim($_POST["bonus_absolute"] ?? "");
+    if ($unitAbbrRaw === "" && preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', $unit, $matches)) {
+      $unit = trim($matches[1]);
+      $unitAbbrRaw = trim($matches[2]);
+    }
     $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
     $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
     $bonusRel = $bonusRelRaw === "" ? null : filter_var($bonusRelRaw, FILTER_VALIDATE_FLOAT);
@@ -159,6 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $disciplineName === "" ||
       $description === "" ||
       $unit === "" ||
+      $unitAbbrRaw === "" ||
       $category === "" ||
       !isset($validDirections[$direction]) ||
       ($expectedMinRaw !== "" && $expectedMin === false) ||
@@ -171,6 +177,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $adminError = "Bitte alle Felder für die Disziplin ausfüllen.";
     } else {
       try {
+        $unitAbbr = $unitAbbrRaw;
+        $stmt = $pdo->prepare(
+          "SELECT 1 FROM units WHERE unit_name = :unit_name AND unit_abbreviation = :unit_abbreviation AND team_id IS NULL LIMIT 1"
+        );
+        $stmt->execute([
+          ":unit_name" => $unit,
+          ":unit_abbreviation" => $unitAbbr,
+        ]);
+        $unitExists = (bool)$stmt->fetchColumn();
+        if (!$unitExists) {
+          $stmt = $pdo->prepare(
+            "INSERT INTO units (team_id, unit_name, unit_abbreviation) VALUES (NULL, :unit_name, :unit_abbreviation)"
+          );
+          $stmt->execute([
+            ":unit_name" => $unit,
+            ":unit_abbreviation" => $unitAbbr,
+          ]);
+        }
         $stmt = $pdo->prepare(
           "SELECT 1
            FROM disciplines
@@ -192,10 +216,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         if ($exists) {
           $adminError = "Diese Disziplin existiert bereits.";
         } else {
-          $stmt = $pdo->prepare(
-            "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute)
-             VALUES (NULL, :discipline_name, :description, :unit, :category, :rating_direction, :expected_min, :expected_max, :bonus_relative, :bonus_absolute)"
-          );
+        $stmt = $pdo->prepare(
+          "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute)
+          VALUES (NULL, :discipline_name, :description, :unit, :category, :rating_direction, :expected_min, :expected_max, :bonus_relative, :bonus_absolute)"
+        );
           $stmt->execute([
             ":discipline_name" => $disciplineName,
             ":description" => $description,
@@ -235,6 +259,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $disciplineNames = (array)($_POST["discipline_name"] ?? []);
     $descriptions = (array)($_POST["description"] ?? []);
     $unitsInput = (array)($_POST["unit"] ?? []);
+    $unitAbbrsInput = (array)($_POST["unit_abbreviation"] ?? []);
     $categories = (array)($_POST["category"] ?? []);
     $directions = (array)($_POST["rating_direction"] ?? []);
     $expectedMins = (array)($_POST["expected_min"] ?? []);
@@ -248,6 +273,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $disciplineName = trim((string)($disciplineNames[$index] ?? ""));
       $description = trim((string)($descriptions[$index] ?? ""));
       $unit = trim((string)($unitsInput[$index] ?? ""));
+      $unitAbbrRaw = trim((string)($unitAbbrsInput[$index] ?? ""));
       $category = trim((string)($categories[$index] ?? ""));
       $direction = $directions[$index] ?? "";
       $expectedMinRaw = trim((string)($expectedMins[$index] ?? ""));
@@ -256,6 +282,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $bonusAbsRaw = trim((string)($bonusAbss[$index] ?? ""));
       $expectedMin = $expectedMinRaw === "" ? null : filter_var($expectedMinRaw, FILTER_VALIDATE_FLOAT);
       $expectedMax = $expectedMaxRaw === "" ? null : filter_var($expectedMaxRaw, FILTER_VALIDATE_FLOAT);
+      if ($unitAbbrRaw === "" && preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', $unit, $matches)) {
+        $unit = trim($matches[1]);
+        $unitAbbrRaw = trim($matches[2]);
+      }
       $bonusRel = $bonusRelRaw === "" ? null : filter_var($bonusRelRaw, FILTER_VALIDATE_FLOAT);
       $bonusAbs = $bonusAbsRaw === "" ? null : filter_var($bonusAbsRaw, FILTER_VALIDATE_FLOAT);
       $invalidExpectedRange = false;
@@ -271,6 +301,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $disciplineName === "" ||
         $description === "" ||
         $unit === "" ||
+        $unitAbbrRaw === "" ||
         $category === "" ||
         !isset($validDirections[$direction]) ||
         ($expectedMinRaw !== "" && $expectedMin === false) ||
@@ -285,10 +316,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       }
     }
 
-    if ($hasError) {
-      $adminError = "Bitte alle Felder für die Disziplinen ausfüllen.";
-    } else {
-      try {
+      if ($hasError) {
+        $adminError = "Bitte alle Felder für die Disziplinen ausfüllen.";
+      } else {
+        try {
         $stmt = $pdo->prepare(
           "UPDATE disciplines
            SET discipline_name = :discipline_name,
@@ -305,10 +336,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         foreach ($disciplineIds as $index => $disciplineIdRaw) {
           $expectedMinRaw = trim((string)($expectedMins[$index] ?? ""));
           $expectedMaxRaw = trim((string)($expectedMaxs[$index] ?? ""));
+          $unitAbbrRaw = trim((string)($unitAbbrsInput[$index] ?? ""));
           $bonusRelRaw = trim((string)($bonusRels[$index] ?? ""));
           $bonusAbsRaw = trim((string)($bonusAbss[$index] ?? ""));
           $expectedMin = $expectedMinRaw === "" ? null : (float)str_replace(",", ".", $expectedMinRaw);
           $expectedMax = $expectedMaxRaw === "" ? null : (float)str_replace(",", ".", $expectedMaxRaw);
+          if ($unitAbbrRaw === "" && preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', (string)($unitsInput[$index] ?? ""), $matches)) {
+            $unitAbbrRaw = trim($matches[2]);
+          }
           $bonusRel = $bonusRelRaw === "" ? null : (float)str_replace(",", ".", $bonusRelRaw);
           $bonusAbs = $bonusAbsRaw === "" ? null : (float)str_replace(",", ".", $bonusAbsRaw);
           $stmt->execute([
@@ -323,6 +358,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             ":bonus_absolute" => $bonusAbs,
             ":id" => (int)$disciplineIdRaw,
           ]);
+          $unitName = trim((string)($unitsInput[$index] ?? ""));
+          $unitAbbr = $unitAbbrRaw;
+          if ($unitName !== "" && $unitAbbr !== "") {
+            $unitStmt = $pdo->prepare(
+              "SELECT 1 FROM units WHERE unit_name = :unit_name AND unit_abbreviation = :unit_abbreviation AND team_id IS NULL LIMIT 1"
+            );
+            $unitStmt->execute([
+              ":unit_name" => $unitName,
+              ":unit_abbreviation" => $unitAbbr,
+            ]);
+            $unitExists = (bool)$unitStmt->fetchColumn();
+            if (!$unitExists) {
+              $unitStmt = $pdo->prepare(
+                "INSERT INTO units (team_id, unit_name, unit_abbreviation) VALUES (NULL, :unit_name, :unit_abbreviation)"
+              );
+              $unitStmt->execute([
+                ":unit_name" => $unitName,
+                ":unit_abbreviation" => $unitAbbr,
+              ]);
+            }
+          }
         }
         $adminFeedback = "Disziplinen wurden aktualisiert.";
       } catch (Throwable $e) {
@@ -336,10 +392,20 @@ if (!$pageError) {
   $stmt = $pdo->prepare(
     "SELECT id, unit_name, unit_abbreviation, created_at
      FROM units
+     WHERE team_id IS NULL
      ORDER BY unit_name ASC"
   );
   $stmt->execute();
   $units = $stmt->fetchAll();
+
+  $unitNameToAbbr = [];
+  foreach ($units as $unit) {
+    $unitName = trim((string)($unit["unit_name"] ?? ""));
+    $unitAbbr = trim((string)($unit["unit_abbreviation"] ?? ""));
+    if ($unitName !== "" && $unitAbbr !== "") {
+      $unitNameToAbbr[$unitName] = $unitAbbr;
+    }
+  }
 
   $stmt = $pdo->prepare(
     "SELECT id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute, created_at
@@ -508,7 +574,11 @@ if (!$pageError) {
           </label>
           <label class="field">
             <span>Einheit</span>
-            <input type="text" name="unit" list="admin-unit-options" required>
+            <input type="text" name="unit" list="admin-unit-options" required data-unit-name>
+          </label>
+          <label class="field">
+            <span>Einheit (Abkürzung)</span>
+            <input type="text" name="unit_abbreviation" placeholder="z. B. m" required data-unit-abbr>
           </label>
           <label class="field">
             <span>Kategorie</span>
@@ -555,7 +625,9 @@ if (!$pageError) {
               $unitLabel .= " (" . $unitAbbr . ")";
             }
           ?>
-          <option value="<?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>"></option>
+          <option value="<?php echo htmlspecialchars($unitName, ENT_QUOTES, "UTF-8"); ?>" data-abbr="<?php echo htmlspecialchars($unitAbbr, ENT_QUOTES, "UTF-8"); ?>">
+            <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
+          </option>
         <?php endforeach; ?>
       </datalist>
 
@@ -568,7 +640,15 @@ if (!$pageError) {
               <div>
                 <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
                 <span class="meta">
-                  <?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>
+                  <?php
+                    $unitName = trim((string)($discipline["unit"] ?? ""));
+                    $unitAbbr = $unitNameToAbbr[$unitName] ?? "";
+                    $unitLabel = $unitName;
+                    if ($unitAbbr !== "" && $unitAbbr !== $unitName) {
+                      $unitLabel .= " (" . $unitAbbr . ")";
+                    }
+                  ?>
+                  <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
                   &middot;
                   <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                 </span>
@@ -599,7 +679,11 @@ if (!$pageError) {
                       </label>
                       <label class="field">
                         <span>Einheit</span>
-                        <input type="text" name="unit[]" list="admin-unit-options" value="<?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>" required>
+                        <input type="text" name="unit[]" list="admin-unit-options" value="<?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>" required data-unit-name>
+                      </label>
+                      <label class="field">
+                        <span>Einheit (Abkürzung)</span>
+                        <input type="text" name="unit_abbreviation[]" value="<?php echo htmlspecialchars($unitNameToAbbr[$discipline["unit"] ?? ""] ?? "", ENT_QUOTES, "UTF-8"); ?>" required data-unit-abbr>
                       </label>
                       <label class="field">
                         <span>Kategorie</span>
@@ -760,6 +844,24 @@ if (!$pageError) {
     if (cancelDisciplinesButton) {
       cancelDisciplinesButton.addEventListener("click", () => setDisciplinesEditMode(false));
     }
+
+    const unitOptions = document.getElementById("admin-unit-options");
+    const unitNameInputs = document.querySelectorAll("input[data-unit-name]");
+    unitNameInputs.forEach((input) => {
+      const form = input.closest("form");
+      const abbrInput = form ? form.querySelector("input[data-unit-abbr]") : null;
+      if (!abbrInput) return;
+      input.addEventListener("input", () => {
+        if (!unitOptions) return;
+        const match = Array.from(unitOptions.options).find((opt) => opt.value === input.value);
+        if (match) {
+          const abbr = match.getAttribute("data-abbr") || "";
+          if (abbr !== "") {
+            abbrInput.value = abbr;
+          }
+        }
+      });
+    });
   </script>
 </body>
 </html>
