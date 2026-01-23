@@ -97,6 +97,25 @@ function uc_format_unit($unit, array $unitMap): string {
   return $unit;
 }
 
+function uc_format_unit_label($unit, array $unitMap): string {
+  $unitName = trim((string)$unit);
+  if ($unitName === "") {
+    return "";
+  }
+  $abbr = "";
+  if (isset($unitMap[$unitName])) {
+    $abbr = trim((string)$unitMap[$unitName]);
+  }
+  if ($abbr === "" && preg_match('/\(([^)]+)\)\s*$/', $unitName, $matches)) {
+    $abbr = trim($matches[1]);
+    $unitName = trim(preg_replace('/\s*\([^)]+\)\s*$/', '', $unitName));
+  }
+  if ($abbr === "" || $abbr === $unitName) {
+    return $unitName;
+  }
+  return $unitName . " (" . $abbr . ")";
+}
+
 function uc_csv_escape($value): string {
   $value = (string)$value;
   if (strpbrk($value, "\",\r\n") !== false) {
@@ -492,11 +511,12 @@ if (!$pageError) {
   }
 
   $stmt = $pdo->prepare(
-    "SELECT unit_name, unit_abbreviation
+    "SELECT unit_name, unit_abbreviation, team_id
      FROM units
-     ORDER BY unit_name ASC"
+     WHERE team_id = :team_id OR team_id IS NULL
+     ORDER BY (team_id IS NULL) ASC, unit_name ASC"
   );
-  $stmt->execute();
+  $stmt->execute([":team_id" => $teamId]);
   $units = $stmt->fetchAll();
   foreach ($units as $unitRow) {
     $unitName = trim((string)($unitRow["unit_name"] ?? ""));
@@ -504,9 +524,16 @@ if (!$pageError) {
     if ($unitName === "" || $unitAbbr === "") {
       continue;
     }
-    $unitAbbrMap[$unitName] = $unitAbbr;
-    $unitAbbrMap[$unitAbbr] = $unitAbbr;
-    $unitAbbrMap[$unitName . " (" . $unitAbbr . ")"] = $unitAbbr;
+    if (!isset($unitAbbrMap[$unitName])) {
+      $unitAbbrMap[$unitName] = $unitAbbr;
+    }
+    if (!isset($unitAbbrMap[$unitAbbr])) {
+      $unitAbbrMap[$unitAbbr] = $unitAbbr;
+    }
+    $comboKey = $unitName . " (" . $unitAbbr . ")";
+    if (!isset($unitAbbrMap[$comboKey])) {
+      $unitAbbrMap[$comboKey] = $unitAbbr;
+    }
   }
 
   if (!$combineError) {
@@ -579,10 +606,12 @@ if (!$pageError) {
   $orderedPlayers = $assignedPlayers;
   $activeDisciplineDescription = "";
   $activeDisciplineUnit = "";
+  $activeDisciplineUnitAbbr = "";
   foreach ($assignedDisciplines as $discipline) {
     if ((int)$discipline["id"] === (int)$activeDisciplineId) {
       $activeDisciplineDescription = $discipline["description"] ?? "";
-      $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $activeDisciplineUnit = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
+      $activeDisciplineUnitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
       break;
     }
   }
@@ -890,10 +919,12 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
 
     $activeDisciplineDescription = "";
     $activeDisciplineUnit = "";
+    $activeDisciplineUnitAbbr = "";
     foreach ($assignedDisciplines as $discipline) {
       if ((int)$discipline["id"] === (int)$activeDisciplineId) {
         $activeDisciplineDescription = $discipline["description"] ?? "";
-        $activeDisciplineUnit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $activeDisciplineUnit = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
+        $activeDisciplineUnitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
         break;
       }
     }
@@ -1231,6 +1262,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   $imageWidth = (int)round($baseWidth * $scale);
   $padding = (int)round(40 * $scale);
   $lineHeight = (int)round(20 * $scale);
+  $unitLineHeight = (int)round(14 * $scale);
   $cardGap = (int)round(22 * $scale);
   $headerHeight = (int)round(96 * $scale);
   $cardPadding = (int)round(20 * $scale);
@@ -1349,12 +1381,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         $ranks[$row["player_id"]] = $rank;
       }
-      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
       $discLabel = $discipline["discipline_name"] ?? "Disziplin";
-      if ($unitLabel !== "") {
-        $discLabel .= " (" . $unitLabel . ")";
-      }
       $discHeight = $disciplineTitleHeight + (max(1, count($rows)) * $lineHeight);
+      if ($unitLabel !== "") {
+        $discHeight += $unitLineHeight;
+      }
       $blockHeight += $discHeight + $disciplineGap;
       $discEntries[] = [
         "label" => $discLabel,
@@ -1362,7 +1395,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         "show_weight" => $showDisciplineWeight,
         "rows" => $rows,
         "ranks" => $ranks,
-        "unit" => $unitLabel,
+        "unit_abbr" => $unitAbbr,
+        "unit_label" => $unitLabel,
       ];
     }
     $categoryBlocks[] = [
@@ -1467,13 +1501,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
       }
       $rows = [];
+      $rowsHeightSum = 0;
       foreach ($displayDisciplines as $discipline) {
         $discId = (int)$discipline["id"];
         $direction = $discipline["rating_direction"] ?? "more";
         if ($direction !== "less" && $direction !== "more") {
           $direction = "more";
         }
-        $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
         $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1.0;
         if ($disciplineWeight <= 0) {
           $disciplineWeight = 1.0;
@@ -1524,8 +1560,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         $playerValue = $resultsByDiscipline[$discId][$selectedPlayerId] ?? null;
         $display = uc_display_value($playerValue, "-");
-        if ($display !== "-" && $unit !== "") {
-          $display .= " " . $unit;
+        if ($display !== "-" && $unitAbbr !== "") {
+          $display .= " " . $unitAbbr;
         }
         $numericValue = $rankValues[$selectedPlayerId] ?? null;
         if ($overallMode === "abs") {
@@ -1554,9 +1590,6 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         if ($showDisciplineWeights) {
           $leftText .= " (" . uc_display_value($disciplineWeight, "") . "x)";
         }
-        if ($display !== "-") {
-          $leftText .= " · " . $display;
-        }
         if ($overallMode !== "abs" && $numericValue === null) {
           $rightText = "0 P";
         } else {
@@ -1565,7 +1598,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         $rows[] = [
           "left" => $leftText,
           "right" => $rightText,
+          "value" => $display,
+          "unit_label" => $unitLabel,
         ];
+        $rowsHeightSum += (int)round($playerLineHeight * 2);
+        if ($unitLabel !== "") {
+          $rowsHeightSum += $unitLineHeight;
+        }
       }
       if (empty($rows)) {
         continue;
@@ -1576,7 +1615,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       }
       $categoryScore = $categoryAverages[$category][$selectedPlayerId] ?? null;
       $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " P";
-      $blockHeight = $cardPadding * 2 + $playerTitleHeight + (count($rows) * (int)round($playerLineHeight * 2));
+      $blockHeight = $cardPadding * 2 + $playerTitleHeight + $rowsHeightSum;
       if (count($rows) > 1) {
         $blockHeight += $playerScoreHeight;
       }
@@ -1756,7 +1795,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $leftText = uc_truncate_text($row["left"], 46);
           uc_gd_text($image, $colX + $cardPadding, $cursorY, $leftText, $ink, (int)round(11 * $scale), "left");
           $cursorY += (int)round($playerLineHeight * 0.9);
-          uc_gd_text($image, $colX + $cardPadding, $cursorY, $row["right"], $muted, (int)round(11 * $scale), "left");
+          if (!empty($row["unit_label"])) {
+            uc_gd_text($image, $colX + $cardPadding, $cursorY, (string)$row["unit_label"], $muted, (int)round(10 * $scale), "left");
+            $cursorY += $unitLineHeight;
+          }
+          $detailText = $row["value"];
+          if ($detailText !== "" && $row["right"] !== "") {
+            $detailText .= " · " . $row["right"];
+          } elseif ($row["right"] !== "") {
+            $detailText = $row["right"];
+          }
+          uc_gd_text($image, $colX + $cardPadding, $cursorY, $detailText, $muted, (int)round(11 * $scale), "left");
           $cursorY += (int)round($playerLineHeight * 1.1);
         }
         $colY += $block["height"] + $cardGap;
@@ -2191,6 +2240,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       $h2hCategoryBlocks = [];
       $rowHeight = (int)round(20 * $scale);
+      $unitLineHeight = (int)round(14 * $scale);
       $categoryTitleHeight = (int)round(22 * $scale);
       $barHeight = (int)round(18 * $scale);
       $barGap = (int)round(10 * $scale);
@@ -2214,7 +2264,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           if ($direction !== "less" && $direction !== "more") {
             $direction = "more";
           }
-          $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+          $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+          $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
           $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
           $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
           $bonusRel = uc_bonus_value($discipline["bonus_relative"] ?? null);
@@ -2284,8 +2335,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           }
           $displayA = uc_display_value($playerAValue, "-");
           $displayB = uc_display_value($playerBValue, "-");
-          if ($displayA !== "-" && $unit !== "") { $displayA .= " " . $unit; }
-          if ($displayB !== "-" && $unit !== "") { $displayB .= " " . $unit; }
+          if ($displayA !== "-" && $unitAbbr !== "") { $displayA .= " " . $unitAbbr; }
+          if ($displayB !== "-" && $unitAbbr !== "") { $displayB .= " " . $unitAbbr; }
           $scaleScore = function ($value) {
             $value = max(0.0, min(2.0, (float)$value));
             if ($value <= 1) {
@@ -2301,12 +2352,19 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             "b" => $displayB,
             "percentA" => $percentA,
             "percentB" => $percentB,
+            "unit_label" => $unitLabel,
           ];
         }
         if (empty($rows)) {
           continue;
         }
-        $blockHeight = $cardPadding * 2 + $categoryTitleHeight + (count($rows) * ($rowHeight + ($barHeight * 2) + $barGap));
+        $unitRows = 0;
+        foreach ($rows as $row) {
+          if (!empty($row["unit_label"])) {
+            $unitRows++;
+          }
+        }
+        $blockHeight = $cardPadding * 2 + $categoryTitleHeight + (count($rows) * ($rowHeight + ($barHeight * 2) + $barGap)) + ($unitRows * $unitLineHeight);
         $h2hCategoryBlocks[] = [
           "category" => $category,
           "rows" => $rows,
@@ -2456,6 +2514,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $label = uc_truncate_text($row["label"], 40);
           uc_gd_text($image, $x + $cardPadding, $cursorY, $label, $ink, (int)round(11 * $scale), "left");
           $cursorY += $rowHeight;
+          if (!empty($row["unit_label"])) {
+            uc_gd_text($image, $x + $cardPadding, $cursorY, (string)$row["unit_label"], $muted, (int)round(10 * $scale), "left");
+            $cursorY += $unitLineHeight;
+          }
 
           $barX = $x + $cardPadding;
           $barWidth = $cardWidth - ($cardPadding * 2);
@@ -2666,12 +2728,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         }
         uc_gd_text($image, $colX + $cardPadding, $cursorY, $discLabel, $accentDark, (int)round(13 * $scale), "left");
         $rowY = $cursorY + (int)round(18 * $scale);
+        if (!empty($disc["unit_label"])) {
+          uc_gd_text($image, $colX + $cardPadding, $rowY, (string)$disc["unit_label"], $muted, (int)round(10 * $scale), "left");
+          $rowY += $unitLineHeight;
+        }
         foreach ($disc["rows"] as $row) {
           $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
           $playerName = $row["name"];
           $display = uc_display_value($row["value"], "-");
-          if ($display !== "-" && $disc["unit"] !== "") {
-            $display .= " " . $disc["unit"];
+          if ($display !== "-" && $disc["unit_abbr"] !== "") {
+            $display .= " " . $disc["unit_abbr"];
           }
           $pointsLabel = uc_format_points($row["points"]) . " P";
           $textX = $colX + $cardPadding;
@@ -2931,6 +2997,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       <?php if (!$startError && !empty($assignedDisciplines) && !empty($assignedPlayers) && $activeDisciplineId): ?>
         <section class="auth-card">
           <h3>Ergebnisse erfassen</h3>
+          <?php if (!empty($activeDisciplineUnit)): ?>
+            <p class="help"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
           <form class="form" method="post" action="">
             <input type="hidden" name="action" value="save_results">
             <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">
@@ -2944,8 +3013,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   </span>
                   <span class="result-value">
                     <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
-                    <?php if (!empty($activeDisciplineUnit)): ?>
-                      <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></span>
+                    <?php if (!empty($activeDisciplineUnitAbbr)): ?>
+                      <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnitAbbr, ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
                   </span>
                   <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
@@ -3612,6 +3681,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                     $direction = "more";
                   }
                   $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                  $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                   $disciplineWeight = $combineDisciplineWeights[$discId] ?? 1;
                   $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                   $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
@@ -3727,6 +3797,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                     <?php if (empty($filteredPlayers)): ?>
                       <p class="help">Keine Spieler für den gewählten Filter.</p>
                     <?php else: ?>
+                      <?php if ($unitLabel !== ""): ?>
+                        <p class="help">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></p>
+                      <?php endif; ?>
                       <?php
                         $orderedPlayers = [];
                         $rankedIds = array_keys($rankValues);
@@ -4339,7 +4412,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               ?>
               <div class="category-block">
                 <h3 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h3>
-                <ul class="list">
+                <ul class="list h2h-list">
                   <?php foreach ($displayDisciplines as $discipline): ?>
                     <?php
                       $discId = (int)$discipline["id"];
@@ -4348,6 +4421,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         $direction = "more";
                       }
                       $unit = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+                      $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                       $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                       $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
                       $rankValues = [];
@@ -4414,8 +4488,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $percentB = $scaleScore($pointsB);
                     ?>
                     <li class="list-item">
-                      <div class="result-name">
-                        <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                      <div class="h2h-discipline">
+                        <div class="result-name">
+                          <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                        </div>
+                        <?php if (!empty($unitLabel)): ?>
+                          <div class="detail h2h-unit">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                        <?php endif; ?>
                       </div>
                       <div class="h2h-bars">
                         <div class="h2h-bar is-a">
@@ -4521,7 +4600,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
-                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                          <?php
+                            $unitName = trim((string)($discipline["unit"] ?? ""));
+                            $unitAbbr = uc_format_unit($unitName, $unitAbbrMap);
+                            $unitLabel = $unitName;
+                            if ($unitAbbr !== "" && $unitAbbr !== $unitName) {
+                              $unitLabel .= " (" . $unitAbbr . ")";
+                            }
+                          ?>
+                          <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
                         </span>
                       </span>
                     </label>
@@ -4539,7 +4626,15 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">
                           <?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>
                           &middot;
-                          <?php echo htmlspecialchars(uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap), ENT_QUOTES, "UTF-8"); ?>
+                          <?php
+                            $unitName = trim((string)($discipline["unit"] ?? ""));
+                            $unitAbbr = uc_format_unit($unitName, $unitAbbrMap);
+                            $unitLabel = $unitName;
+                            if ($unitAbbr !== "" && $unitAbbr !== $unitName) {
+                              $unitLabel .= " (" . $unitAbbr . ")";
+                            }
+                          ?>
+                          <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?>
                         </span>
                       </span>
                     </label>
