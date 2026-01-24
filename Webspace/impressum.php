@@ -18,7 +18,7 @@ require_once __DIR__ . "/bootstrap.php";
   <div class="bg-grid"></div>
 
   <header class="topbar">
-    <button class="pill-button" type="button" onclick="window.location.href='index.php'">Zurück</button>
+    <button class="pill-button" type="button" onclick="history.back()">Zurück</button>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
