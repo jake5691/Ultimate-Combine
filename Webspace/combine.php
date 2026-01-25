@@ -388,7 +388,7 @@ function uc_gd_draw_bar_chart($image, int $x, int $y, int $size, array $data, fl
     $series[] = ["key" => "team", "stroke" => $teamStroke, "fill" => $teamFill, "size" => 1.0];
   }
   if ($hasCompare && $compareStroke !== null && $compareFill !== null) {
-    $series[] = ["key" => "playerB", "stroke" => $compareStroke, "fill" => $compareFill, "size" => 0.8];
+    $series[] = ["key" => "playerB", "stroke" => $compareStroke, "fill" => $compareFill, "size" => 0.7];
   }
   if ($playerStroke !== null && $playerFill !== null) {
     $series[] = ["key" => "player", "stroke" => $playerStroke, "fill" => $playerFill, "size" => 0.8];
@@ -396,6 +396,7 @@ function uc_gd_draw_bar_chart($image, int $x, int $y, int $size, array $data, fl
 
   $teamBarH = max((int)round($barHeight * 0.55), (int)round(4 * $scale));
   $smallBarH = max((int)round($teamBarH * 0.8), (int)round(3 * $scale));
+  $smallerBarH = max((int)round($teamBarH * 0.7), (int)round(3 * $scale));
 
   $labelSpace = max(0, $labelWidth - (int)round(8 * $scale));
   $rowY = $y + $padding;
@@ -428,7 +429,7 @@ function uc_gd_draw_bar_chart($image, int $x, int $y, int $size, array $data, fl
       $rawValue = isset($item[$serie["key"]]) ? (float)$item[$serie["key"]] : 0.0;
       $value = max(0.0, min($rawValue, $maxValue));
       $barWidth = (int)round(($value / $maxValue) * $chartWidth);
-      $barH = $serie["size"] >= 1.0 ? $teamBarH : $smallBarH;
+      $barH = $serie["size"] >= 1.0 ? $teamBarH : ($serie["size"] <= 0.7 ? $smallerBarH : $smallBarH);
       $barY = $groupCenter - (int)round($barH / 2);
       imagefilledrectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["fill"]);
       imagerectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["stroke"]);
@@ -5035,9 +5036,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           series.push({ key: "team", color: "rgba(111, 98, 89, 0.35)", stroke: muted });
         }
         if (hasCompare) {
-          series.push({ key: "playerB", color: "rgba(44, 42, 74, 0.25)", stroke: accent2 });
+          series.push({ key: "playerB", color: "rgba(44, 42, 74, 0.25)", stroke: accent2, size: 0.7 });
         }
-        series.push({ key: "player", color: "rgba(255, 123, 75, 0.25)", stroke: accent });
+        series.push({ key: "player", color: "rgba(255, 123, 75, 0.25)", stroke: accent, size: 0.8 });
 
         const padding = 18;
         const rowCount = data.length;
@@ -5088,15 +5089,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
           const teamBarH = Math.max(4, Math.floor(barHeight * 0.55));
           const playerBarH = Math.max(3, Math.floor(teamBarH * 0.8));
+          const compareBarH = Math.max(3, Math.floor(teamBarH * 0.7));
           const teamBarY = groupCenter - teamBarH / 2;
           const playerBarY = groupCenter - playerBarH / 2;
+          const compareBarY = groupCenter - compareBarH / 2;
 
           series.forEach((serie, index) => {
             const rawValue = Number(item[serie.key] || 0);
             const value = Math.max(0, Math.min(rawValue, maxValue));
             const barWidth = (value / maxValue) * chartWidth;
-            const barH = serie.key === "player" ? playerBarH : teamBarH;
-            const barY = serie.key === "player" ? playerBarY : teamBarY;
+            const barH = serie.key === "playerB" ? compareBarH : (serie.key === "player" ? playerBarH : teamBarH);
+            const barY = serie.key === "playerB" ? compareBarY : (serie.key === "player" ? playerBarY : teamBarY);
             ctx.fillStyle = serie.color;
             ctx.strokeStyle = serie.stroke;
             ctx.lineWidth = 1.5;
