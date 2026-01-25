@@ -332,6 +332,113 @@ function uc_gd_draw_radar($image, int $centerX, int $centerY, int $size, array $
   }
 }
 
+function uc_gd_draw_bar_chart($image, int $x, int $y, int $size, array $data, float $scale, array $colors): void {
+  if ($size <= 0 || empty($data)) {
+    return;
+  }
+  $rowCount = count($data);
+  $padding = (int)round(18 * $scale);
+  $groupGap = (int)round(18 * $scale);
+  $labelSize = (int)round(12 * $scale);
+  $barHeight = (int)floor(($size - ($padding * 2) - ($rowCount - 1) * $groupGap) / max(1, $rowCount));
+  $barHeight = max((int)round(8 * $scale), $barHeight);
+
+  $labelMax = 0;
+  foreach ($data as $item) {
+    $label = trim((string)($item["label"] ?? ""));
+    if ($label === "") {
+      continue;
+    }
+    [$width] = uc_gd_text_box($label, $labelSize);
+    $labelMax = max($labelMax, $width);
+  }
+  $minLabelWidth = (int)round(90 * $scale);
+  $labelWidth = min($labelMax + (int)round(8 * $scale), max($minLabelWidth, (int)round($size * 0.35)));
+  $chartX = $x + $padding + $labelWidth;
+  $chartWidth = $size - $padding - $labelWidth - $padding;
+  if ($chartWidth <= 0) {
+    return;
+  }
+
+  $gridColor = $colors["grid"] ?? $colors["axis"] ?? uc_gd_color_alpha($image, 44, 42, 74, 0.18);
+  $teamStroke = $colors["teamStroke"] ?? null;
+  $teamFill = $colors["teamFill"] ?? null;
+  $compareStroke = $colors["compareStroke"] ?? null;
+  $compareFill = $colors["compareFill"] ?? null;
+  $playerStroke = $colors["playerStroke"] ?? null;
+  $playerFill = $colors["playerFill"] ?? null;
+  $labelColor = $colors["label"] ?? null;
+
+  $maxValue = 2.0;
+  $ticks = [0.5, 1.0, 1.5, 2.0];
+  foreach ($ticks as $tick) {
+    $tx = (int)round($chartX + ($tick / $maxValue) * $chartWidth);
+    imageline($image, $tx, $y + $padding - (int)round(6 * $scale), $tx, $y + $size - $padding + (int)round(6 * $scale), $gridColor);
+  }
+
+  $hasCompare = false;
+  foreach ($data as $item) {
+    if (isset($item["playerB"])) {
+      $hasCompare = true;
+      break;
+    }
+  }
+  $series = [];
+  if ($teamStroke !== null && $teamFill !== null) {
+    $series[] = ["key" => "team", "stroke" => $teamStroke, "fill" => $teamFill, "size" => 1.0];
+  }
+  if ($hasCompare && $compareStroke !== null && $compareFill !== null) {
+    $series[] = ["key" => "playerB", "stroke" => $compareStroke, "fill" => $compareFill, "size" => 0.7];
+  }
+  if ($playerStroke !== null && $playerFill !== null) {
+    $series[] = ["key" => "player", "stroke" => $playerStroke, "fill" => $playerFill, "size" => 0.8];
+  }
+
+  $teamBarH = max((int)round($barHeight * 0.55), (int)round(4 * $scale));
+  $smallBarH = max((int)round($teamBarH * 0.8), (int)round(3 * $scale));
+  $smallerBarH = max((int)round($teamBarH * 0.7), (int)round(3 * $scale));
+
+  $labelSpace = max(0, $labelWidth - (int)round(8 * $scale));
+  $rowY = $y + $padding;
+  foreach ($data as $item) {
+    $groupCenter = $rowY + (int)round($barHeight / 2);
+    $label = trim((string)($item["label"] ?? ""));
+    if ($label !== "" && $labelColor !== null) {
+      $labelDisplay = $label;
+      if ($labelSpace > 0) {
+        [$labelWidthPx] = uc_gd_text_box($labelDisplay, $labelSize);
+        if ($labelWidthPx > $labelSpace) {
+          $maxChars = function_exists("mb_strlen") ? mb_strlen($label) : strlen($label);
+          $ellipsis = "...";
+          while ($maxChars > 0) {
+            $trimmed = function_exists("mb_substr") ? mb_substr($label, 0, $maxChars) : substr($label, 0, $maxChars);
+            $candidate = $trimmed . $ellipsis;
+            [$candidateWidth] = uc_gd_text_box($candidate, $labelSize);
+            if ($candidateWidth <= $labelSpace) {
+              $labelDisplay = $candidate;
+              break;
+            }
+            $maxChars -= 1;
+          }
+        }
+      }
+      uc_gd_text($image, $chartX - (int)round(8 * $scale), $groupCenter - (int)round($labelSize / 2), $labelDisplay, $labelColor, $labelSize, "right");
+    }
+
+    foreach ($series as $serie) {
+      $rawValue = isset($item[$serie["key"]]) ? (float)$item[$serie["key"]] : 0.0;
+      $value = max(0.0, min($rawValue, $maxValue));
+      $barWidth = (int)round(($value / $maxValue) * $chartWidth);
+      $barH = $serie["size"] >= 1.0 ? $teamBarH : ($serie["size"] <= 0.7 ? $smallerBarH : $smallBarH);
+      $barY = $groupCenter - (int)round($barH / 2);
+      imagefilledrectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["fill"]);
+      imagerectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["stroke"]);
+    }
+
+    $rowY += $barHeight + $groupGap;
+  }
+}
+
 function uc_wrap_text(string $text, int $maxChars): array {
   $wrapped = wordwrap($text, $maxChars, "\n", true);
   return explode("\n", $wrapped);
@@ -1757,7 +1864,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       "label" => $muted,
     ];
     if (!empty($radarData)) {
-      uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $radarData, $scale, $radarColors);
+      if (count($radarData) <= 2) {
+        uc_gd_draw_bar_chart($image, $radarX, $radarY, $radarSize, $radarData, $scale, $radarColors);
+      } else {
+        uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $radarData, $scale, $radarColors);
+      }
     } else {
       uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
     }
@@ -2478,7 +2589,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         "label" => $muted,
       ];
       if (!empty($h2hRadarData)) {
-        uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        if (count($h2hRadarData) <= 2) {
+          uc_gd_draw_bar_chart($image, $radarX, $radarY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        } else {
+          uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        }
       } else {
         uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
       }
@@ -3579,11 +3694,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             $display = uc_display_value($playerValue, "-");
                             if ($display !== "-" && $unit !== "") { $display .= " " . $unit; }
                             $numericValue = $rankValues[$selectedPlayerId] ?? null;
-                            $bestExpected = $expectedMinValue;
-                            $worstExpected = $expectedMaxValue;
-                            if ($direction === "less") {
-                              $bestExpected = $expectedMaxValue;
-                              $worstExpected = $expectedMinValue;
+                            $bestExpected = $expectedMaxValue;
+                            $worstExpected = $expectedMinValue;
+                            if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                              if ($direction === "less") {
+                                $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                                $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                              } else {
+                                $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                                $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                              }
                             }
                             $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
                             $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
@@ -3750,11 +3870,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $worstValue = min($values);
                     }
                   }
-                  $bestExpected = $expectedMinValue;
-                  $worstExpected = $expectedMaxValue;
-                  if ($direction === "less") {
-                    $bestExpected = $expectedMaxValue;
-                    $worstExpected = $expectedMinValue;
+                  $bestExpected = $expectedMaxValue;
+                  $worstExpected = $expectedMinValue;
+                  if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                    if ($direction === "less") {
+                      $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                      $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                    } else {
+                      $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                      $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                    }
                   }
                   $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
                   $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
@@ -4435,6 +4560,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                       $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                       $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                      $bestExpected = $expectedMaxValue;
+                      $worstExpected = $expectedMinValue;
+                      if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                        if ($direction === "less") {
+                          $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                          $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                        } else {
+                          $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                          $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                        }
+                      }
+                      $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
+                      $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
+                      if ($overallMode === "abs" && $unit !== "") {
+                        if ($minLabel !== "-") { $minLabel .= " " . $unit; }
+                        if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
+                      }
                       $rankValues = [];
                       foreach ($assignedPlayers as $player) {
                         $playerId = (int)$player["id"];
@@ -4505,6 +4647,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         </div>
                         <?php if (!empty($unitLabel)): ?>
                           <div class="detail h2h-unit">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                        <?php endif; ?>
+                        <?php if ($overallMode === "abs"): ?>
+                          <div class="detail h2h-unit">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></div>
                         <?php endif; ?>
                       </div>
                       <div class="h2h-bars">
@@ -4786,6 +4931,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         const angleStep = (Math.PI * 2) / data.length;
 
         ctx.clearRect(0, 0, size, size);
+        ctx.save();
         ctx.translate(center, center);
 
         ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
@@ -4878,13 +5024,130 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           ctx.fillStyle = muted;
           ctx.fillText(item.label, x, y);
         });
+        ctx.restore();
+      };
+
+      const drawBarChart = () => {
+        const container = radarCanvas.parentElement;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const size = Math.max(0, Math.floor(rect.width));
+        if (!size) return;
+        const dpi = window.devicePixelRatio || 1;
+        radarCanvas.width = size * dpi;
+        radarCanvas.height = size * dpi;
+        radarCanvas.style.width = `${size}px`;
+        radarCanvas.style.height = `${size}px`;
+
+        const ctx = radarCanvas.getContext("2d");
+        ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
+
+        const rootStyles = getComputedStyle(document.documentElement);
+        const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
+        const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
+        const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
+        const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
+
+        const maxValue = 2;
+        const hasCompare = data.some((item) => Object.prototype.hasOwnProperty.call(item, "playerB"));
+        const hasTeam = data.some((item) => Object.prototype.hasOwnProperty.call(item, "team"));
+        const series = [];
+        if (hasTeam) {
+          series.push({ key: "team", color: "rgba(111, 98, 89, 0.35)", stroke: muted });
+        }
+        if (hasCompare) {
+          series.push({ key: "playerB", color: "rgba(44, 42, 74, 0.25)", stroke: accent2, size: 0.7 });
+        }
+        series.push({ key: "player", color: "rgba(255, 123, 75, 0.25)", stroke: accent, size: 0.8 });
+
+        const padding = 18;
+        const rowCount = data.length;
+        const groupGap = 18;
+        const barHeight = Math.max(8, Math.floor((size - padding * 2 - (rowCount - 1) * groupGap) / rowCount));
+        const labelFont = "12px \"Space Grotesk\", sans-serif";
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.font = labelFont;
+        ctx.textBaseline = "middle";
+
+        let maxLabelWidth = 0;
+        data.forEach((item) => {
+          maxLabelWidth = Math.max(maxLabelWidth, ctx.measureText(item.label).width);
+        });
+        const labelWidth = Math.min(maxLabelWidth + 8, Math.max(120, size * 0.35));
+        const chartX = padding + labelWidth;
+        const chartWidth = size - padding - chartX;
+
+        const truncateText = (text, width) => {
+          if (ctx.measureText(text).width <= width) return text;
+          const ellipsis = "…";
+          let trimmed = text;
+          while (trimmed.length > 0 && ctx.measureText(trimmed + ellipsis).width > width) {
+            trimmed = trimmed.slice(0, -1);
+          }
+          return trimmed.length ? trimmed + ellipsis : text;
+        };
+
+        ctx.strokeStyle = "rgba(44, 42, 74, 0.18)";
+        ctx.lineWidth = 1;
+        [0.5, 1, 1.5, 2].forEach((tick) => {
+          const x = chartX + (tick / maxValue) * chartWidth;
+          ctx.beginPath();
+          ctx.moveTo(x, padding - 6);
+          ctx.lineTo(x, size - padding + 6);
+          ctx.stroke();
+        });
+
+        let y = padding;
+        data.forEach((item) => {
+          const label = truncateText(item.label, labelWidth - 8);
+          const groupHeight = barHeight;
+          const groupCenter = y + groupHeight / 2;
+          ctx.fillStyle = muted;
+          ctx.textAlign = "right";
+          ctx.fillText(label, chartX - 10, groupCenter);
+
+          const teamBarH = Math.max(4, Math.floor(barHeight * 0.55));
+          const playerBarH = Math.max(3, Math.floor(teamBarH * 0.8));
+          const compareBarH = Math.max(3, Math.floor(teamBarH * 0.7));
+          const teamBarY = groupCenter - teamBarH / 2;
+          const playerBarY = groupCenter - playerBarH / 2;
+          const compareBarY = groupCenter - compareBarH / 2;
+
+          series.forEach((serie, index) => {
+            const rawValue = Number(item[serie.key] || 0);
+            const value = Math.max(0, Math.min(rawValue, maxValue));
+            const barWidth = (value / maxValue) * chartWidth;
+            const barH = serie.key === "playerB" ? compareBarH : (serie.key === "player" ? playerBarH : teamBarH);
+            const barY = serie.key === "playerB" ? compareBarY : (serie.key === "player" ? playerBarY : teamBarY);
+            ctx.fillStyle = serie.color;
+            ctx.strokeStyle = serie.stroke;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(chartX, barY, barWidth, barH);
+            ctx.fill();
+            ctx.stroke();
+          });
+
+          y += groupHeight + groupGap;
+        });
       };
 
       const resizeRadar = () => {
-        window.requestAnimationFrame(drawRadar);
+        window.requestAnimationFrame(() => {
+          if (data.length <= 2) {
+            drawBarChart();
+          } else {
+            drawRadar();
+          }
+        });
       };
 
-      drawRadar();
+      if (data.length <= 2) {
+        drawBarChart();
+      } else {
+        drawRadar();
+      }
       window.addEventListener("resize", resizeRadar);
     };
 
