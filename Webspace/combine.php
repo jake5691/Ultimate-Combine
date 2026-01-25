@@ -3366,12 +3366,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 return $scoreA < $scoreB ? 1 : -1;
               });
             ?>
-            <ul class="list">
+            <ul class="list overall-ranking-list">
               <?php foreach ($overallOrderedPlayers as $player): ?>
                 <?php $playerId = (int)$player["id"]; ?>
                 <?php $overallPoints = $overallScores[$playerId] ?? 0; ?>
                 <?php $rankLabel = isset($overallRanks[$playerId]) ? (string)$overallRanks[$playerId] : "-"; ?>
                 <?php $overallPointsPrefix = $overallMode === "avg" ? "Ø " : ""; ?>
+                <?php
+                  $nameParts = [(string)($player["first_name"] ?? ""), (string)($player["last_name"] ?? "")];
+                  $hasLongNamePart = false;
+                  foreach ($nameParts as $part) {
+                    $partLength = function_exists("mb_strlen") ? mb_strlen($part) : strlen($part);
+                    if ($partLength >= 16) {
+                      $hasLongNamePart = true;
+                      break;
+                    }
+                  }
+                ?>
                 <?php
                   $detailUrl = "combine.php?id=" . (int)$combineId . "&mode=results";
                   if ($filterGender !== "") {
@@ -3387,7 +3398,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   <a class="list-link" href="<?php echo htmlspecialchars($detailUrl, ENT_QUOTES, "UTF-8"); ?>">
                     <div class="result-name">
                       <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
-                      <strong>
+                      <strong class="player-name<?php echo $hasLongNamePart ? " is-condensed" : ""; ?>">
                         <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
                         <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                       </strong>
