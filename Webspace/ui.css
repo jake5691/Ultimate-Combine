@@ -536,6 +536,33 @@ body {
   white-space: nowrap;
 }
 
+.overall-ranking-list .list-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+  column-gap: 12px;
+  white-space: normal;
+}
+
+.overall-ranking-list .result-name {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  column-gap: 10px;
+  min-width: 0;
+}
+
+.overall-ranking-list .result-name .player-name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.overall-ranking-list .result-name .player-name.is-condensed {
+  font-size: 0.9em;
+  letter-spacing: -0.01em;
+}
+
 .list-item.is-active {
   outline: 2px solid var(--accent);
 }
@@ -669,6 +696,17 @@ body {
   .list-link .result-name,
   .list-link .badge {
     white-space: normal;
+  }
+
+  .overall-ranking-list .list-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: flex-start;
+    column-gap: 12px;
+  }
+
+  .overall-ranking-list .badge {
+    white-space: nowrap;
   }
 }
 
