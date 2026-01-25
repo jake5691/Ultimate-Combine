@@ -133,7 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <main class="auth is-wide">
     <section class="auth-card" id="login">
       <h1>Willkommen zur Combine Verwaltung</h1>
-      <p class="lead">Melde dich an, um Combines für dein Team zu anzulegen, verwalten und anzusehen.</p>
+      <p class="lead">Melde dich an, um Combines für dein Team anzulegen, verwalten und auszuwerten.</p>
 
       <div class="segmented" role="tablist" aria-label="Login oder Registrieren">
         <button class="segmented-button<?php echo $activeTab === "login" ? " is-active" : ""; ?>" type="button" data-tab="login">Login</button>
@@ -187,11 +187,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       <div class="info-grid">
         <div class="info-card">
           <h3>Eigenes Combine Setup</h3>
-          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch. Gewichtet euch relevantere Disziplinen und Kategorien stärker.</p>
+          <p>Erstelle ein individuelles Combine, nutzt bereitgestellte Disziplinen und erstellt eure eigenen. Gruppiert Disziplinen in Kategorien und vergleicht euch. Gewichtet für euch relevantere Disziplinen und Kategorien stärker.</p>
         </div>
         <div class="info-card">
           <h3>Eintragen der Ergebnisse</h3>
-          <p>Tragt direkt vor Ort eure Ergebnisse ein und lasst den Papierkram zu Hause. Kein Übertragen von Ergebnissen aus vielen Zetteln und nicht leserliche Schriften.</p>
+          <p>Tragt direkt vor Ort eure Ergebnisse ein und lasst den Papierkram zu Hause, vergesst auch die halbfertigen Excelsheets. Kein Übertragen von Ergebnissen aus vielen Zetteln und nicht leserliche Schriften. </p>
         </div>
         <div class="info-card">
           <h3>Ranking</h3>
@@ -203,11 +203,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
          <div class="info-card">
           <h3>Head to Head</h3>
-          <p>Stellt die Leistung zweier Spieler direkt gegenüber.</p>
+          <p>Stellt die Leistung zweier Spieler direkt gegenüber und zeigt eurem Mitspieler wer auf dem Papier das Matchup dominiert. (Vergesst nicht dann auf dem Feld das auch umzusetzen)</p>
         </div>
         <div class="info-card">
           <h3>Teilen der Ergebnisse</h3>
-          <p>Teilt die Ergebnisse jedes Spielers oder gleich das Teamranking.</p>
+          <p>Teilt die Ergebnisse jedes Spielers, H2H oder gleich das Teamranking. Oder ladet eure Daten als csv runter.</p>
         </div>
       </div>
     </section>
