@@ -4786,6 +4786,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         const angleStep = (Math.PI * 2) / data.length;
 
         ctx.clearRect(0, 0, size, size);
+        ctx.save();
         ctx.translate(center, center);
 
         ctx.strokeStyle = "rgba(44, 42, 74, 0.2)";
@@ -4878,13 +4879,128 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           ctx.fillStyle = muted;
           ctx.fillText(item.label, x, y);
         });
+        ctx.restore();
+      };
+
+      const drawBarChart = () => {
+        const container = radarCanvas.parentElement;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const size = Math.max(0, Math.floor(rect.width));
+        if (!size) return;
+        const dpi = window.devicePixelRatio || 1;
+        radarCanvas.width = size * dpi;
+        radarCanvas.height = size * dpi;
+        radarCanvas.style.width = `${size}px`;
+        radarCanvas.style.height = `${size}px`;
+
+        const ctx = radarCanvas.getContext("2d");
+        ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
+
+        const rootStyles = getComputedStyle(document.documentElement);
+        const accent = rootStyles.getPropertyValue("--accent").trim() || "#ff7b4b";
+        const accent2 = rootStyles.getPropertyValue("--accent-2").trim() || "#2c2a4a";
+        const ink = rootStyles.getPropertyValue("--ink").trim() || "#1f1a14";
+        const muted = rootStyles.getPropertyValue("--muted").trim() || "#6f6259";
+
+        const maxValue = 2;
+        const hasCompare = data.some((item) => Object.prototype.hasOwnProperty.call(item, "playerB"));
+        const hasTeam = data.some((item) => Object.prototype.hasOwnProperty.call(item, "team"));
+        const series = [];
+        if (hasTeam) {
+          series.push({ key: "team", color: "rgba(111, 98, 89, 0.35)", stroke: muted });
+        }
+        if (hasCompare) {
+          series.push({ key: "playerB", color: "rgba(44, 42, 74, 0.25)", stroke: accent2 });
+        }
+        series.push({ key: "player", color: "rgba(255, 123, 75, 0.25)", stroke: accent });
+
+        const padding = 18;
+        const rowCount = data.length;
+        const groupGap = 18;
+        const barHeight = Math.max(8, Math.floor((size - padding * 2 - (rowCount - 1) * groupGap) / rowCount));
+        const labelFont = "12px \"Space Grotesk\", sans-serif";
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.font = labelFont;
+        ctx.textBaseline = "middle";
+
+        let maxLabelWidth = 0;
+        data.forEach((item) => {
+          maxLabelWidth = Math.max(maxLabelWidth, ctx.measureText(item.label).width);
+        });
+        const labelWidth = Math.min(maxLabelWidth + 8, Math.max(120, size * 0.35));
+        const chartX = padding + labelWidth;
+        const chartWidth = size - padding - chartX;
+
+        const truncateText = (text, width) => {
+          if (ctx.measureText(text).width <= width) return text;
+          const ellipsis = "…";
+          let trimmed = text;
+          while (trimmed.length > 0 && ctx.measureText(trimmed + ellipsis).width > width) {
+            trimmed = trimmed.slice(0, -1);
+          }
+          return trimmed.length ? trimmed + ellipsis : text;
+        };
+
+        ctx.strokeStyle = "rgba(44, 42, 74, 0.18)";
+        ctx.lineWidth = 1;
+        [0.5, 1, 1.5, 2].forEach((tick) => {
+          const x = chartX + (tick / maxValue) * chartWidth;
+          ctx.beginPath();
+          ctx.moveTo(x, padding - 6);
+          ctx.lineTo(x, size - padding + 6);
+          ctx.stroke();
+        });
+
+        let y = padding;
+        data.forEach((item) => {
+          const label = truncateText(item.label, labelWidth - 8);
+          const groupHeight = barHeight;
+          const groupCenter = y + groupHeight / 2;
+          ctx.fillStyle = muted;
+          ctx.textAlign = "right";
+          ctx.fillText(label, chartX - 10, groupCenter);
+
+          const teamBarH = Math.max(4, Math.floor(barHeight * 0.55));
+          const playerBarH = Math.max(3, Math.floor(teamBarH * 0.8));
+          const teamBarY = groupCenter - teamBarH / 2;
+          const playerBarY = groupCenter - playerBarH / 2;
+
+          series.forEach((serie, index) => {
+            const rawValue = Number(item[serie.key] || 0);
+            const value = Math.max(0, Math.min(rawValue, maxValue));
+            const barWidth = (value / maxValue) * chartWidth;
+            const barH = serie.key === "player" ? playerBarH : teamBarH;
+            const barY = serie.key === "player" ? playerBarY : teamBarY;
+            ctx.fillStyle = serie.color;
+            ctx.strokeStyle = serie.stroke;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(chartX, barY, barWidth, barH);
+            ctx.fill();
+            ctx.stroke();
+          });
+
+          y += groupHeight + groupGap;
+        });
       };
 
       const resizeRadar = () => {
-        window.requestAnimationFrame(drawRadar);
+        window.requestAnimationFrame(() => {
+          if (data.length <= 2) {
+            drawBarChart();
+          } else {
+            drawRadar();
+          }
+        });
       };
 
-      drawRadar();
+      if (data.length <= 2) {
+        drawBarChart();
+      } else {
+        drawRadar();
+      }
       window.addEventListener("resize", resizeRadar);
     };
 
