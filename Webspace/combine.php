@@ -4560,6 +4560,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
                       $expectedMinValue = uc_value_to_float($discipline["expected_min"] ?? null);
                       $expectedMaxValue = uc_value_to_float($discipline["expected_max"] ?? null);
+                      $bestExpected = $expectedMaxValue;
+                      $worstExpected = $expectedMinValue;
+                      if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                        if ($direction === "less") {
+                          $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                          $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                        } else {
+                          $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                          $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                        }
+                      }
+                      $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
+                      $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
+                      if ($overallMode === "abs" && $unit !== "") {
+                        if ($minLabel !== "-") { $minLabel .= " " . $unit; }
+                        if ($maxLabel !== "-") { $maxLabel .= " " . $unit; }
+                      }
                       $rankValues = [];
                       foreach ($assignedPlayers as $player) {
                         $playerId = (int)$player["id"];
@@ -4630,6 +4647,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         </div>
                         <?php if (!empty($unitLabel)): ?>
                           <div class="detail h2h-unit">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                        <?php endif; ?>
+                        <?php if ($overallMode === "abs"): ?>
+                          <div class="detail h2h-unit">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></div>
                         <?php endif; ?>
                       </div>
                       <div class="h2h-bars">
