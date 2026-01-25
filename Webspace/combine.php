@@ -3579,11 +3579,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             $display = uc_display_value($playerValue, "-");
                             if ($display !== "-" && $unit !== "") { $display .= " " . $unit; }
                             $numericValue = $rankValues[$selectedPlayerId] ?? null;
-                            $bestExpected = $expectedMinValue;
-                            $worstExpected = $expectedMaxValue;
-                            if ($direction === "less") {
-                              $bestExpected = $expectedMaxValue;
-                              $worstExpected = $expectedMinValue;
+                            $bestExpected = $expectedMaxValue;
+                            $worstExpected = $expectedMinValue;
+                            if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                              if ($direction === "less") {
+                                $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                                $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                              } else {
+                                $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                                $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                              }
                             }
                             $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
                             $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
@@ -3750,11 +3755,16 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       $worstValue = min($values);
                     }
                   }
-                  $bestExpected = $expectedMinValue;
-                  $worstExpected = $expectedMaxValue;
-                  if ($direction === "less") {
-                    $bestExpected = $expectedMaxValue;
-                    $worstExpected = $expectedMinValue;
+                  $bestExpected = $expectedMaxValue;
+                  $worstExpected = $expectedMinValue;
+                  if ($expectedMinValue !== null && $expectedMaxValue !== null) {
+                    if ($direction === "less") {
+                      $bestExpected = min($expectedMinValue, $expectedMaxValue);
+                      $worstExpected = max($expectedMinValue, $expectedMaxValue);
+                    } else {
+                      $bestExpected = max($expectedMinValue, $expectedMaxValue);
+                      $worstExpected = min($expectedMinValue, $expectedMaxValue);
+                    }
                   }
                   $minLabel = $worstExpected === null ? "-" : uc_display_value($worstExpected, "-");
                   $maxLabel = $bestExpected === null ? "-" : uc_display_value($bestExpected, "-");
