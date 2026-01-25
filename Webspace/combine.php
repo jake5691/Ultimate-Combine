@@ -332,6 +332,112 @@ function uc_gd_draw_radar($image, int $centerX, int $centerY, int $size, array $
   }
 }
 
+function uc_gd_draw_bar_chart($image, int $x, int $y, int $size, array $data, float $scale, array $colors): void {
+  if ($size <= 0 || empty($data)) {
+    return;
+  }
+  $rowCount = count($data);
+  $padding = (int)round(18 * $scale);
+  $groupGap = (int)round(18 * $scale);
+  $labelSize = (int)round(12 * $scale);
+  $barHeight = (int)floor(($size - ($padding * 2) - ($rowCount - 1) * $groupGap) / max(1, $rowCount));
+  $barHeight = max((int)round(8 * $scale), $barHeight);
+
+  $labelMax = 0;
+  foreach ($data as $item) {
+    $label = trim((string)($item["label"] ?? ""));
+    if ($label === "") {
+      continue;
+    }
+    [$width] = uc_gd_text_box($label, $labelSize);
+    $labelMax = max($labelMax, $width);
+  }
+  $minLabelWidth = (int)round(90 * $scale);
+  $labelWidth = min($labelMax + (int)round(8 * $scale), max($minLabelWidth, (int)round($size * 0.35)));
+  $chartX = $x + $padding + $labelWidth;
+  $chartWidth = $size - $padding - $labelWidth - $padding;
+  if ($chartWidth <= 0) {
+    return;
+  }
+
+  $gridColor = $colors["grid"] ?? $colors["axis"] ?? uc_gd_color_alpha($image, 44, 42, 74, 0.18);
+  $teamStroke = $colors["teamStroke"] ?? null;
+  $teamFill = $colors["teamFill"] ?? null;
+  $compareStroke = $colors["compareStroke"] ?? null;
+  $compareFill = $colors["compareFill"] ?? null;
+  $playerStroke = $colors["playerStroke"] ?? null;
+  $playerFill = $colors["playerFill"] ?? null;
+  $labelColor = $colors["label"] ?? null;
+
+  $maxValue = 2.0;
+  $ticks = [0.5, 1.0, 1.5, 2.0];
+  foreach ($ticks as $tick) {
+    $tx = (int)round($chartX + ($tick / $maxValue) * $chartWidth);
+    imageline($image, $tx, $y + $padding - (int)round(6 * $scale), $tx, $y + $size - $padding + (int)round(6 * $scale), $gridColor);
+  }
+
+  $hasCompare = false;
+  foreach ($data as $item) {
+    if (isset($item["playerB"])) {
+      $hasCompare = true;
+      break;
+    }
+  }
+  $series = [];
+  if ($teamStroke !== null && $teamFill !== null) {
+    $series[] = ["key" => "team", "stroke" => $teamStroke, "fill" => $teamFill, "size" => 1.0];
+  }
+  if ($hasCompare && $compareStroke !== null && $compareFill !== null) {
+    $series[] = ["key" => "playerB", "stroke" => $compareStroke, "fill" => $compareFill, "size" => 0.8];
+  }
+  if ($playerStroke !== null && $playerFill !== null) {
+    $series[] = ["key" => "player", "stroke" => $playerStroke, "fill" => $playerFill, "size" => 0.8];
+  }
+
+  $teamBarH = max((int)round($barHeight * 0.55), (int)round(4 * $scale));
+  $smallBarH = max((int)round($teamBarH * 0.8), (int)round(3 * $scale));
+
+  $labelSpace = max(0, $labelWidth - (int)round(8 * $scale));
+  $rowY = $y + $padding;
+  foreach ($data as $item) {
+    $groupCenter = $rowY + (int)round($barHeight / 2);
+    $label = trim((string)($item["label"] ?? ""));
+    if ($label !== "" && $labelColor !== null) {
+      $labelDisplay = $label;
+      if ($labelSpace > 0) {
+        [$labelWidthPx] = uc_gd_text_box($labelDisplay, $labelSize);
+        if ($labelWidthPx > $labelSpace) {
+          $maxChars = function_exists("mb_strlen") ? mb_strlen($label) : strlen($label);
+          $ellipsis = "...";
+          while ($maxChars > 0) {
+            $trimmed = function_exists("mb_substr") ? mb_substr($label, 0, $maxChars) : substr($label, 0, $maxChars);
+            $candidate = $trimmed . $ellipsis;
+            [$candidateWidth] = uc_gd_text_box($candidate, $labelSize);
+            if ($candidateWidth <= $labelSpace) {
+              $labelDisplay = $candidate;
+              break;
+            }
+            $maxChars -= 1;
+          }
+        }
+      }
+      uc_gd_text($image, $chartX - (int)round(8 * $scale), $groupCenter - (int)round($labelSize / 2), $labelDisplay, $labelColor, $labelSize, "right");
+    }
+
+    foreach ($series as $serie) {
+      $rawValue = isset($item[$serie["key"]]) ? (float)$item[$serie["key"]] : 0.0;
+      $value = max(0.0, min($rawValue, $maxValue));
+      $barWidth = (int)round(($value / $maxValue) * $chartWidth);
+      $barH = $serie["size"] >= 1.0 ? $teamBarH : $smallBarH;
+      $barY = $groupCenter - (int)round($barH / 2);
+      imagefilledrectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["fill"]);
+      imagerectangle($image, $chartX, $barY, $chartX + $barWidth, $barY + $barH, $serie["stroke"]);
+    }
+
+    $rowY += $barHeight + $groupGap;
+  }
+}
+
 function uc_wrap_text(string $text, int $maxChars): array {
   $wrapped = wordwrap($text, $maxChars, "\n", true);
   return explode("\n", $wrapped);
@@ -1757,7 +1863,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       "label" => $muted,
     ];
     if (!empty($radarData)) {
-      uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $radarData, $scale, $radarColors);
+      if (count($radarData) <= 2) {
+        uc_gd_draw_bar_chart($image, $radarX, $radarY, $radarSize, $radarData, $scale, $radarColors);
+      } else {
+        uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $radarData, $scale, $radarColors);
+      }
     } else {
       uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
     }
@@ -2478,7 +2588,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         "label" => $muted,
       ];
       if (!empty($h2hRadarData)) {
-        uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        if (count($h2hRadarData) <= 2) {
+          uc_gd_draw_bar_chart($image, $radarX, $radarY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        } else {
+          uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
+        }
       } else {
         uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
       }
