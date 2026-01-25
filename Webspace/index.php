@@ -120,9 +120,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <div class="bg-grid"></div>
 
   <header class="topbar is-simple">
+    <span class="topbar-spacer"></span>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dunkel</button>
     </div>
   </header>
 
@@ -214,6 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
 
+  <script src="theme.js"></script>
   <script>
     const tabs = document.querySelectorAll(".segmented-button");
     const panels = document.querySelectorAll(".form[data-panel]");
