@@ -35,7 +35,7 @@ $validDirections = [
 $infoTexts = [
   "players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen.\nKlicke auf einen Spieler, um diesen zu bearbeiten.",
   "combines" => "Combines sind einzelne Leistungsbewertungsevents.\nPro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden.\nEs können mehrere Combines pro Team angelegt werden.\nKlicke auf ein Combine, um Details zu sehen und Ergebnisse zu erfassen.",
-  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten. (Globale Disziplinen können nicht bearbeitet werden.)",
+  "disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten. Globale Disziplinen können nicht direkt bearbeitet werden, aber du kannst sie übernehmen und als Team-Disziplin anpassen.",
 ];
 $formatTooltip = static function (string $text): string {
   return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
@@ -49,6 +49,7 @@ $teamEditFeedback = null;
 $teamEditSuccess = false;
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
+$cloneSourceId = filter_var($_GET["clone"] ?? null, FILTER_VALIDATE_INT);
 $editRecord = null;
 $editError = null;
 
@@ -231,7 +232,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE (team_id = :team_id OR team_id IS NULL)
+         WHERE team_id = :team_id
            AND discipline_name = :discipline_name
            AND description = :description
            AND unit = :unit
@@ -569,7 +570,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $stmt = $pdo->prepare(
         "SELECT 1
          FROM disciplines
-         WHERE (team_id = :team_id OR team_id IS NULL)
+         WHERE team_id = :team_id
            AND discipline_name = :discipline_name
            AND description = :description
            AND unit = :unit
@@ -664,7 +665,7 @@ if (!$pageError) {
     $pageError = "Team wurde nicht gefunden.";
   }
 
-  if ($editType && $editId) {
+  if ($editType && ($editId || $cloneSourceId)) {
     if ($editType === "player") {
       $stmt = $pdo->prepare(
         "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter
@@ -688,16 +689,26 @@ if (!$pageError) {
       ]);
       $editRecord = $stmt->fetch();
     } elseif ($editType === "discipline") {
-      $stmt = $pdo->prepare(
-        "SELECT id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute
-         FROM disciplines
-         WHERE id = :id AND team_id = :team_id"
-      );
-      $stmt->execute([
-        ":id" => $editId,
-        ":team_id" => $teamId,
-      ]);
-      $editRecord = $stmt->fetch();
+      if ($editId) {
+        $stmt = $pdo->prepare(
+          "SELECT id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute, team_id
+           FROM disciplines
+           WHERE id = :id AND team_id = :team_id"
+        );
+        $stmt->execute([
+          ":id" => $editId,
+          ":team_id" => $teamId,
+        ]);
+        $editRecord = $stmt->fetch();
+      } elseif ($cloneSourceId) {
+        $stmt = $pdo->prepare(
+          "SELECT discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute, team_id
+           FROM disciplines
+           WHERE id = :id AND team_id IS NULL"
+        );
+        $stmt->execute([":id" => $cloneSourceId]);
+        $editRecord = $stmt->fetch();
+      }
     } else {
       $editError = "Unbekannter Eintrag.";
     }
@@ -985,6 +996,9 @@ if (!$pageError) {
                         </span>
                         <div class="detail"><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></div>
                       </div>
+                      <?php if ($discipline["team_id"] === null): ?>
+                        <a class="pill-button is-muted" href="?edit=discipline&clone=<?php echo (int)$discipline["id"]; ?>#edit">Anpassen</a>
+                      <?php endif; ?>
                     </li>
                   <?php endforeach; ?>
                 </ul>
@@ -1144,7 +1158,7 @@ if (!$pageError) {
       </form>
     </section>
 
-    <?php if ($editType && $editId): ?>
+    <?php if ($editType && ($editId || $cloneSourceId)): ?>
       <section class="auth-card" id="edit">
         <h2>
           <?php
@@ -1153,7 +1167,7 @@ if (!$pageError) {
           } elseif ($editType === "combine") {
             echo "Combine bearbeiten";
           } elseif ($editType === "discipline") {
-            echo "Disziplin bearbeiten";
+            echo $cloneSourceId ? "Disziplin übernehmen" : "Disziplin bearbeiten";
           } else {
             echo "Eintrag bearbeiten";
           }
@@ -1244,8 +1258,10 @@ if (!$pageError) {
           </form>
         <?php elseif ($editType === "discipline" && $editRecord): ?>
           <form class="form" method="post" action="">
-            <input type="hidden" name="action" value="update_discipline">
-            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            <input type="hidden" name="action" value="<?php echo $cloneSourceId ? "create_discipline" : "update_discipline"; ?>">
+            <?php if (!$cloneSourceId): ?>
+              <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            <?php endif; ?>
             <label class="field">
               <span>Name</span>
               <input type="text" name="discipline_name" value="<?php echo htmlspecialchars($editRecord["discipline_name"], ENT_QUOTES, "UTF-8"); ?>" required>
@@ -1296,16 +1312,20 @@ if (!$pageError) {
             <div class="form-actions">
               <button class="primary-button" type="submit">Speichern</button>
               <a class="pill-button is-muted" href="team.php">Abbrechen</a>
-              <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
+              <?php if (!$cloneSourceId): ?>
+                <button class="pill-button is-danger" type="submit" form="delete-discipline-form">Disziplin löschen</button>
+              <?php endif; ?>
             </div>
             <?php if ($disciplineFeedback && $editType === "discipline"): ?>
               <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
           </form>
-          <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
-            <input type="hidden" name="action" value="delete_discipline">
-            <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
-          </form>
+          <?php if (!$cloneSourceId): ?>
+            <form id="delete-discipline-form" method="post" action="" onsubmit="return confirm('Disziplin wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+              <input type="hidden" name="action" value="delete_discipline">
+              <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
+            </form>
+          <?php endif; ?>
         <?php endif; ?>
       </section>
     <?php endif; ?>
