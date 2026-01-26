@@ -2914,7 +2914,22 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <div class="topbar-actions">
-      <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dunkel</button>
+      <details class="header-menu">
+        <summary class="pill-button is-muted" aria-label="<?php echo htmlspecialchars(t("common.menu", "Menü"), ENT_QUOTES, "UTF-8"); ?>">☰</summary>
+        <div class="menu-panel">
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.theme", "Design"), ENT_QUOTES, "UTF-8"); ?></span>
+            <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Auto</button>
+          </div>
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.language", "Sprache"), ENT_QUOTES, "UTF-8"); ?></span>
+            <div class="menu-links">
+              <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
+              <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
+            </div>
+          </div>
+        </div>
+      </details>
       <form method="post" action="">
         <input type="hidden" name="action" value="logout">
         <button class="pill-button is-logout" type="submit">Abmelden</button>

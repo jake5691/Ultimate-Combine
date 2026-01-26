@@ -54,6 +54,22 @@ function uc_detect_lang(array $supported, string $default): string {
   return $default;
 }
 
+function uc_lang_url(string $lang): string {
+  $uri = $_SERVER["REQUEST_URI"] ?? "";
+  $parts = explode("?", $uri, 2);
+  $base = $parts[0] ?? "";
+  $params = [];
+  if (!empty($parts[1])) {
+    parse_str($parts[1], $params);
+  }
+  $params["lang"] = $lang;
+  $query = http_build_query($params);
+  if ($base === "") {
+    return $query === "" ? "" : "?" . $query;
+  }
+  return $base . ($query === "" ? "" : "?" . $query);
+}
+
 function uc_load_translations(string $lang): array {
   $path = __DIR__ . "/i18n/" . $lang . ".php";
   if (!is_readable($path)) {
