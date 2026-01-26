@@ -16,6 +16,7 @@ $adminFeedback = null;
 $adminError = null;
 $units = [];
 $globalDisciplines = [];
+$feedbackEntries = [];
 $teams = [];
 $validDirections = [
   "more" => "Mehr ist besser",
@@ -417,6 +418,16 @@ if (!$pageError) {
   $globalDisciplines = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
+    "SELECT f.id, f.sender_name, f.sender_email, f.subject, f.message, f.created_at,
+            t.team_name
+     FROM feedback f
+     LEFT JOIN teams t ON t.id = f.team_id
+     ORDER BY f.created_at DESC"
+  );
+  $stmt->execute();
+  $feedbackEntries = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
     "SELECT t.id, t.team_name, t.contact,
             COUNT(DISTINCT p.id) AS player_count,
             COUNT(DISTINCT d.id) AS discipline_count,
@@ -729,6 +740,42 @@ if (!$pageError) {
     </section>
 
     <section class="info">
+      <h2>Feedback</h2>
+      <?php if (empty($feedbackEntries)): ?>
+        <p class="help">Noch kein Feedback eingegangen.</p>
+      <?php else: ?>
+        <ul class="list">
+          <?php foreach ($feedbackEntries as $entry): ?>
+            <li class="list-item">
+              <div>
+                <strong><?php echo htmlspecialchars($entry["subject"], ENT_QUOTES, "UTF-8"); ?></strong>
+                <span class="meta">
+                  <?php
+                    $metaParts = [];
+                    if (!empty($entry["sender_name"])) {
+                      $metaParts[] = $entry["sender_name"];
+                    }
+                    if (!empty($entry["sender_email"])) {
+                      $metaParts[] = $entry["sender_email"];
+                    }
+                    if (!empty($entry["team_name"])) {
+                      $metaParts[] = "Team: " . $entry["team_name"];
+                    }
+                    if (!empty($entry["created_at"])) {
+                      $metaParts[] = $entry["created_at"];
+                    }
+                  ?>
+                  <?php echo htmlspecialchars(implode(" · ", $metaParts), ENT_QUOTES, "UTF-8"); ?>
+                </span>
+                <div class="detail"><?php echo nl2br(htmlspecialchars($entry["message"], ENT_QUOTES, "UTF-8")); ?></div>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </section>
+
+    <section class="info">
       <h2>Teams</h2>
       <?php if (empty($teams)): ?>
         <p class="help">Noch keine Teams registriert.</p>
@@ -760,6 +807,7 @@ if (!$pageError) {
   </main>
   <footer class="site-footer">
     <a class="footer-link" href="impressum.php">Impressum</a>
+    <a class="footer-link" href="feedback.php">Feedback</a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
   <script src="theme.js"></script>

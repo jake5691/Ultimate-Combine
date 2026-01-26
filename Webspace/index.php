@@ -215,6 +215,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   <footer class="site-footer">
     <a class="footer-link" href="impressum.php">Impressum</a>
+    <a class="footer-link" href="feedback.php">Feedback</a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
 

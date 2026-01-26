@@ -237,6 +237,21 @@ function uc_ensure_schema(PDO $pdo): void {
   );
 
   $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS feedback (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NULL,
+      sender_name VARCHAR(120) NOT NULL,
+      sender_email VARCHAR(160) NOT NULL,
+      subject VARCHAR(160) NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_feedback_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combine_players (
       id INT AUTO_INCREMENT PRIMARY KEY,
       combine_id INT NOT NULL,
