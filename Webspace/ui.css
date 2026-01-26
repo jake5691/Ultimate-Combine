@@ -1167,3 +1167,7 @@ body {
   transform-origin: right center;
   display: inline-flex;
 }
+
+details[open] .feedback-preview {
+  display: none;
+}
