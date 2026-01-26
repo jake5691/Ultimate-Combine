@@ -22,6 +22,11 @@ $validDirections = [
   "more" => "Mehr ist besser",
   "less" => "Weniger ist besser",
 ];
+$feedbackStatuses = ["Neu", "Todo", "Done", "Abgelehnt"];
+$feedbackFilter = $_GET["feedback_status"] ?? "all";
+if ($feedbackFilter !== "all" && !in_array($feedbackFilter, $feedbackStatuses, true)) {
+  $feedbackFilter = "all";
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   $action = $_POST["action"] ?? "";
@@ -387,6 +392,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       }
     }
   }
+
+  if ($action === "update_feedback_status") {
+    $feedbackId = filter_var($_POST["feedback_id"] ?? null, FILTER_VALIDATE_INT);
+    $status = trim($_POST["status"] ?? "");
+    $hasStatusColumn = false;
+    $statusColumns = $pdo
+      ->query(
+        "SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE()
+           AND table_name = 'feedback'"
+      )
+      ->fetchAll(PDO::FETCH_COLUMN);
+    if (in_array("status", $statusColumns, true)) {
+      $hasStatusColumn = true;
+    }
+    if (!$hasStatusColumn) {
+      $adminError = "Feedback-Status konnte nicht aktualisiert werden (Schema fehlt).";
+    } elseif (!$feedbackId || !in_array($status, $feedbackStatuses, true)) {
+      $adminError = "Feedback-Status konnte nicht aktualisiert werden.";
+    } else {
+      $stmt = $pdo->prepare(
+        "UPDATE feedback
+         SET status = :status
+         WHERE id = :id"
+      );
+      $stmt->execute([
+        ":status" => $status,
+        ":id" => $feedbackId,
+      ]);
+      $adminFeedback = "Feedback-Status wurde aktualisiert.";
+    }
+  }
 }
 
 if (!$pageError) {
@@ -417,14 +455,35 @@ if (!$pageError) {
   $stmt->execute();
   $globalDisciplines = $stmt->fetchAll();
 
-  $stmt = $pdo->prepare(
-    "SELECT f.id, f.sender_name, f.sender_email, f.subject, f.message, f.created_at,
-            t.team_name
-     FROM feedback f
-     LEFT JOIN teams t ON t.id = f.team_id
-     ORDER BY f.created_at DESC"
-  );
-  $stmt->execute();
+  $feedbackHasStatus = false;
+  $feedbackColumns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'feedback'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+  if (in_array("status", $feedbackColumns, true)) {
+    $feedbackHasStatus = true;
+  }
+  if (!$feedbackHasStatus) {
+    $feedbackFilter = "all";
+  }
+
+  $feedbackSql = "SELECT f.id, f.sender_name, f.sender_email, f.subject, f.message, f.created_at,
+                         " . ($feedbackHasStatus ? "f.status" : "'Neu'") . " AS status,
+                         t.team_name
+                  FROM feedback f
+                  LEFT JOIN teams t ON t.id = f.team_id";
+  $feedbackParams = [];
+  if ($feedbackFilter !== "all") {
+    $feedbackSql .= " WHERE f.status = :status";
+    $feedbackParams[":status"] = $feedbackFilter;
+  }
+  $feedbackSql .= " ORDER BY f.created_at DESC";
+  $stmt = $pdo->prepare($feedbackSql);
+  $stmt->execute($feedbackParams);
   $feedbackEntries = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
@@ -740,7 +799,22 @@ if (!$pageError) {
     </section>
 
     <section class="info">
-      <h2>Feedback</h2>
+      <div class="card-header">
+        <h2>Feedback</h2>
+        <form class="form" method="get" action="">
+          <label class="field">
+            <span>Status</span>
+            <select name="feedback_status" onchange="this.form.submit()">
+              <option value="all"<?php echo $feedbackFilter === "all" ? " selected" : ""; ?>>Alle</option>
+              <?php foreach ($feedbackStatuses as $status): ?>
+                <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo $feedbackFilter === $status ? " selected" : ""; ?>>
+                  <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+        </form>
+      </div>
       <?php if (empty($feedbackEntries)): ?>
         <p class="help">Noch kein Feedback eingegangen.</p>
       <?php else: ?>
@@ -751,6 +825,9 @@ if (!$pageError) {
               <details>
                 <summary>
                   <strong><?php echo htmlspecialchars($entry["subject"], ENT_QUOTES, "UTF-8"); ?></strong>
+                  <span class="badge status-badge status-<?php echo htmlspecialchars(strtolower((string)$entry["status"]), ENT_QUOTES, "UTF-8"); ?>">
+                    <?php echo htmlspecialchars($entry["status"] ?? "Neu", ENT_QUOTES, "UTF-8"); ?>
+                  </span>
                   <span class="meta">
                     <?php
                       $metaParts = [];
@@ -774,6 +851,23 @@ if (!$pageError) {
                   <?php endif; ?>
                 </summary>
                 <div class="detail"><?php echo nl2br(htmlspecialchars($entry["message"], ENT_QUOTES, "UTF-8")); ?></div>
+                <form class="form" method="post" action="">
+                  <input type="hidden" name="action" value="update_feedback_status">
+                  <input type="hidden" name="feedback_id" value="<?php echo (int)$entry["id"]; ?>">
+                  <div class="form-actions">
+                    <label class="field">
+                      <span>Status setzen</span>
+                      <select name="status" required>
+                        <?php foreach ($feedbackStatuses as $status): ?>
+                          <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($entry["status"] ?? "Neu") === $status ? " selected" : ""; ?>>
+                            <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </label>
+                    <button class="pill-button" type="submit">Speichern</button>
+                  </div>
+                </form>
               </details>
             </li>
           <?php endforeach; ?>

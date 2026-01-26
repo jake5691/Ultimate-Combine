@@ -19,8 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   } else {
     try {
       $stmt = $pdo->prepare(
-        "INSERT INTO feedback (team_id, sender_name, sender_email, subject, message)
-         VALUES (:team_id, :sender_name, :sender_email, :subject, :message)"
+        "INSERT INTO feedback (team_id, sender_name, sender_email, subject, message, status)
+         VALUES (:team_id, :sender_name, :sender_email, :subject, :message, :status)"
       );
       $stmt->execute([
         ":team_id" => $teamId,
@@ -28,6 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         ":sender_email" => $email,
         ":subject" => $subject,
         ":message" => $message,
+        ":status" => "Neu",
       ]);
       $feedbackMessage = "Danke für dein Feedback! Ich melden mich bei Bedarf.";
       $name = "";
