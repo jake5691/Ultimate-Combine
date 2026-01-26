@@ -796,10 +796,26 @@ body {
 @media (max-width: 600px) {
   .topbar {
     padding: 14px 16px;
+    grid-template-columns: auto 1fr;
+    align-items: start;
   }
 
   .brand-text {
     display: none;
+  }
+
+  .topbar .brand {
+    grid-column: 1 / -1;
+    order: 3;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+
+  .topbar-actions {
+    order: 2;
   }
 
   .auth-card,
