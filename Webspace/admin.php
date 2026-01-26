@@ -1000,8 +1000,8 @@ if (!$pageError) {
     const unitOptions = document.getElementById("admin-unit-options");
     const unitNameInputs = document.querySelectorAll("input[data-unit-name]");
     unitNameInputs.forEach((input) => {
-      const form = input.closest("form");
-      const abbrInput = form ? form.querySelector("input[data-unit-abbr]") : null;
+      const row = input.closest(".list-item") || input.closest("form");
+      const abbrInput = row ? row.querySelector("input[data-unit-abbr]") : null;
       if (!abbrInput) return;
       input.addEventListener("input", () => {
         if (!unitOptions) return;
