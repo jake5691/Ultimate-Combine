@@ -40,7 +40,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
       $baseUrl = uc_base_url($env);
       $resetLink = ($baseUrl !== "" ? $baseUrl : "") . "/reset.php?token=" . urlencode($token);
-      $mailBody = "Hi,\n\nhier ist dein Link zum Zurücksetzen des Team-Passworts:\n" . $resetLink . "\n\nDer Link ist 60 Minuten gültig.\n\nFalls du das nicht angefordert hast, ignoriere diese Mail.";
+      $greeting = "Hi " . $teamName . "-Kontakt,";
+      $mailBody = $greeting . "\n\nhier ist dein Link zum Zurücksetzen des Team-Passworts:\n" . $resetLink . "\n\nDer Link ist 60 Minuten gültig.\n\nFalls du das nicht angefordert hast, ignoriere diese Mail.";
       $mailError = null;
       uc_smtp_send($env, $contactEmail, "Passwort zurücksetzen", $mailBody, $mailError);
     }
@@ -81,7 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <main class="auth is-wide">
     <section class="auth-card">
       <h1>Passwort zurücksetzen</h1>
-      <p class="lead">Gib Teamname und Kontakt-E-Mail an. Nur wenn beides passt, senden wir eine Reset-Mail.</p>
+      <p class="lead">Gib Teamname und Kontakt-E-Mail an. Nur wenn beides passt, bekommst du eine Reset-Mail.</p>
       <?php if ($feedback): ?>
         <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
