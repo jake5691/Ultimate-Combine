@@ -237,6 +237,37 @@ function uc_ensure_schema(PDO $pdo): void {
   );
 
   $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS feedback (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NULL,
+      sender_name VARCHAR(120) NOT NULL,
+      sender_email VARCHAR(160) NOT NULL,
+      subject VARCHAR(160) NOT NULL,
+      message TEXT NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'Neu',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_feedback_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $feedbackColumns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'feedback'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+
+  if (!in_array("status", $feedbackColumns, true)) {
+    $pdo->exec("ALTER TABLE feedback ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'Neu' AFTER message");
+  }
+
+  $pdo->exec("UPDATE feedback SET status = 'Neu' WHERE status IS NULL OR status = ''");
+
+  $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combine_players (
       id INT AUTO_INCREMENT PRIMARY KEY,
       combine_id INT NOT NULL,

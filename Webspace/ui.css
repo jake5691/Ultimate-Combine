@@ -19,6 +19,10 @@
   --bg-radial-3: #efe3d6;
   --grid-glow: rgba(255, 255, 255, 0.6);
   --grid-line: rgba(31, 26, 20, 0.06);
+  --status-neu: #ff7b4b;
+  --status-todo: #2c2a4a;
+  --status-done: #2a9d6f;
+  --status-reject: #c44536;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +43,10 @@
     --bg-radial-3: #141110;
     --grid-glow: rgba(44, 42, 74, 0.2);
     --grid-line: rgba(244, 237, 230, 0.08);
+    --status-neu: #ff7b4b;
+    --status-todo: #8f89c7;
+    --status-done: #46c08a;
+    --status-reject: #e06a5c;
   }
 }
 
@@ -669,6 +677,31 @@ body {
   font-size: 0.85rem;
 }
 
+.status-badge {
+  background: var(--status-neu);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.status-badge.status-neu {
+  background: var(--status-neu);
+}
+
+.status-badge.status-todo {
+  background: var(--status-todo);
+}
+
+.status-badge.status-done {
+  background: var(--status-done);
+}
+
+.status-badge.status-abgelehnt {
+  background: var(--status-reject);
+}
+
 .detail {
   color: var(--muted);
   font-size: 0.9rem;
@@ -1166,4 +1199,8 @@ body {
   transform: scale(0.5);
   transform-origin: right center;
   display: inline-flex;
+}
+
+details[open] .feedback-preview {
+  display: none;
 }
