@@ -151,6 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <input type="password" name="key" placeholder="Team-Code" required>
         </label>
         <button class="primary-button" type="submit">Jetzt einloggen</button>
+        <a class="text-link" href="reset-request.php">Passwort vergessen?</a>
         <?php if ($feedback && $activeTab === "login"): ?>
           <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
