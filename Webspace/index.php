@@ -178,7 +178,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <?php if ($feedback && $activeTab === "register"): ?>
           <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
-        <p class="help">Nach dem Registrieren gelangst du automatisch zum Teambereich.</p>
       </form>
     </section>
 
