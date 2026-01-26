@@ -14,7 +14,7 @@
   const updateToggles = () => {
     const mode = root.getAttribute("data-theme-mode") || "system";
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.textContent = mode === "system" ? "System" : (mode === "dark" ? "Dunkel" : "Hell");
+      button.textContent = mode === "system" ? "Auto" : (mode === "dark" ? "Dunkel" : "Hell");
       button.setAttribute("aria-pressed", mode === "dark" ? "true" : "false");
     });
   };
