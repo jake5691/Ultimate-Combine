@@ -27,6 +27,53 @@ function uc_load_env(string $path): array {
   return $env;
 }
 
+function uc_detect_lang(array $supported, string $default): string {
+  $queryLang = $_GET["lang"] ?? null;
+  if (is_string($queryLang) && in_array($queryLang, $supported, true)) {
+    $_SESSION["lang"] = $queryLang;
+    return $queryLang;
+  }
+  $sessionLang = $_SESSION["lang"] ?? null;
+  if (is_string($sessionLang) && in_array($sessionLang, $supported, true)) {
+    return $sessionLang;
+  }
+  $accept = $_SERVER["HTTP_ACCEPT_LANGUAGE"] ?? "";
+  if (is_string($accept) && $accept !== "") {
+    $parts = explode(",", $accept);
+    foreach ($parts as $part) {
+      $code = strtolower(trim(explode(";", $part)[0] ?? ""));
+      if ($code === "") {
+        continue;
+      }
+      $short = substr($code, 0, 2);
+      if (in_array($short, $supported, true)) {
+        return $short;
+      }
+    }
+  }
+  return $default;
+}
+
+function uc_load_translations(string $lang): array {
+  $path = __DIR__ . "/i18n/" . $lang . ".php";
+  if (!is_readable($path)) {
+    return [];
+  }
+  $translations = require $path;
+  return is_array($translations) ? $translations : [];
+}
+
+function t(string $key, ?string $fallback = null): string {
+  $translations = $GLOBALS["translations"] ?? [];
+  if (is_array($translations) && array_key_exists($key, $translations)) {
+    return (string)$translations[$key];
+  }
+  if ($fallback !== null) {
+    return $fallback;
+  }
+  return $key;
+}
+
 function uc_get_pdo(array $env, ?string &$error): ?PDO {
   if (empty($env)) {
     $error = "Datenbankkonfiguration fehlt.";
@@ -461,6 +508,9 @@ function uc_ensure_schema(PDO $pdo): void {
 
 $envPath = dirname(__DIR__) . "/.secrets/.env";
 $env = uc_load_env($envPath);
+$supportedLangs = ["de", "en"];
+$lang = uc_detect_lang($supportedLangs, "de");
+$translations = uc_load_translations($lang);
 $dbError = null;
 $pdo = uc_get_pdo($env, $dbError);
 

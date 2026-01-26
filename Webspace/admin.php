@@ -19,8 +19,8 @@ $globalDisciplines = [];
 $feedbackEntries = [];
 $teams = [];
 $validDirections = [
-  "more" => "Mehr ist besser",
-  "less" => "Weniger ist besser",
+  "more" => t("common.more_is_better", "Mehr ist besser"),
+  "less" => t("common.less_is_better", "Weniger ist besser"),
 ];
 $feedbackStatuses = ["Neu", "Todo", "Done", "Abgelehnt"];
 $feedbackFilter = $_GET["feedback_status"] ?? "all";
@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $unitName = trim($_POST["unit_name"] ?? "");
     $unitAbbr = trim($_POST["unit_abbreviation"] ?? "");
     if ($unitName === "" || $unitAbbr === "") {
-      $adminError = "Bitte Name und Kürzel für die Einheit angeben.";
+      $adminError = t("admin.error.unit_name_required", "Bitte Name und Kürzel für die Einheit angeben.");
     } else {
       $stmt = $pdo->prepare(
         "INSERT INTO units (unit_name, unit_abbreviation)
@@ -51,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         ":unit_name" => $unitName,
         ":unit_abbreviation" => $unitAbbr,
       ]);
-      $adminFeedback = "Einheit wurde angelegt.";
+      $adminFeedback = t("admin.feedback.unit_created", "Einheit wurde angelegt.");
     }
   }
 
@@ -60,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $unitName = trim($_POST["unit_name"] ?? "");
     $unitAbbr = trim($_POST["unit_abbreviation"] ?? "");
     if (!$unitId || $unitName === "" || $unitAbbr === "") {
-      $adminError = "Bitte Name und Kürzel für die Einheit angeben.";
+      $adminError = t("admin.error.unit_name_required", "Bitte Name und Kürzel für die Einheit angeben.");
     } else {
       $stmt = $pdo->prepare(
         "UPDATE units
@@ -73,18 +73,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         ":unit_abbreviation" => $unitAbbr,
         ":id" => $unitId,
       ]);
-      $adminFeedback = "Einheit wurde aktualisiert.";
+      $adminFeedback = t("admin.feedback.unit_updated", "Einheit wurde aktualisiert.");
     }
   }
 
   if ($action === "update_units" && !empty($_POST["delete_unit_id"])) {
     $unitId = filter_var($_POST["delete_unit_id"], FILTER_VALIDATE_INT);
     if (!$unitId) {
-      $adminError = "Einheit konnte nicht gelöscht werden.";
+      $adminError = t("admin.error.unit_delete_failed", "Einheit konnte nicht gelöscht werden.");
     } else {
       $stmt = $pdo->prepare("DELETE FROM units WHERE id = :id");
       $stmt->execute([":id" => $unitId]);
-      $adminFeedback = "Einheit wurde gelöscht.";
+      $adminFeedback = t("admin.feedback.unit_deleted", "Einheit wurde gelöscht.");
     }
   }
 
@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
 
     if ($hasError) {
-      $adminError = "Bitte Name und Kürzel für alle Einheiten angeben.";
+      $adminError = t("admin.error.units_required", "Bitte Name und Kürzel für alle Einheiten angeben.");
     } else {
       $stmt = $pdo->prepare(
         "UPDATE units
@@ -123,18 +123,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":id" => $unitId,
         ]);
       }
-      $adminFeedback = "Einheiten wurden aktualisiert.";
+      $adminFeedback = t("admin.feedback.units_updated", "Einheiten wurden aktualisiert.");
     }
   }
 
   if ($action === "delete_unit") {
     $unitId = filter_var($_POST["unit_id"] ?? null, FILTER_VALIDATE_INT);
     if (!$unitId) {
-      $adminError = "Einheit konnte nicht gelöscht werden.";
+      $adminError = t("admin.error.unit_delete_failed", "Einheit konnte nicht gelöscht werden.");
     } else {
       $stmt = $pdo->prepare("DELETE FROM units WHERE id = :id");
       $stmt->execute([":id" => $unitId]);
-      $adminFeedback = "Einheit wurde gelöscht.";
+      $adminFeedback = t("admin.feedback.unit_deleted", "Einheit wurde gelöscht.");
     }
   }
 
@@ -180,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       (($expectedMin !== null || $expectedMax !== null) && ($expectedMin === null || $expectedMax === null)) ||
       $invalidExpectedRange
     ) {
-      $adminError = "Bitte alle Felder für die Disziplin ausfüllen.";
+      $adminError = t("admin.error.discipline_fields_required", "Bitte alle Felder für die Disziplin ausfüllen.");
     } else {
       try {
         $unitAbbr = $unitAbbrRaw;
@@ -220,7 +220,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         $exists = (bool)$stmt->fetchColumn();
 
         if ($exists) {
-          $adminError = "Diese Disziplin existiert bereits.";
+          $adminError = t("admin.error.discipline_exists", "Diese Disziplin existiert bereits.");
         } else {
         $stmt = $pdo->prepare(
           "INSERT INTO disciplines (team_id, discipline_name, description, unit, category, rating_direction, expected_min, expected_max, bonus_relative, bonus_absolute)
@@ -237,10 +237,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             ":bonus_relative" => $bonusRel,
             ":bonus_absolute" => $bonusAbs,
           ]);
-          $adminFeedback = "Disziplin wurde angelegt.";
+          $adminFeedback = t("admin.feedback.discipline_created", "Disziplin wurde angelegt.");
         }
       } catch (Throwable $e) {
-        $adminError = "Disziplin konnte nicht angelegt werden. Bitte Schema prüfen: ALTER TABLE disciplines MODIFY COLUMN team_id INT NULL;";
+        $adminError = t("admin.error.discipline_create_failed", "Disziplin konnte nicht angelegt werden. Bitte Schema prüfen: ALTER TABLE disciplines MODIFY COLUMN team_id INT NULL;");
       }
     }
   }
@@ -248,14 +248,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   if ($action === "update_global_disciplines" && !empty($_POST["delete_discipline_id"])) {
     $disciplineId = filter_var($_POST["delete_discipline_id"], FILTER_VALIDATE_INT);
     if (!$disciplineId) {
-      $adminError = "Disziplin konnte nicht gelöscht werden.";
+      $adminError = t("admin.error.discipline_delete_failed", "Disziplin konnte nicht gelöscht werden.");
     } else {
       try {
         $stmt = $pdo->prepare("DELETE FROM disciplines WHERE id = :id AND team_id IS NULL");
         $stmt->execute([":id" => $disciplineId]);
-        $adminFeedback = "Disziplin wurde gelöscht.";
+        $adminFeedback = t("admin.feedback.discipline_deleted", "Disziplin wurde gelöscht.");
       } catch (Throwable $e) {
-        $adminError = "Disziplin konnte nicht gelöscht werden.";
+        $adminError = t("admin.error.discipline_delete_failed", "Disziplin konnte nicht gelöscht werden.");
       }
     }
   }
@@ -323,7 +323,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
 
       if ($hasError) {
-        $adminError = "Bitte alle Felder für die Disziplinen ausfüllen.";
+        $adminError = t("admin.error.disciplines_fields_required", "Bitte alle Felder für die Disziplinen ausfüllen.");
       } else {
         try {
         $stmt = $pdo->prepare(
@@ -386,9 +386,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             }
           }
         }
-        $adminFeedback = "Disziplinen wurden aktualisiert.";
+        $adminFeedback = t("admin.feedback.disciplines_updated", "Disziplinen wurden aktualisiert.");
       } catch (Throwable $e) {
-        $adminError = "Disziplinen konnten nicht gespeichert werden.";
+        $adminError = t("admin.error.disciplines_update_failed", "Disziplinen konnten nicht gespeichert werden.");
       }
     }
   }
@@ -409,9 +409,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $hasStatusColumn = true;
     }
     if (!$hasStatusColumn) {
-      $adminError = "Feedback-Status konnte nicht aktualisiert werden (Schema fehlt).";
+      $adminError = t("admin.error.feedback_status_schema_missing", "Feedback-Status konnte nicht aktualisiert werden (Schema fehlt).");
     } elseif (!$feedbackId || !in_array($status, $feedbackStatuses, true)) {
-      $adminError = "Feedback-Status konnte nicht aktualisiert werden.";
+      $adminError = t("admin.error.feedback_status_update_failed", "Feedback-Status konnte nicht aktualisiert werden.");
     } else {
       $stmt = $pdo->prepare(
         "UPDATE feedback
@@ -422,18 +422,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         ":status" => $status,
         ":id" => $feedbackId,
       ]);
-      $adminFeedback = "Feedback-Status wurde aktualisiert.";
+      $adminFeedback = t("admin.feedback.feedback_status_updated", "Feedback-Status wurde aktualisiert.");
     }
   }
 
   if ($action === "delete_team_admin") {
     $teamId = filter_var($_POST["team_id"] ?? null, FILTER_VALIDATE_INT);
     if (!$teamId) {
-      $adminError = "Team konnte nicht gelöscht werden.";
+      $adminError = t("admin.error.team_delete_failed", "Team konnte nicht gelöscht werden.");
     } else {
       $stmt = $pdo->prepare("DELETE FROM teams WHERE id = :id");
       $stmt->execute([":id" => $teamId]);
-      $adminFeedback = "Team wurde gelöscht.";
+      $adminFeedback = t("admin.feedback.team_deleted", "Team wurde gelöscht.");
     }
   }
 }
@@ -518,7 +518,7 @@ if (!$pageError) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ultimate Combine – Admin</title>
+  <title><?php echo htmlspecialchars(t("admin.title", "Ultimate Combine – Admin"), ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -532,13 +532,13 @@ if (!$pageError) {
   <header class="topbar">
     <form method="post" action="">
       <input type="hidden" name="action" value="logout">
-      <button class="pill-button is-logout" type="submit">Abmelden</button>
+      <button class="pill-button is-logout" type="submit"><?php echo htmlspecialchars(t("common.logout", "Abmelden"), ENT_QUOTES, "UTF-8"); ?></button>
     </form>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
       <span class="brand-sep">•</span>
-      <span class="brand-team">Admin</span>
+      <span class="brand-team"><?php echo htmlspecialchars(t("admin.brand", "Admin"), ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <div class="topbar-actions">
       <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dunkel</button>
@@ -547,8 +547,8 @@ if (!$pageError) {
 
   <main class="team">
     <section class="auth-card">
-      <h1>Admin-Übersicht</h1>
-      <p class="lead">Verwalte Einheiten und behalte Teams im Blick.</p>
+      <h1><?php echo htmlspecialchars(t("admin.overview_title", "Admin-Übersicht"), ENT_QUOTES, "UTF-8"); ?></h1>
+      <p class="lead"><?php echo htmlspecialchars(t("admin.overview_lead", "Verwalte Einheiten und behalte Teams im Blick."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php if ($pageError): ?>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
@@ -561,14 +561,14 @@ if (!$pageError) {
 
     <section class="info">
       <div class="card-header">
-        <h2>Einheiten</h2>
+        <h2><?php echo htmlspecialchars(t("admin.units.title", "Einheiten"), ENT_QUOTES, "UTF-8"); ?></h2>
         <div class="card-actions" id="units-actions-view">
-          <button class="pill-button" type="button" data-edit-units>Bearbeiten</button>
+          <button class="pill-button" type="button" data-edit-units><?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?></button>
           <button class="icon-button small js-toggle" type="button" data-target="add-unit" aria-expanded="false" aria-controls="add-unit">+</button>
         </div>
         <div class="card-actions is-hidden" id="units-actions-edit" hidden>
-          <button class="pill-button" type="button" data-edit-units-cancel>Abbrechen</button>
-          <button class="primary-button" type="submit" form="unit-edit-form">Speichern</button>
+          <button class="pill-button" type="button" data-edit-units-cancel><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
+          <button class="primary-button" type="submit" form="unit-edit-form"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
         </div>
       </div>
 
@@ -576,19 +576,19 @@ if (!$pageError) {
         <form class="form" method="post" action="">
           <input type="hidden" name="action" value="create_unit">
           <label class="field">
-            <span>Name</span>
-            <input type="text" name="unit_name" placeholder="z. B. Meter" required>
+            <span><?php echo htmlspecialchars(t("common.name", "Name"), ENT_QUOTES, "UTF-8"); ?></span>
+            <input type="text" name="unit_name" placeholder="<?php echo htmlspecialchars(t("common.unit_placeholder", "z. B. Meter"), ENT_QUOTES, "UTF-8"); ?>" required>
           </label>
           <label class="field">
-            <span>Kürzel</span>
-            <input type="text" name="unit_abbreviation" placeholder="z. B. m" required>
+            <span><?php echo htmlspecialchars(t("admin.units.abbr", "Kürzel"), ENT_QUOTES, "UTF-8"); ?></span>
+            <input type="text" name="unit_abbreviation" placeholder="<?php echo htmlspecialchars(t("common.unit_abbr_placeholder", "z. B. m"), ENT_QUOTES, "UTF-8"); ?>" required>
           </label>
-          <button class="primary-button" type="submit">Einheit anlegen</button>
+          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("admin.units.create", "Einheit anlegen"), ENT_QUOTES, "UTF-8"); ?></button>
         </form>
       </div>
 
       <?php if (empty($units)): ?>
-        <p class="help">Noch keine Einheiten hinterlegt.</p>
+        <p class="help"><?php echo htmlspecialchars(t("admin.units.empty", "Noch keine Einheiten hinterlegt."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
         <ul class="list" id="units-overview">
           <?php foreach ($units as $unit): ?>
@@ -613,16 +613,16 @@ if (!$pageError) {
                     <div class="form inline-form">
                       <input type="hidden" name="unit_id[]" value="<?php echo (int)$unit["id"]; ?>">
                       <label class="field">
-                        <span>Name</span>
+                        <span><?php echo htmlspecialchars(t("common.name", "Name"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="unit_name[]" value="<?php echo htmlspecialchars($unit["unit_name"], ENT_QUOTES, "UTF-8"); ?>" required>
                       </label>
                       <label class="field">
-                        <span>Kürzel</span>
+                        <span><?php echo htmlspecialchars(t("admin.units.abbr", "Kürzel"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="unit_abbreviation[]" value="<?php echo htmlspecialchars($unit["unit_abbreviation"], ENT_QUOTES, "UTF-8"); ?>" required>
                       </label>
                     </div>
                   </div>
-                  <button class="pill-button" type="submit" name="delete_unit_id" value="<?php echo (int)$unit["id"]; ?>" formnovalidate>Löschen</button>
+                  <button class="pill-button" type="submit" name="delete_unit_id" value="<?php echo (int)$unit["id"]; ?>" formnovalidate><?php echo htmlspecialchars(t("common.delete", "Löschen"), ENT_QUOTES, "UTF-8"); ?></button>
                 </li>
               <?php endforeach; ?>
             </ul>
@@ -633,14 +633,14 @@ if (!$pageError) {
 
     <section class="info">
       <div class="card-header">
-        <h2>Globale Disziplinen</h2>
+        <h2><?php echo htmlspecialchars(t("admin.disciplines.title", "Globale Disziplinen"), ENT_QUOTES, "UTF-8"); ?></h2>
         <div class="card-actions" id="disciplines-actions-view">
-          <button class="pill-button" type="button" data-edit-disciplines>Bearbeiten</button>
+          <button class="pill-button" type="button" data-edit-disciplines><?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?></button>
           <button class="icon-button small js-toggle" type="button" data-target="add-global-discipline" aria-expanded="false" aria-controls="add-global-discipline">+</button>
         </div>
         <div class="card-actions is-hidden" id="disciplines-actions-edit" hidden>
-          <button class="pill-button" type="button" data-edit-disciplines-cancel>Abbrechen</button>
-          <button class="primary-button" type="submit" form="discipline-edit-form">Speichern</button>
+          <button class="pill-button" type="button" data-edit-disciplines-cancel><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
+          <button class="primary-button" type="submit" form="discipline-edit-form"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
         </div>
       </div>
 
@@ -648,29 +648,29 @@ if (!$pageError) {
         <form class="form" method="post" action="">
           <input type="hidden" name="action" value="create_global_discipline">
           <label class="field">
-            <span>Name</span>
+            <span><?php echo htmlspecialchars(t("common.name", "Name"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="text" name="discipline_name" required>
           </label>
           <label class="field">
-            <span>Beschreibung</span>
+            <span><?php echo htmlspecialchars(t("common.description", "Beschreibung"), ENT_QUOTES, "UTF-8"); ?></span>
             <textarea name="description" rows="3" required></textarea>
           </label>
           <label class="field">
-            <span>Einheit</span>
+            <span><?php echo htmlspecialchars(t("common.unit", "Einheit"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="text" name="unit" list="admin-unit-options" required data-unit-name>
           </label>
           <label class="field">
-            <span>Einheit (Abkürzung)</span>
-            <input type="text" name="unit_abbreviation" placeholder="z. B. m" required data-unit-abbr>
+            <span><?php echo htmlspecialchars(t("common.unit_abbr", "Einheit (Abkürzung)"), ENT_QUOTES, "UTF-8"); ?></span>
+            <input type="text" name="unit_abbreviation" placeholder="<?php echo htmlspecialchars(t("common.unit_abbr_placeholder", "z. B. m"), ENT_QUOTES, "UTF-8"); ?>" required data-unit-abbr>
           </label>
           <label class="field">
-            <span>Kategorie</span>
+            <span><?php echo htmlspecialchars(t("common.category", "Kategorie"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="text" name="category" required>
           </label>
         <label class="field">
-          <span>Bewertung</span>
+          <span><?php echo htmlspecialchars(t("common.rating", "Bewertung"), ENT_QUOTES, "UTF-8"); ?></span>
           <select name="rating_direction" required>
-            <option value="">Bitte wählen</option>
+            <option value=""><?php echo htmlspecialchars(t("common.choose", "Bitte wählen"), ENT_QUOTES, "UTF-8"); ?></option>
             <?php foreach ($validDirections as $key => $label): ?>
               <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>">
                 <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
@@ -679,22 +679,22 @@ if (!$pageError) {
           </select>
         </label>
         <label class="field">
-          <span>Erwartung Minimum (1 Punkt)</span>
-          <input type="number" name="expected_min" step="any" placeholder="Optional">
+          <span><?php echo htmlspecialchars(t("common.expected_min", "Erwartung Minimum (1 Punkt)"), ENT_QUOTES, "UTF-8"); ?></span>
+          <input type="number" name="expected_min" step="any" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
         </label>
         <label class="field">
-          <span>Erwartung Maximum (2 Punkte)</span>
-          <input type="number" name="expected_max" step="any" placeholder="Optional">
+          <span><?php echo htmlspecialchars(t("common.expected_max", "Erwartung Maximum (2 Punkte)"), ENT_QUOTES, "UTF-8"); ?></span>
+          <input type="number" name="expected_max" step="any" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
         </label>
         <label class="field">
-          <span>Bonus Platz 1 (Relativ)</span>
-          <input type="number" name="bonus_relative" step="any" placeholder="Optional">
+          <span><?php echo htmlspecialchars(t("common.bonus_relative", "Bonus Platz 1 (Relativ)"), ENT_QUOTES, "UTF-8"); ?></span>
+          <input type="number" name="bonus_relative" step="any" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
         </label>
         <label class="field">
-          <span>Bonus Bestwert (Absolut)</span>
-          <input type="number" name="bonus_absolute" step="any" placeholder="Optional">
+          <span><?php echo htmlspecialchars(t("common.bonus_absolute", "Bonus Bestwert (Absolut)"), ENT_QUOTES, "UTF-8"); ?></span>
+          <input type="number" name="bonus_absolute" step="any" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
         </label>
-        <button class="primary-button" type="submit">Disziplin anlegen</button>
+        <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("admin.disciplines.create", "Disziplin anlegen"), ENT_QUOTES, "UTF-8"); ?></button>
       </form>
       </div>
 
@@ -715,7 +715,7 @@ if (!$pageError) {
       </datalist>
 
       <?php if (empty($globalDisciplines)): ?>
-        <p class="help">Noch keine globalen Disziplinen hinterlegt.</p>
+        <p class="help"><?php echo htmlspecialchars(t("admin.disciplines.empty", "Noch keine globalen Disziplinen hinterlegt."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
         <ul class="list" id="disciplines-overview">
           <?php foreach ($globalDisciplines as $discipline): ?>
@@ -753,27 +753,27 @@ if (!$pageError) {
                     <div class="form inline-form">
                       <input type="hidden" name="discipline_id[]" value="<?php echo (int)$discipline["id"]; ?>">
                       <label class="field">
-                        <span>Name</span>
+                        <span><?php echo htmlspecialchars(t("common.name", "Name"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="discipline_name[]" value="<?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>" required>
                       </label>
                       <label class="field">
-                        <span>Beschreibung</span>
+                        <span><?php echo htmlspecialchars(t("common.description", "Beschreibung"), ENT_QUOTES, "UTF-8"); ?></span>
                         <textarea name="description[]" rows="3" required><?php echo htmlspecialchars($discipline["description"], ENT_QUOTES, "UTF-8"); ?></textarea>
                       </label>
                       <label class="field">
-                        <span>Einheit</span>
+                        <span><?php echo htmlspecialchars(t("common.unit", "Einheit"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="unit[]" list="admin-unit-options" value="<?php echo htmlspecialchars($discipline["unit"], ENT_QUOTES, "UTF-8"); ?>" required data-unit-name>
                       </label>
                       <label class="field">
-                        <span>Einheit (Abkürzung)</span>
+                        <span><?php echo htmlspecialchars(t("common.unit_abbr", "Einheit (Abkürzung)"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="unit_abbreviation[]" value="<?php echo htmlspecialchars($unitNameToAbbr[$discipline["unit"] ?? ""] ?? "", ENT_QUOTES, "UTF-8"); ?>" required data-unit-abbr>
                       </label>
                       <label class="field">
-                        <span>Kategorie</span>
+                        <span><?php echo htmlspecialchars(t("common.category", "Kategorie"), ENT_QUOTES, "UTF-8"); ?></span>
                         <input type="text" name="category[]" value="<?php echo htmlspecialchars($discipline["category"], ENT_QUOTES, "UTF-8"); ?>" required>
                       </label>
                       <label class="field">
-                        <span>Bewertung</span>
+                        <span><?php echo htmlspecialchars(t("common.rating", "Bewertung"), ENT_QUOTES, "UTF-8"); ?></span>
                         <select name="rating_direction[]" required>
                           <?php foreach ($validDirections as $key => $label): ?>
                             <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($discipline["rating_direction"] ?? "") === $key ? " selected" : ""; ?>>
@@ -783,24 +783,24 @@ if (!$pageError) {
                         </select>
                       </label>
                       <label class="field">
-                        <span>Erwartung Minimum (1 Punkt)</span>
-                        <input type="number" name="expected_min[]" step="any" value="<?php echo htmlspecialchars($discipline["expected_min"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+                        <span><?php echo htmlspecialchars(t("common.expected_min", "Erwartung Minimum (1 Punkt)"), ENT_QUOTES, "UTF-8"); ?></span>
+                        <input type="number" name="expected_min[]" step="any" value="<?php echo htmlspecialchars($discipline["expected_min"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
                       </label>
                       <label class="field">
-                        <span>Erwartung Maximum (2 Punkte)</span>
-                        <input type="number" name="expected_max[]" step="any" value="<?php echo htmlspecialchars($discipline["expected_max"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+                        <span><?php echo htmlspecialchars(t("common.expected_max", "Erwartung Maximum (2 Punkte)"), ENT_QUOTES, "UTF-8"); ?></span>
+                        <input type="number" name="expected_max[]" step="any" value="<?php echo htmlspecialchars($discipline["expected_max"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
                       </label>
                       <label class="field">
-                        <span>Bonus Platz 1 (Relativ)</span>
-                        <input type="number" name="bonus_relative[]" step="any" value="<?php echo htmlspecialchars($discipline["bonus_relative"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+                        <span><?php echo htmlspecialchars(t("common.bonus_relative", "Bonus Platz 1 (Relativ)"), ENT_QUOTES, "UTF-8"); ?></span>
+                        <input type="number" name="bonus_relative[]" step="any" value="<?php echo htmlspecialchars($discipline["bonus_relative"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
                       </label>
                       <label class="field">
-                        <span>Bonus Bestwert (Absolut)</span>
-                        <input type="number" name="bonus_absolute[]" step="any" value="<?php echo htmlspecialchars($discipline["bonus_absolute"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="Optional">
+                        <span><?php echo htmlspecialchars(t("common.bonus_absolute", "Bonus Bestwert (Absolut)"), ENT_QUOTES, "UTF-8"); ?></span>
+                        <input type="number" name="bonus_absolute[]" step="any" value="<?php echo htmlspecialchars($discipline["bonus_absolute"] ?? "", ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
                       </label>
                     </div>
                   </div>
-                  <button class="pill-button" type="submit" name="delete_discipline_id" value="<?php echo (int)$discipline["id"]; ?>" formnovalidate>Löschen</button>
+                  <button class="pill-button" type="submit" name="delete_discipline_id" value="<?php echo (int)$discipline["id"]; ?>" formnovalidate><?php echo htmlspecialchars(t("common.delete", "Löschen"), ENT_QUOTES, "UTF-8"); ?></button>
                 </li>
               <?php endforeach; ?>
             </ul>
@@ -811,12 +811,12 @@ if (!$pageError) {
 
     <section class="info">
       <div class="card-header">
-        <h2>Feedback</h2>
+        <h2><?php echo htmlspecialchars(t("admin.feedback.title", "Feedback"), ENT_QUOTES, "UTF-8"); ?></h2>
         <form class="form" method="get" action="">
           <label class="field">
-            <span>Status</span>
+            <span><?php echo htmlspecialchars(t("admin.feedback.filter_label", "Status"), ENT_QUOTES, "UTF-8"); ?></span>
             <select name="feedback_status" onchange="this.form.submit()">
-              <option value="all"<?php echo $feedbackFilter === "all" ? " selected" : ""; ?>>Alle</option>
+              <option value="all"<?php echo $feedbackFilter === "all" ? " selected" : ""; ?>><?php echo htmlspecialchars(t("admin.feedback.filter_all", "Alle"), ENT_QUOTES, "UTF-8"); ?></option>
               <?php foreach ($feedbackStatuses as $status): ?>
                 <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo $feedbackFilter === $status ? " selected" : ""; ?>>
                   <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
@@ -827,7 +827,7 @@ if (!$pageError) {
         </form>
       </div>
       <?php if (empty($feedbackEntries)): ?>
-        <p class="help">Noch kein Feedback eingegangen.</p>
+        <p class="help"><?php echo htmlspecialchars(t("admin.feedback.empty", "Noch kein Feedback eingegangen."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
         <ul class="list">
           <?php foreach ($feedbackEntries as $entry): ?>
@@ -848,9 +848,9 @@ if (!$pageError) {
                       if (!empty($entry["sender_email"])) {
                         $metaParts[] = $entry["sender_email"];
                       }
-                      if (!empty($entry["team_name"])) {
-                        $metaParts[] = "Team: " . $entry["team_name"];
-                      }
+                    if (!empty($entry["team_name"])) {
+                      $metaParts[] = t("common.team_prefix", "Team: ") . $entry["team_name"];
+                    }
                       if (!empty($entry["created_at"])) {
                         $metaParts[] = $entry["created_at"];
                       }
@@ -867,7 +867,7 @@ if (!$pageError) {
                   <input type="hidden" name="feedback_id" value="<?php echo (int)$entry["id"]; ?>">
                   <div class="form-actions">
                     <label class="field">
-                      <span>Status setzen</span>
+                      <span><?php echo htmlspecialchars(t("admin.feedback.set_status", "Status setzen"), ENT_QUOTES, "UTF-8"); ?></span>
                       <select name="status" required>
                         <?php foreach ($feedbackStatuses as $status): ?>
                           <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($entry["status"] ?? "Neu") === $status ? " selected" : ""; ?>>
@@ -876,7 +876,7 @@ if (!$pageError) {
                         <?php endforeach; ?>
                       </select>
                     </label>
-                    <button class="pill-button" type="submit">Speichern</button>
+                    <button class="pill-button" type="submit"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
                   </div>
                 </form>
               </details>
@@ -887,9 +887,9 @@ if (!$pageError) {
     </section>
 
     <section class="info">
-      <h2>Teams</h2>
+      <h2><?php echo htmlspecialchars(t("admin.teams.title", "Teams"), ENT_QUOTES, "UTF-8"); ?></h2>
       <?php if (empty($teams)): ?>
-        <p class="help">Noch keine Teams registriert.</p>
+        <p class="help"><?php echo htmlspecialchars(t("admin.teams.empty", "Noch keine Teams registriert."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
         <ul class="list">
           <?php foreach ($teams as $team): ?>
@@ -905,16 +905,16 @@ if (!$pageError) {
                     $disciplinesCount = (int)($team["discipline_count"] ?? 0);
                     $combinesCount = (int)($team["combine_count"] ?? 0);
                     echo htmlspecialchars(
-                      $playersCount . " Spieler · " . $disciplinesCount . " Disziplinen · " . $combinesCount . " Combines",
+                    $playersCount . " " . t("common.players", "Spieler") . " · " . $disciplinesCount . " " . t("common.disciplines", "Disziplinen") . " · " . $combinesCount . " " . t("common.combines", "Combines"),
                       ENT_QUOTES,
                       "UTF-8"
                     );
                   ?>
                 </span>
-                <form method="post" action="" onsubmit="return confirm('Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+                <form method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete", "Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
                   <input type="hidden" name="action" value="delete_team_admin">
                   <input type="hidden" name="team_id" value="<?php echo (int)$team["id"]; ?>">
-                  <button class="pill-button is-danger" type="submit">Löschen</button>
+                  <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("common.delete", "Löschen"), ENT_QUOTES, "UTF-8"); ?></button>
                 </form>
               </div>
             </li>
@@ -924,8 +924,8 @@ if (!$pageError) {
     </section>
   </main>
   <footer class="site-footer">
-    <a class="footer-link" href="impressum.php">Impressum</a>
-    <a class="footer-link" href="feedback.php">Feedback</a>
+    <a class="footer-link" href="impressum.php"><?php echo htmlspecialchars(t("footer.impressum", "Impressum"), ENT_QUOTES, "UTF-8"); ?></a>
+    <a class="footer-link" href="feedback.php"><?php echo htmlspecialchars(t("footer.feedback", "Feedback"), ENT_QUOTES, "UTF-8"); ?></a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
   <script src="theme.js"></script>
