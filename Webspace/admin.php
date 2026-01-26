@@ -425,6 +425,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $adminFeedback = "Feedback-Status wurde aktualisiert.";
     }
   }
+
+  if ($action === "delete_team_admin") {
+    $teamId = filter_var($_POST["team_id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$teamId) {
+      $adminError = "Team konnte nicht gelöscht werden.";
+    } else {
+      $stmt = $pdo->prepare("DELETE FROM teams WHERE id = :id");
+      $stmt->execute([":id" => $teamId]);
+      $adminFeedback = "Team wurde gelöscht.";
+    }
+  }
 }
 
 if (!$pageError) {
@@ -887,18 +898,25 @@ if (!$pageError) {
                 <strong><?php echo htmlspecialchars($team["team_name"], ENT_QUOTES, "UTF-8"); ?></strong>
                 <span class="meta"><?php echo htmlspecialchars($team["contact"] ?? "", ENT_QUOTES, "UTF-8"); ?></span>
               </div>
-              <span class="badge">
-                <?php
-                  $playersCount = (int)($team["player_count"] ?? 0);
-                  $disciplinesCount = (int)($team["discipline_count"] ?? 0);
-                  $combinesCount = (int)($team["combine_count"] ?? 0);
-                  echo htmlspecialchars(
-                    $playersCount . " Spieler · " . $disciplinesCount . " Disziplinen · " . $combinesCount . " Combines",
-                    ENT_QUOTES,
-                    "UTF-8"
-                  );
-                ?>
-              </span>
+              <div class="result-meta">
+                <span class="badge">
+                  <?php
+                    $playersCount = (int)($team["player_count"] ?? 0);
+                    $disciplinesCount = (int)($team["discipline_count"] ?? 0);
+                    $combinesCount = (int)($team["combine_count"] ?? 0);
+                    echo htmlspecialchars(
+                      $playersCount . " Spieler · " . $disciplinesCount . " Disziplinen · " . $combinesCount . " Combines",
+                      ENT_QUOTES,
+                      "UTF-8"
+                    );
+                  ?>
+                </span>
+                <form method="post" action="" onsubmit="return confirm('Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+                  <input type="hidden" name="action" value="delete_team_admin">
+                  <input type="hidden" name="team_id" value="<?php echo (int)$team["id"]; ?>">
+                  <button class="pill-button is-danger" type="submit">Löschen</button>
+                </form>
+              </div>
             </li>
           <?php endforeach; ?>
         </ul>
