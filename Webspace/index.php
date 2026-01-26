@@ -151,10 +151,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <input type="password" name="key" placeholder="Team-Code" required>
         </label>
         <button class="primary-button" type="submit">Jetzt einloggen</button>
+        <p class="help"><a class="text-link" href="reset-request.php">Passwort zurücksetzen</a> · Noch kein Zugang? <a class="text-link js-tab-link" href="#register" data-tab="register">Registrieren</a></p>
         <?php if ($feedback && $activeTab === "login"): ?>
           <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
-        <p class="help">Noch kein Zugang? <a class="text-link js-tab-link" href="#register" data-tab="register">Registrieren</a></p>
       </form>
 
       <form class="form<?php echo $activeTab !== "register" ? " is-hidden" : ""; ?>" id="register" data-panel="register" method="post" action="">

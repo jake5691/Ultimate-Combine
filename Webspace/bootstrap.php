@@ -54,6 +54,101 @@ function uc_get_pdo(array $env, ?string &$error): ?PDO {
   }
 }
 
+function uc_env(array $env, string $key, string $default = ""): string {
+  $value = $env[$key] ?? $default;
+  return is_string($value) ? $value : $default;
+}
+
+function uc_base_url(array $env): string {
+  $configured = trim(uc_env($env, "APP_URL", ""));
+  if ($configured !== "") {
+    return rtrim($configured, "/");
+  }
+  if (!empty($_SERVER["HTTP_HOST"])) {
+    $scheme = (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off") ? "https" : "http";
+    return $scheme . "://" . $_SERVER["HTTP_HOST"];
+  }
+  return "";
+}
+
+function uc_smtp_send(array $env, string $to, string $subject, string $body, ?string &$error = null): bool {
+  $host = uc_env($env, "SMTP_HOST");
+  $port = (int)uc_env($env, "SMTP_PORT", "587");
+  $user = uc_env($env, "SMTP_USER");
+  $pass = uc_env($env, "SMTP_PASS");
+  $fromEmail = uc_env($env, "SMTP_FROM", $user);
+  $fromName = uc_env($env, "SMTP_FROM_NAME", "Ultimate Combine");
+  $secure = strtolower(uc_env($env, "SMTP_SECURE", "tls"));
+
+  if ($host === "" || $fromEmail === "") {
+    $error = "SMTP Konfiguration fehlt.";
+    return false;
+  }
+
+  $socket = fsockopen($host, $port, $errno, $errstr, 10);
+  if (!$socket) {
+    $error = "SMTP Verbindung fehlgeschlagen.";
+    return false;
+  }
+  $read = static function () use ($socket) {
+    $data = "";
+    while ($line = fgets($socket, 515)) {
+      $data .= $line;
+      if (isset($line[3]) && $line[3] === " ") {
+        break;
+      }
+    }
+    return $data;
+  };
+  $send = static function (string $cmd) use ($socket) {
+    fwrite($socket, $cmd . "\r\n");
+  };
+
+  $read();
+  $send("EHLO localhost");
+  $read();
+
+  if ($secure === "tls") {
+    $send("STARTTLS");
+    $read();
+    stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+    $send("EHLO localhost");
+    $read();
+  }
+
+  if ($user !== "" && $pass !== "") {
+    $send("AUTH LOGIN");
+    $read();
+    $send(base64_encode($user));
+    $read();
+    $send(base64_encode($pass));
+    $read();
+  }
+
+  $send("MAIL FROM:<" . $fromEmail . ">");
+  $read();
+  $send("RCPT TO:<" . $to . ">");
+  $read();
+  $send("DATA");
+  $read();
+
+  $encodedSubject = mb_encode_mimeheader($subject, "UTF-8");
+  $headers = [];
+  $headers[] = "From: " . $fromName . " <" . $fromEmail . ">";
+  $headers[] = "To: <" . $to . ">";
+  $headers[] = "Subject: " . $encodedSubject;
+  $headers[] = "MIME-Version: 1.0";
+  $headers[] = "Content-Type: text/plain; charset=UTF-8";
+  $headers[] = "Content-Transfer-Encoding: 8bit";
+
+  $message = implode("\r\n", $headers) . "\r\n\r\n" . str_replace("\n.", "\n..", $body);
+  fwrite($socket, $message . "\r\n.\r\n");
+  $read();
+  $send("QUIT");
+  fclose($socket);
+  return true;
+}
+
 function uc_ensure_schema(PDO $pdo): void {
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS teams (
@@ -266,6 +361,20 @@ function uc_ensure_schema(PDO $pdo): void {
   }
 
   $pdo->exec("UPDATE feedback SET status = 'Neu' WHERE status IS NULL OR status = ''");
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS password_resets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NOT NULL,
+      token_hash VARCHAR(255) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_password_resets_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combine_players (
