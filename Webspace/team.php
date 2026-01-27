@@ -1087,7 +1087,10 @@ if (!$pageError) {
               </label>
             </div>
           </div>
-          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.players.save", "Spieler speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+          <div class="form-actions">
+            <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.players.save", "Spieler speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button is-muted js-close" type="button" data-target="create-player"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
           <?php if ($playerFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
@@ -1114,7 +1117,10 @@ if (!$pageError) {
             <span><?php echo htmlspecialchars(t("common.notes", "Notizen"), ENT_QUOTES, "UTF-8"); ?></span>
             <textarea name="combine_notes" rows="3" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>"></textarea>
           </label>
-          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.combines.save", "Combine speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+          <div class="form-actions">
+            <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.combines.save", "Combine speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button is-muted js-close" type="button" data-target="create-combine"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
           <?php if ($combineFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
@@ -1190,7 +1196,10 @@ if (!$pageError) {
           <span><?php echo htmlspecialchars(t("common.bonus_absolute", "Bonus Bestwert (Absolut)"), ENT_QUOTES, "UTF-8"); ?></span>
           <input type="number" name="bonus_absolute" step="any" placeholder="<?php echo htmlspecialchars(t("common.optional", "Optional"), ENT_QUOTES, "UTF-8"); ?>">
         </label>
-        <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.disciplines.save", "Disziplin speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+        <div class="form-actions">
+          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.disciplines.save", "Disziplin speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+          <button class="pill-button is-muted js-close" type="button" data-target="create-discipline"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
+        </div>
         <?php if ($disciplineFeedback): ?>
           <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
@@ -1380,13 +1389,44 @@ if (!$pageError) {
   <script src="theme.js"></script>
   <script>
     const toggles = document.querySelectorAll(".js-toggle");
+    const toggleTargets = ["edit-team", "create-player", "create-combine", "create-discipline"];
+    const closeTarget = (targetId) => {
+      const target = document.getElementById(targetId);
+      if (!target || target.classList.contains("is-hidden")) return;
+      target.classList.add("is-hidden");
+      const toggle = document.querySelector(`[data-target="${targetId}"]`);
+      if (!toggle) return;
+      toggle.setAttribute("aria-expanded", "false");
+      if (targetId === "edit-team") {
+        const saveButton = document.querySelector(".js-edit-save");
+        const editLabel = toggle.dataset.labelEdit || "<?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?>";
+        toggle.textContent = editLabel;
+        toggle.classList.remove("is-muted");
+        if (saveButton) {
+          saveButton.classList.add("is-hidden");
+        }
+      }
+    };
+    const closeOtherTargets = (exceptId) => {
+      toggleTargets.forEach((id) => {
+        if (id === exceptId) return;
+        closeTarget(id);
+      });
+    };
+
     toggles.forEach((btn) => {
       btn.addEventListener("click", () => {
         const targetId = btn.dataset.target;
         const target = document.getElementById(targetId);
         if (!target) return;
+        if (targetId && targetId.startsWith("create-")) {
+          closeTarget("edit-team");
+        }
         const isHidden = target.classList.toggle("is-hidden");
         btn.setAttribute("aria-expanded", String(!isHidden));
+        if (!isHidden && targetId && toggleTargets.includes(targetId)) {
+          closeOtherTargets(targetId);
+        }
         if (targetId === "edit-team") {
           const saveButton = document.querySelector(".js-edit-save");
           const editLabel = btn.dataset.labelEdit || "<?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?>";
@@ -1399,6 +1439,20 @@ if (!$pageError) {
         }
         if (!isHidden) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+
+    const closeButtons = document.querySelectorAll(".js-close");
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.dataset.target;
+        const target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        target.classList.add("is-hidden");
+        const toggle = document.querySelector(`[data-target="${targetId}"]`);
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", "false");
         }
       });
     });
