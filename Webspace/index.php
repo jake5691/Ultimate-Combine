@@ -233,6 +233,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
       </div>
     </section>
+
+    <section class="auth-card home-media" aria-label="<?php echo htmlspecialchars(t("index.media.aria", "Beispielgrafiken"), ENT_QUOTES, "UTF-8"); ?>">
+      <figure class="home-media-item">
+        <img src="assets/Ultimate%20Combine%20-%20Results.png" alt="<?php echo htmlspecialchars(t("index.media.results_alt", "Beispielansicht der Ergebnisse"), ENT_QUOTES, "UTF-8"); ?>" loading="lazy">
+      </figure>
+      <figure class="home-media-item">
+        <img src="assets/Ultimate%20Combine-Spieler.png" alt="<?php echo htmlspecialchars(t("index.media.players_alt", "Beispielansicht Spielerprofil"), ENT_QUOTES, "UTF-8"); ?>" loading="lazy">
+      </figure>
+    </section>
   </main>
 
   <footer class="site-footer">

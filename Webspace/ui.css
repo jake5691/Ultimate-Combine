@@ -531,6 +531,27 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.home-media {
+  display: grid;
+  gap: 16px;
+}
+
+.home-media-item {
+  margin: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-strong);
+  padding: 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.home-media-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+}
+
 .team-info-grid,
 .info-grid.team-info-grid {
   grid-template-columns: 1fr;
@@ -825,6 +846,11 @@ body {
   .auth.is-wide .info-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
+  }
+
+  .auth.is-wide .home-media {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
   }
 
   .team-grid {
