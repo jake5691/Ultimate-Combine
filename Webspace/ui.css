@@ -139,6 +139,8 @@ body {
   align-items: center;
   gap: 10px;
   justify-self: end;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .topbar-actions form {
@@ -868,6 +870,29 @@ body {
     order: 2;
   }
 
+  .topbar.is-simple {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .topbar.is-simple .topbar-spacer {
+    display: none;
+  }
+
+  .topbar.is-simple .brand {
+    grid-column: auto;
+    order: 2;
+    justify-content: flex-start;
+    text-align: left;
+    width: auto;
+    margin-top: 0;
+    flex-wrap: nowrap;
+  }
+
+  .topbar.is-simple .topbar-actions {
+    order: 3;
+  }
+
   .auth-card,
   .info {
     padding: 22px;
@@ -1241,9 +1266,10 @@ body {
 
 .site-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
+  flex-wrap: nowrap;
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
@@ -1257,6 +1283,10 @@ body {
   font-size: 0.9rem;
 }
 
+.footer-link:last-of-type {
+  margin-right: auto;
+}
+
 .footer-link:hover {
   color: var(--ink);
 }
@@ -1265,6 +1295,22 @@ body {
   transform: scale(0.5);
   transform-origin: right center;
   display: inline-flex;
+}
+
+@media (max-width: 600px) {
+  .site-footer {
+    gap: 8px 10px;
+    flex-wrap: wrap;
+  }
+
+  .site-footer .bmc-btn {
+    transform: scale(0.45);
+    transform-origin: right center;
+  }
+
+  .footer-link:last-of-type {
+    margin-right: 0;
+  }
 }
 
 details[open] .feedback-preview {
