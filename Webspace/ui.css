@@ -139,6 +139,8 @@ body {
   align-items: center;
   gap: 10px;
   justify-self: end;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .topbar-actions form {
@@ -866,6 +868,29 @@ body {
 
   .topbar-actions {
     order: 2;
+  }
+
+  .topbar.is-simple {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .topbar.is-simple .topbar-spacer {
+    display: none;
+  }
+
+  .topbar.is-simple .brand {
+    grid-column: auto;
+    order: 2;
+    justify-content: flex-start;
+    text-align: left;
+    width: auto;
+    margin-top: 0;
+    flex-wrap: nowrap;
+  }
+
+  .topbar.is-simple .topbar-actions {
+    order: 3;
   }
 
   .auth-card,
