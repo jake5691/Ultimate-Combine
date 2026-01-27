@@ -809,10 +809,6 @@ if (!$pageError) {
   <div class="bg-grid"></div>
 
   <header class="topbar">
-    <form method="post" action="">
-      <input type="hidden" name="action" value="logout">
-      <button class="pill-button is-logout" type="submit"><?php echo htmlspecialchars(t("common.logout", "Abmelden"), ENT_QUOTES, "UTF-8"); ?></button>
-    </form>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
@@ -841,6 +837,12 @@ if (!$pageError) {
               <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
               <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
             </div>
+          </div>
+          <div class="menu-item">
+            <form method="post" action="">
+              <input type="hidden" name="action" value="logout">
+              <button class="pill-button is-logout" type="submit"><?php echo htmlspecialchars(t("common.logout", "Abmelden"), ENT_QUOTES, "UTF-8"); ?></button>
+            </form>
           </div>
         </div>
       </details>
