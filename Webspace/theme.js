@@ -36,6 +36,14 @@
     updateToggles();
   });
 
+  document.addEventListener("click", (event) => {
+    document.querySelectorAll("details.header-menu[open]").forEach((menu) => {
+      if (!menu.contains(event.target)) {
+        menu.removeAttribute("open");
+      }
+    });
+  });
+
   if (media && media.addEventListener) {
     media.addEventListener("change", (event) => {
       const mode = root.getAttribute("data-theme-mode") || "system";
