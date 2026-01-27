@@ -445,7 +445,7 @@ function uc_wrap_text(string $text, int $maxChars): array {
 }
 
 if (!$pdo) {
-  $pageError = $dbError ?? "Datenbank ist nicht erreichbar.";
+  $pageError = $dbError ?? t("error.db_unreachable", "Datenbank ist nicht erreichbar.");
 } else {
   $pageError = null;
 }
@@ -512,12 +512,15 @@ $startError = null;
 $filterGender = "";
 $filterPosition = "";
 $genderOptions = [
-  "m" => "Männlich",
-  "w" => "Weiblich",
-  "d" => "Divers",
+  "m" => t("team.players.gender_m", "Männlich"),
+  "w" => t("team.players.gender_w", "Weiblich"),
+  "d" => t("team.players.gender_d", "Divers"),
 ];
 $infoTexts = [
-  "weights" => "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie.",
+  "weights" => t(
+    "combine.info.weights",
+    "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie."
+  ),
 ];
 $formatTooltip = static function (string $text): string {
   return str_replace("\n", "&#10;", htmlspecialchars($text, ENT_QUOTES, "UTF-8"));
@@ -585,7 +588,7 @@ if (!$pageError) {
   $combine = $stmt->fetch();
 
   if (!$combine) {
-    $combineError = "Combine wurde nicht gefunden.";
+    $combineError = t("combine.error.not_found", "Combine wurde nicht gefunden.");
   }
 
   $stmt = $pdo->prepare(
@@ -688,7 +691,7 @@ if (!$pageError) {
         $combineCategoryWeights[$categoryKey] = $weight;
       }
     } catch (Throwable $e) {
-      $combineError = "Zuordnungen konnten nicht geladen werden.";
+      $combineError = t("combine.error.assignments_load_failed", "Zuordnungen konnten nicht geladen werden.");
     }
   }
 
@@ -705,7 +708,7 @@ if (!$pageError) {
     $assignedDisciplines[] = $discipline;
     $category = trim((string)$discipline["category"]);
     if ($category === "") {
-      $category = "Ohne Kategorie";
+      $category = t("common.uncategorized", "Ohne Kategorie");
     }
     $assignedDisciplinesByCategory[$category][] = $discipline;
   }
@@ -773,9 +776,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $invalidDisciplines = array_diff($selectedDisciplines, array_keys($disciplineMap));
 
     if ($combineName === "" || $eventDate === "") {
-      $combineFeedback = "Bitte Name und Datum fuer das Combine angeben.";
+      $combineFeedback = t("combine.error.required", "Bitte Name und Datum fuer das Combine angeben.");
     } elseif (!empty($invalidPlayers) || !empty($invalidDisciplines)) {
-      $combineFeedback = "Ungueltige Spieler- oder Disziplin-Auswahl.";
+      $combineFeedback = t("combine.error.invalid_selection", "Ungueltige Spieler- oder Disziplin-Auswahl.");
     } else {
       try {
         $pdo->beginTransaction();
@@ -858,7 +861,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         foreach ($selectedDisciplines as $disciplineId) {
           $category = trim((string)($disciplineById[$disciplineId]["category"] ?? ""));
           if ($category === "") {
-            $category = "Ohne Kategorie";
+            $category = t("common.uncategorized", "Ohne Kategorie");
           }
           $selectedCategories[$category] = true;
         }
@@ -885,7 +888,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
         if ($pdo->inTransaction()) {
           $pdo->rollBack();
         }
-        $combineFeedback = "Combine konnte nicht gespeichert werden.";
+        $combineFeedback = t("combine.error.save_failed", "Combine konnte nicht gespeichert werden.");
       }
     }
 
@@ -919,7 +922,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
 
     if (!$activeDisciplineId || !$disciplineAllowed) {
-      $startError = "Disziplin ist ungueltig.";
+      $startError = t("combine.error.invalid_discipline", "Disziplin ist ungültig.");
     } else {
       $submitted = (array)($_POST["result"] ?? []);
       $original = (array)($_POST["original"] ?? []);
@@ -947,7 +950,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           $currentValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
         }
       } catch (Throwable $e) {
-        $startError = "Ergebnisse konnten nicht geladen werden.";
+        $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
 
       if (!$startError && $action === "save_results") {
@@ -1002,14 +1005,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           }
 
           $pdo->commit();
-          $saveNotice = "Ergebnisse gespeichert.";
+          $saveNotice = t("combine.feedback.results_saved", "Ergebnisse gespeichert.");
           $resultValues = $newValues;
           $needsConfirmation = false;
         } catch (Throwable $e) {
           if ($pdo->inTransaction()) {
             $pdo->rollBack();
           }
-          $startError = "Ergebnisse konnten nicht gespeichert werden.";
+          $startError = t("combine.error.results_save_failed", "Ergebnisse konnten nicht gespeichert werden.");
         }
       }
     }
@@ -1018,7 +1021,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 
 if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation && !$startError) {
   if (empty($assignedDisciplines) || empty($assignedPlayers)) {
-    $startError = "Bitte zuerst Spieler und Disziplinen zuordnen.";
+    $startError = t("combine.error.assign_before_start", "Bitte zuerst Spieler und Disziplinen zuordnen.");
   } else {
     if (!$activeDisciplineId && !empty($assignedDisciplines)) {
       $activeDisciplineId = (int)$assignedDisciplines[0]["id"];
@@ -1045,7 +1048,7 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
     }
 
     if (!$activeDisciplineId || !$disciplineAllowed) {
-      $startError = "Disziplin ist ungültig.";
+      $startError = t("combine.error.invalid_discipline", "Disziplin ist ungültig.");
     } else {
       try {
         $stmt = $pdo->prepare(
@@ -1061,7 +1064,7 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
           $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
         }
       } catch (Throwable $e) {
-        $startError = "Ergebnisse konnten nicht geladen werden.";
+        $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
     }
   }
@@ -1081,7 +1084,7 @@ if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) 
       $resultsByDiscipline[$discId][$playerId] = $row["result_value"];
     }
   } catch (Throwable $e) {
-    $combineError = "Ergebnisse konnten nicht geladen werden.";
+    $combineError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
   }
 }
 
@@ -1094,9 +1097,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $shareFileBase .= "-" . $shareDate;
   }
   $disciplinesForExport = $assignedDisciplines;
-  $headers = ["Spieler", "Trikotnummer", "Geschlecht", "Positionen"];
+  $headers = [
+    t("common.player", "Spieler"),
+    t("combine.csv.jersey", "Trikotnummer"),
+    t("combine.csv.gender", "Geschlecht"),
+    t("combine.csv.positions", "Positionen"),
+  ];
   foreach ($disciplinesForExport as $discipline) {
-    $label = $discipline["discipline_name"] ?? "Disziplin";
+    $label = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
     $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
     if ($unitLabel !== "") {
       $label .= " (" . $unitLabel . ")";
@@ -1123,10 +1131,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       $playerId = (int)$player["id"];
       $positions = [];
       if (!empty($player["position_handler"])) {
-        $positions[] = "Handler";
+        $positions[] = t("team.players.position_handler", "Handler");
       }
       if (!empty($player["position_cutter"])) {
-        $positions[] = "Cutter";
+        $positions[] = t("team.players.position_cutter", "Cutter");
       }
       $positionsLabel = empty($positions) ? "-" : implode(" / ", $positions);
       $row = [
@@ -1490,7 +1498,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       }
       $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
       $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
-      $discLabel = $discipline["discipline_name"] ?? "Disziplin";
+      $discLabel = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
       $discHeight = $disciplineTitleHeight + (max(1, count($rows)) * $lineHeight);
       if ($unitLabel !== "") {
         $discHeight += $unitLineHeight;
@@ -1515,24 +1523,28 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       "height" => $blockHeight,
     ];
   }
-  $modeLabel = $overallMode === "abs" ? "Absolut" : ($overallMode === "avg" ? "Ø Relativ" : "Relativ");
-  $modeHelp = $overallMode === "abs"
-    ? "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt."
+  $modeLabel = $overallMode === "abs"
+    ? t("combine.mode.absolute", "Absolut")
     : ($overallMode === "avg"
-      ? "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."
-      : "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.");
+      ? t("combine.mode.relative_avg", "Ø Relativ")
+      : t("combine.mode.relative", "Relativ"));
+  $modeHelp = $overallMode === "abs"
+    ? t("combine.mode.help.absolute", "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt.")
+    : ($overallMode === "avg"
+      ? t("combine.mode.help.relative_avg", "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.")
+      : t("combine.mode.help.relative", "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien."));
   $modeHelpLines = uc_wrap_text($modeHelp, 80);
   $headerExtraLines = count($modeHelpLines);
   $filterLinesCount = 0;
   if ($filterGender !== "" || $filterPosition !== "") {
     $filterParts = [];
     if ($filterGender !== "") {
-      $filterParts[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+      $filterParts[] = t("combine.filter.gender", "Geschlecht") . ": " . ($genderOptions[$filterGender] ?? $filterGender);
     }
     if ($filterPosition !== "") {
-      $filterParts[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+      $filterParts[] = t("combine.filter.position", "Position") . ": " . ($filterPosition === "handler" ? t("team.players.position_handler", "Handler") : t("team.players.position_cutter", "Cutter"));
     }
-    $filterLabel = "Filter: " . implode(" · ", $filterParts);
+    $filterLabel = t("combine.filter.label", "Filter") . ": " . implode(" · ", $filterParts);
     $filterLinesCount = count(uc_wrap_text($filterLabel, 80));
   }
   $headerHeight = (int)round(96 * $scale) + (($headerExtraLines + $filterLinesCount) * (int)round(14 * $scale));
@@ -1543,9 +1555,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $playerSlug = uc_slug($playerName);
     $overallPoints = $overallScores[$selectedPlayerId] ?? 0;
     $overallRank = $overallRanks[$selectedPlayerId] ?? "-";
-    $overallPointsPrefix = $overallMode === "avg" ? "Ø " : "";
-    $overallPointsLabel = $overallPointsPrefix . uc_format_points($overallPoints) . " P";
-    $overallRankLabel = "Platz " . $overallRank;
+    $overallPointsPrefix = $overallMode === "avg" ? t("common.avg_prefix", "Ø ") : "";
+    $overallPointsLabel = $overallPointsPrefix . uc_format_points($overallPoints) . " " . t("common.points_abbr", "P");
+    $overallRankLabel = t("common.place", "Platz") . " " . $overallRank;
 
     $radarData = [];
     $radarPlayerAverages = $categoryAverages;
@@ -1690,17 +1702,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         if ($overallMode === "sum" && $bonusRel > 0 && $numericValue !== null && $bestValue !== null && $numericValue == $bestValue) {
           $points += $bonusRel;
         }
-        $pointsLabel = uc_format_points($points) . " P";
+        $pointsLabel = uc_format_points($points) . " " . t("common.points_abbr", "P");
         $rankLabel = isset($ranks[$selectedPlayerId]) ? (string)$ranks[$selectedPlayerId] : "-";
-        $discLabel = $discipline["discipline_name"] ?? "Disziplin";
+        $discLabel = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
         $leftText = $discLabel;
         if ($showDisciplineWeights) {
           $leftText .= " (" . uc_display_value($disciplineWeight, "") . "x)";
         }
         if ($overallMode !== "abs" && $numericValue === null) {
-          $rightText = "0 P";
+          $rightText = "0 " . t("common.points_abbr", "P");
         } else {
-          $rightText = "Platz " . $rankLabel . " (" . $completedCount . ") · " . $pointsLabel;
+          $rightText = t("common.place", "Platz") . " " . $rankLabel . " (" . $completedCount . ") · " . $pointsLabel;
         }
         $rows[] = [
           "left" => $leftText,
@@ -1721,7 +1733,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         $categoryLabel .= " (" . uc_display_value($categoryWeight, "") . "x)";
       }
       $categoryScore = $categoryAverages[$category][$selectedPlayerId] ?? null;
-      $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " P";
+      $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " " . t("common.points_abbr", "P");
       $blockHeight = $cardPadding * 2 + $playerTitleHeight + $rowsHeightSum;
       if (count($rows) > 1) {
         $blockHeight += $playerScoreHeight;
@@ -1790,7 +1802,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     $x = $padding;
     $y = $padding;
-    $title = $combine["combine_name"] ?? "Combine";
+    $title = $combine["combine_name"] ?? t("combine.title", "Combine");
     $metaParts = [];
     if ($teamName) {
       $metaParts[] = $teamName;
@@ -1804,14 +1816,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     $subtitle = implode(" · ", $metaParts);
     $filterParts = [];
     if ($filterGender !== "") {
-      $filterParts[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+      $filterParts[] = t("combine.filter.gender", "Geschlecht") . ": " . ($genderOptions[$filterGender] ?? $filterGender);
     }
     if ($filterPosition !== "") {
-      $filterParts[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+      $filterParts[] = t("combine.filter.position", "Position") . ": " . ($filterPosition === "handler" ? t("team.players.position_handler", "Handler") : t("team.players.position_cutter", "Cutter"));
     }
     $filterLabel = "";
     if (!empty($filterParts)) {
-      $filterLabel = "Filter: " . implode(" · ", $filterParts);
+      $filterLabel = t("combine.filter.label", "Filter") . ": " . implode(" · ", $filterParts);
     }
     $brandX = $x;
     $brandY = $y;
@@ -1870,17 +1882,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $radarData, $scale, $radarColors);
       }
     } else {
-      uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
+      uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), t("combine.no_data", "Keine Daten"), $muted, (int)round(12 * $scale), "center");
     }
 
     $legendX = $radarX + (int)round(12 * $scale);
     $legendY = $radarY + (int)round(12 * $scale);
     $legendDot = (int)round(8 * $scale);
     imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accent);
-    uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), "Spieler", $muted, (int)round(11 * $scale), "left");
+    uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), t("common.player", "Spieler"), $muted, (int)round(11 * $scale), "left");
     $legendY += (int)round(18 * $scale);
     imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accentDark);
-    uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), "Team", $muted, (int)round(11 * $scale), "left");
+    uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), t("common.team", "Team"), $muted, (int)round(11 * $scale), "left");
 
     $summaryX = $radarX + $radarSize + $summaryGap;
     $summaryY = $cardY + $cardPadding;
@@ -1899,7 +1911,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         uc_gd_text($image, $colX + $cardPadding, $colY + $cardPadding, strtoupper($block["category"]), $accentDark, (int)round(11 * $scale), "left");
         $cursorY = $colY + $cardPadding + (int)round(18 * $scale);
         if ($block["show_score"]) {
-          uc_gd_text($image, $colX + $cardPadding, $cursorY, "Kategorie-Score: " . $block["score"], $muted, (int)round(11 * $scale), "left");
+          uc_gd_text($image, $colX + $cardPadding, $cursorY, t("combine.category.score", "Kategorie-Score") . ": " . $block["score"], $muted, (int)round(11 * $scale), "left");
           $cursorY += $playerScoreHeight;
         }
         foreach ($block["rows"] as $row) {
@@ -2099,7 +2111,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       $playerALabel = trim(($h2hPlayerA["first_name"] ?? "") . " " . ($h2hPlayerA["last_name"] ?? ""));
       $playerBLabel = trim(($h2hPlayerB["first_name"] ?? "") . " " . ($h2hPlayerB["last_name"] ?? ""));
-      $overallPointsPrefix = $overallMode === "avg" ? "Ø " : "";
+      $overallPointsPrefix = $overallMode === "avg" ? t("common.avg_prefix", "Ø ") : "";
       $overallPointsA = $overallScores[$h2hPlayerAId] ?? 0;
       $overallPointsB = $overallScores[$h2hPlayerBId] ?? 0;
       $overallRankA = $overallRanks[$h2hPlayerAId] ?? "-";
@@ -2458,7 +2470,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $percentA = $scaleScore($pointsA);
           $percentB = $scaleScore($pointsB);
           $rows[] = [
-            "label" => $discipline["discipline_name"] ?? "Disziplin",
+            "label" => $discipline["discipline_name"] ?? t("common.discipline", "Disziplin"),
             "a" => $displayA,
             "b" => $displayB,
             "percentA" => $percentA,
@@ -2516,7 +2528,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       $x = $padding;
       $y = $padding;
-      $title = $combine["combine_name"] ?? "Combine";
+      $title = $combine["combine_name"] ?? t("combine.title", "Combine");
       $metaParts = [];
       if ($teamName) {
         $metaParts[] = $teamName;
@@ -2595,7 +2607,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           uc_gd_draw_radar($image, $radarCenterX, $radarCenterY, $radarSize, $h2hRadarData, $scale, $radarColors);
         }
       } else {
-        uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), "Keine Daten", $muted, (int)round(12 * $scale), "center");
+        uc_gd_text($image, $radarCenterX, $radarCenterY - (int)round(6 * $scale), t("combine.no_data", "Keine Daten"), $muted, (int)round(12 * $scale), "center");
       }
 
       $legendX = $radarX + (int)round(12 * $scale);
@@ -2608,17 +2620,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), $playerBLabel, $muted, (int)round(11 * $scale), "left");
       $legendY += (int)round(18 * $scale);
       imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $muted);
-      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), "Team", $muted, (int)round(11 * $scale), "left");
+      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), t("common.team", "Team"), $muted, (int)round(11 * $scale), "left");
 
       $summaryX = $radarX + $radarSize + $summaryGap;
       $summaryY = $y + $cardPadding;
       uc_gd_text($image, $summaryX, $summaryY, $playerALabel, $ink, $summaryNameSize, "left");
       $summaryY += $summaryNameSize + $summaryLineGap;
-      uc_gd_text($image, $summaryX, $summaryY, "Platz " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " P", $accentDark, $summaryMetaSize, "left");
+      uc_gd_text($image, $summaryX, $summaryY, t("common.place", "Platz") . " " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " " . t("common.points_abbr", "P"), $accentDark, $summaryMetaSize, "left");
       $summaryY += $summaryMetaSize + (int)round(14 * $scale);
       uc_gd_text($image, $summaryX, $summaryY, $playerBLabel, $ink, $summaryNameSize, "left");
       $summaryY += $summaryNameSize + $summaryLineGap;
-      uc_gd_text($image, $summaryX, $summaryY, "Platz " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " P", $accentDark, $summaryMetaSize, "left");
+      uc_gd_text($image, $summaryX, $summaryY, t("common.place", "Platz") . " " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " " . t("common.points_abbr", "P"), $accentDark, $summaryMetaSize, "left");
 
       $y += $summaryCardHeight + $cardGap;
       foreach ($h2hCategoryBlocks as $block) {
@@ -2731,7 +2743,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
   $x = $padding;
   $y = $padding;
-  $title = $combine["combine_name"] ?? "Combine";
+  $title = $combine["combine_name"] ?? t("combine.title", "Combine");
   $metaParts = [];
   if ($teamName) {
     $metaParts[] = $teamName;
@@ -2745,14 +2757,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   $subtitle = implode(" · ", $metaParts);
   $filterParts = [];
   if ($filterGender !== "") {
-    $filterParts[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+    $filterParts[] = t("combine.filter.gender", "Geschlecht") . ": " . ($genderOptions[$filterGender] ?? $filterGender);
   }
   if ($filterPosition !== "") {
-    $filterParts[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+    $filterParts[] = t("combine.filter.position", "Position") . ": " . ($filterPosition === "handler" ? t("team.players.position_handler", "Handler") : t("team.players.position_cutter", "Cutter"));
   }
   $filterLabel = "";
   if (!empty($filterParts)) {
-    $filterLabel = "Filter: " . implode(" · ", $filterParts);
+    $filterLabel = t("combine.filter.label", "Filter") . ": " . implode(" · ", $filterParts);
   }
   $brandX = $x;
   $brandY = $y;
@@ -2798,7 +2810,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       if ((int)$player["id"] === (int)$playerId) {
         $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
         $rankLabel = $overallRanks[$playerId] ?? "-";
-        $scoreLabel = ($overallMode === "avg" ? "Ø " : "") . uc_format_points($score) . " P";
+        $scoreLabel = ($overallMode === "avg" ? t("common.avg_prefix", "Ø ") : "") . uc_format_points($score) . " " . t("common.points_abbr", "P");
         $textX = $x + $cardPadding;
         if (in_array((int)$rankLabel, [1, 2, 3], true)) {
           $rankColor = $rankGold;
@@ -2854,7 +2866,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           if ($display !== "-" && $disc["unit_abbr"] !== "") {
             $display .= " " . $disc["unit_abbr"];
           }
-          $pointsLabel = uc_format_points($row["points"]) . " P";
+          $pointsLabel = uc_format_points($row["points"]) . " " . t("common.points_abbr", "P");
           $textX = $colX + $cardPadding;
           if (in_array((int)$rankLabel, [1, 2, 3], true)) {
             $rankColor = $rankGold;
@@ -2890,11 +2902,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 }
 ?>
 <!doctype html>
-<html lang="de">
+<html lang="<?php echo htmlspecialchars($lang, ENT_QUOTES, "UTF-8"); ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?php echo htmlspecialchars($combine["combine_name"] ?? "Combine", ENT_QUOTES, "UTF-8"); ?></title>
+  <title><?php echo htmlspecialchars($combine["combine_name"] ?? t("combine.title", "Combine"), ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -2906,7 +2918,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   <div class="bg-grid"></div>
 
   <header class="topbar">
-    <button class="pill-button" type="button" onclick="window.location.href='team.php'">Zurück</button>
+    <button class="pill-button" type="button" onclick="window.location.href='team.php'"><?php echo htmlspecialchars(t("common.back", "Zurück"), ENT_QUOTES, "UTF-8"); ?></button>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
       <span class="brand-text">Ultimate Combine</span>
@@ -2914,50 +2926,75 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       <span class="brand-team"><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <div class="topbar-actions">
-      <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Dunkel</button>
-      <form method="post" action="">
-        <input type="hidden" name="action" value="logout">
-        <button class="pill-button is-logout" type="submit">Abmelden</button>
-      </form>
+      <details class="header-menu">
+        <summary class="pill-button is-muted" aria-label="<?php echo htmlspecialchars(t("common.menu", "Menü"), ENT_QUOTES, "UTF-8"); ?>">☰</summary>
+        <div class="menu-panel">
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.theme", "Design"), ENT_QUOTES, "UTF-8"); ?></span>
+            <button
+              class="pill-button is-muted theme-toggle"
+              type="button"
+              data-theme-toggle
+              data-theme-label-system="<?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-dark="<?php echo htmlspecialchars(t("common.theme_dark", "Dunkel"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-light="<?php echo htmlspecialchars(t("common.theme_light", "Hell"), ENT_QUOTES, "UTF-8"); ?>"
+              aria-pressed="false"
+            ><?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.language", "Sprache"), ENT_QUOTES, "UTF-8"); ?></span>
+            <div class="menu-links">
+              <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
+              <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
+            </div>
+          </div>
+          <div class="menu-item">
+            <form method="post" action="">
+              <input type="hidden" name="action" value="logout">
+              <button class="pill-button is-logout" type="submit"><?php echo htmlspecialchars(t("common.logout", "Abmelden"), ENT_QUOTES, "UTF-8"); ?></button>
+            </form>
+          </div>
+        </div>
+      </details>
     </div>
   </header>
 
   <main class="team">
     <section class="auth-card">
       <?php if ($pageError): ?>
-        <h1>Combine</h1>
+        <h1><?php echo htmlspecialchars(t("combine.title", "Combine"), ENT_QUOTES, "UTF-8"); ?></h1>
         <p class="help"><?php echo htmlspecialchars($pageError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php elseif ($combineError): ?>
-        <h1>Combine</h1>
+        <h1><?php echo htmlspecialchars(t("combine.title", "Combine"), ENT_QUOTES, "UTF-8"); ?></h1>
         <p class="help"><?php echo htmlspecialchars($combineError, ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
         <div class="card-header">
           <h1><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></h1>
           <?php if (!$editMode): ?>
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'">Bearbeiten</button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&edit=1'"><?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?></button>
           <?php else: ?>
-            <button class="pill-button is-danger" type="submit" form="delete-combine-form">Combine löschen</button>
+            <button class="pill-button is-danger" type="submit" form="delete-combine-form"><?php echo htmlspecialchars(t("combine.delete", "Combine löschen"), ENT_QUOTES, "UTF-8"); ?></button>
           <?php endif; ?>
         </div>
         <?php if ($editMode): ?>
-          <form id="delete-combine-form" method="post" action="" onsubmit="return confirm('Combine wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt.') && confirm('Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?');">
+          <form id="delete-combine-form" method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("combine.confirm.delete", "Combine wirklich löschen? Alle zugehörigen Ergebnisse werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("combine.confirm.delete_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
             <input type="hidden" name="action" value="delete_combine">
             <input type="hidden" name="combine_id" value="<?php echo (int)$combineId; ?>">
           </form>
         <?php endif; ?>
-        <p class="lead">Datum: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
+        <p class="lead"><?php echo htmlspecialchars(t("common.date", "Datum"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></p>
         <?php if (!empty($combine["combine_location"])): ?>
-          <p class="lead">Ort: <?php echo htmlspecialchars($combine["combine_location"], ENT_QUOTES, "UTF-8"); ?></p>
+          <p class="lead"><?php echo htmlspecialchars(t("common.location", "Ort"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($combine["combine_location"], ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
         <?php if (!empty($combine["combine_notes"])): ?>
           <p class="help"><?php echo htmlspecialchars($combine["combine_notes"], ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
         <?php if (!$editMode): ?>
           <div class="action-row">
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'">Setup</button>
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=start'">Eintragen</button>
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=results'">Ergebnisse</button>
-            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=h2h'">H2H</button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'"><?php echo htmlspecialchars(t("combine.nav.setup", "Setup"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=start'"><?php echo htmlspecialchars(t("combine.nav.entry", "Eintragen"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=results'"><?php echo htmlspecialchars(t("combine.nav.results", "Ergebnisse"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>&mode=h2h'"><?php echo htmlspecialchars(t("combine.nav.h2h", "H2H"), ENT_QUOTES, "UTF-8"); ?></button>
           </div>
         <?php endif; ?>
       <?php endif; ?>
@@ -2965,12 +3002,12 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     <?php if (!$pageError && !$combineError && $mode === "view"): ?>
       <section class="info">
-        <h2>Übersicht</h2>
+        <h2><?php echo htmlspecialchars(t("combine.section.overview", "Übersicht"), ENT_QUOTES, "UTF-8"); ?></h2>
         <div class="info-grid info-grid--two">
           <div class="info-card">
-            <h3>Spieler</h3>
+            <h3><?php echo htmlspecialchars(t("common.players", "Spieler"), ENT_QUOTES, "UTF-8"); ?></h3>
             <?php if (empty($assignedPlayerIds)): ?>
-              <p class="help">Keine Spieler zugeordnet.</p>
+              <p class="help"><?php echo htmlspecialchars(t("combine.players.empty_assigned", "Keine Spieler zugeordnet."), ENT_QUOTES, "UTF-8"); ?></p>
             <?php else: ?>
               <ul class="list">
                 <?php foreach ($orderedPlayers as $player): ?>
@@ -2990,9 +3027,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <?php endif; ?>
           </div>
           <div class="info-card">
-            <h3>Disziplinen</h3>
+            <h3><?php echo htmlspecialchars(t("common.disciplines", "Disziplinen"), ENT_QUOTES, "UTF-8"); ?></h3>
             <?php if (empty($assignedDisciplineIds)): ?>
-              <p class="help">Keine Disziplinen zugeordnet.</p>
+              <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.empty_assigned", "Keine Disziplinen zugeordnet."), ENT_QUOTES, "UTF-8"); ?></p>
             <?php else: ?>
               <?php
                 $showCategoryWeights = false;
@@ -3048,7 +3085,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     <?php if (!$pageError && !$combineError && $mode === "start"): ?>
       <section class="auth-card">
-        <h2>Eintragen</h2>
+        <h2><?php echo htmlspecialchars(t("combine.section.entry", "Eintragen"), ENT_QUOTES, "UTF-8"); ?></h2>
         <?php if ($startError): ?>
           <p class="help"><?php echo htmlspecialchars($startError, ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
@@ -3057,8 +3094,14 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
             <input type="hidden" name="mode" value="start">
             <label class="field">
-              <span>Disziplin</span>
-              <select name="discipline_id" required data-discipline-select data-combine-id="<?php echo (int)$combineId; ?>">
+              <span><?php echo htmlspecialchars(t("common.discipline", "Disziplin"), ENT_QUOTES, "UTF-8"); ?></span>
+              <select
+                name="discipline_id"
+                required
+                data-discipline-select
+                data-combine-id="<?php echo (int)$combineId; ?>"
+                data-confirm-unsaved="<?php echo htmlspecialchars(t("combine.confirm.unsaved_change", "Ungesicherte Änderungen gehen verloren. Trotzdem wechseln?"), ENT_QUOTES, "UTF-8"); ?>"
+              >
                 <?php foreach ($assignedDisciplines as $discipline): ?>
                   <option value="<?php echo (int)$discipline["id"]; ?>"<?php echo (int)$discipline["id"] === (int)$activeDisciplineId ? " selected" : ""; ?>>
                     <?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?>
@@ -3075,12 +3118,12 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       <?php if ($needsConfirmation): ?>
         <section class="auth-card">
-          <h3>Bestätigung nötig</h3>
-          <p class="help">Es gab zwischenzeitliche Änderungen. Bitte bestätige das Überschreiben.</p>
+          <h3><?php echo htmlspecialchars(t("combine.confirm.title", "Bestätigung nötig"), ENT_QUOTES, "UTF-8"); ?></h3>
+          <p class="help"><?php echo htmlspecialchars(t("combine.confirm.notice", "Es gab zwischenzeitliche Änderungen. Bitte bestätige das Überschreiben."), ENT_QUOTES, "UTF-8"); ?></p>
           <div class="conflict-list">
             <?php foreach ($conflicts as $playerId => $conflict): ?>
               <?php
-                $playerName = "Spieler #" . (int)$playerId;
+                $playerName = t("combine.player_placeholder", "Spieler #") . (int)$playerId;
                 foreach ($assignedPlayers as $player) {
                   if ((int)$player["id"] === (int)$playerId) {
                     $playerName = $player["first_name"] . " " . $player["last_name"];
@@ -3092,8 +3135,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               ?>
               <div class="conflict-row">
                 <span><?php echo htmlspecialchars($playerName, ENT_QUOTES, "UTF-8"); ?></span>
-                <span>Aktuell: <?php echo htmlspecialchars($currentValue, ENT_QUOTES, "UTF-8"); ?></span>
-                <span>Neu: <?php echo htmlspecialchars($newValue, ENT_QUOTES, "UTF-8"); ?></span>
+                <span><?php echo htmlspecialchars(t("combine.confirm.current", "Aktuell"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($currentValue, ENT_QUOTES, "UTF-8"); ?></span>
+                <span><?php echo htmlspecialchars(t("combine.confirm.new", "Neu"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($newValue, ENT_QUOTES, "UTF-8"); ?></span>
               </div>
             <?php endforeach; ?>
           </div>
@@ -3105,8 +3148,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               <input type="hidden" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
             <?php endforeach; ?>
             <div class="form-actions">
-              <button class="primary-button" type="submit">Bestätigen und speichern</button>
-              <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>">Abbrechen</a>
+              <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("combine.confirm.save", "Bestätigen und speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+              <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></a>
             </div>
           </form>
         </section>
@@ -3114,7 +3157,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
       <?php if (!$startError && !empty($assignedDisciplines) && !empty($assignedPlayers) && $activeDisciplineId): ?>
         <section class="auth-card">
-          <h3>Ergebnisse erfassen</h3>
+          <h3><?php echo htmlspecialchars(t("combine.section.capture_results", "Ergebnisse erfassen"), ENT_QUOTES, "UTF-8"); ?></h3>
           <?php if (!empty($activeDisciplineUnit)): ?>
             <p class="help"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
@@ -3139,7 +3182,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 </label>
               <?php endforeach; ?>
             </div>
-            <button class="primary-button" type="submit">Speichern</button>
+            <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
             <?php if ($saveNotice): ?>
               <p class="help"><?php echo htmlspecialchars($saveNotice, ENT_QUOTES, "UTF-8"); ?></p>
             <?php endif; ?>
@@ -3150,7 +3193,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     <?php if (!$pageError && !$combineError && $mode === "results"): ?>
       <section class="info">
-        <h2>Ergebnisse</h2>
+        <h2><?php echo htmlspecialchars(t("combine.section.results", "Ergebnisse"), ENT_QUOTES, "UTF-8"); ?></h2>
         <?php
           $filteredPlayers = array_values(array_filter($assignedPlayers, function ($player) use ($filterGender, $filterPosition) {
             if ($filterGender !== "" && ($player["gender"] ?? "") !== $filterGender) {
@@ -3383,21 +3426,21 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         ?>
         <div class="section-header">
           <div class="card-actions">
-            <button class="pill-button is-muted" type="button" data-target="results-filters" aria-expanded="false">Filter</button>
-            <button class="pill-button is-share" type="button" data-target="share-combine" aria-expanded="false">Teilen</button>
+            <button class="pill-button is-muted" type="button" data-target="results-filters" aria-expanded="false"><?php echo htmlspecialchars(t("combine.filter.title", "Filter"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button is-share" type="button" data-target="share-combine" aria-expanded="false"><?php echo htmlspecialchars(t("common.share", "Teilen"), ENT_QUOTES, "UTF-8"); ?></button>
           </div>
         </div>
         <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
           <?php
             $activeFilters = [];
             if ($filterGender !== "") {
-              $activeFilters[] = "Geschlecht: " . ($genderOptions[$filterGender] ?? $filterGender);
+              $activeFilters[] = t("combine.filter.gender", "Geschlecht") . ": " . ($genderOptions[$filterGender] ?? $filterGender);
             }
             if ($filterPosition !== "") {
-              $activeFilters[] = "Position: " . ($filterPosition === "handler" ? "Handler" : "Cutter");
+              $activeFilters[] = t("combine.filter.position", "Position") . ": " . ($filterPosition === "handler" ? t("team.players.position_handler", "Handler") : t("team.players.position_cutter", "Cutter"));
             }
           ?>
-          <p class="help">Filter aktiv: <?php echo htmlspecialchars(implode(" · ", $activeFilters), ENT_QUOTES, "UTF-8"); ?></p>
+          <p class="help"><?php echo htmlspecialchars(t("combine.filter.active", "Filter aktiv"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars(implode(" · ", $activeFilters), ENT_QUOTES, "UTF-8"); ?></p>
         <?php endif; ?>
         <?php
           $shareBaseParams = [
@@ -3414,19 +3457,19 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           $shareBaseUrl = "combine.php?" . http_build_query($shareBaseParams);
         ?>
         <div class="share-panel is-hidden" id="share-combine">
-          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'">CSV herunterladen</button>
-          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'">Bild herunterladen</button>
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=csv", ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.share.csv", "CSV herunterladen"), ENT_QUOTES, "UTF-8"); ?></button>
+          <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($shareBaseUrl . "&share=img", ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.share.image", "Bild herunterladen"), ENT_QUOTES, "UTF-8"); ?></button>
         </div>
         <div class="info-card is-hidden" id="results-filters">
-          <h3>Filter</h3>
+          <h3><?php echo htmlspecialchars(t("combine.filter.title", "Filter"), ENT_QUOTES, "UTF-8"); ?></h3>
           <form class="form" method="get" action="combine.php">
             <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
             <input type="hidden" name="mode" value="results">
             <input type="hidden" name="overall" value="<?php echo htmlspecialchars($overallMode, ENT_QUOTES, "UTF-8"); ?>">
             <label class="field">
-              <span>Geschlecht</span>
+              <span><?php echo htmlspecialchars(t("combine.filter.gender", "Geschlecht"), ENT_QUOTES, "UTF-8"); ?></span>
               <select name="gender">
-                <option value="">Alle</option>
+                <option value=""><?php echo htmlspecialchars(t("combine.filter.all", "Alle"), ENT_QUOTES, "UTF-8"); ?></option>
                 <?php foreach ($genderOptions as $key => $label): ?>
                   <option value="<?php echo htmlspecialchars($key, ENT_QUOTES, "UTF-8"); ?>"<?php echo $filterGender === $key ? " selected" : ""; ?>>
                     <?php echo htmlspecialchars($label, ENT_QUOTES, "UTF-8"); ?>
@@ -3435,39 +3478,39 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               </select>
             </label>
             <label class="field">
-              <span>Spielposition</span>
+              <span><?php echo htmlspecialchars(t("combine.filter.position", "Position"), ENT_QUOTES, "UTF-8"); ?></span>
               <select name="position">
-                <option value="">Alle</option>
-                <option value="handler"<?php echo $filterPosition === "handler" ? " selected" : ""; ?>>Handler</option>
-                <option value="cutter"<?php echo $filterPosition === "cutter" ? " selected" : ""; ?>>Cutter</option>
+                <option value=""><?php echo htmlspecialchars(t("combine.filter.all", "Alle"), ENT_QUOTES, "UTF-8"); ?></option>
+                <option value="handler"<?php echo $filterPosition === "handler" ? " selected" : ""; ?>><?php echo htmlspecialchars(t("team.players.position_handler", "Handler"), ENT_QUOTES, "UTF-8"); ?></option>
+                <option value="cutter"<?php echo $filterPosition === "cutter" ? " selected" : ""; ?>><?php echo htmlspecialchars(t("team.players.position_cutter", "Cutter"), ENT_QUOTES, "UTF-8"); ?></option>
               </select>
             </label>
             <div class="form-actions">
-              <button class="primary-button" type="submit">Filter anwenden</button>
+              <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("combine.filter.apply", "Filter anwenden"), ENT_QUOTES, "UTF-8"); ?></button>
               <?php if ($filterGender !== "" || $filterPosition !== ""): ?>
-                <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>'">Zurücksetzen</button>
+                <button class="pill-button is-muted" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallBaseUrl . "&overall=" . urlencode($overallMode), ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.filter.reset", "Zurücksetzen"), ENT_QUOTES, "UTF-8"); ?></button>
               <?php endif; ?>
             </div>
           </form>
         </div>
         <div class="info-card">
           <div class="card-header">
-            <h3>Overall Ranking</h3>
+            <h3><?php echo htmlspecialchars(t("combine.overall.title", "Overall Ranking"), ENT_QUOTES, "UTF-8"); ?></h3>
             <div class="card-actions">
-              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
-              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
-              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
+              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallSumUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.relative", "Relativ"), ENT_QUOTES, "UTF-8"); ?></button>
+              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAvgUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.relative_avg", "Ø Relativ"), ENT_QUOTES, "UTF-8"); ?></button>
+              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($overallAbsUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.absolute", "Absolut"), ENT_QUOTES, "UTF-8"); ?></button>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
-            <p class="help">Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.mode.help.relative", "Relativ: Punkte werden relativ zu den Teilnehmern berechnet. Nicht absolvierte Disziplinen zählen als 0 in den Kategorien."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php elseif ($overallMode === "avg"): ?>
-            <p class="help">Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.mode.help.relative_avg", "Ø Relativ: Es zählen nur Kategorien und Disziplinen, die dieser Spieler absolviert hat. Punkte werden relativ zu den Teilnehmern berechnet."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php else: ?>
-            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.mode.help.absolute", "Absolut: Punkte anhand Erwartungs-Min/Max. Disziplinen ohne Erwartungswerte werden nicht berücksichtigt."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
           <?php if (empty($filteredPlayers)): ?>
-            <p class="help">Keine Spieler für den gewählten Filter.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.players.empty_filtered", "Keine Spieler für den gewählten Filter."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php else: ?>
             <?php
               $overallOrderedPlayers = $filteredPlayers;
@@ -3489,7 +3532,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 <?php $playerId = (int)$player["id"]; ?>
                 <?php $overallPoints = $overallScores[$playerId] ?? 0; ?>
                 <?php $rankLabel = isset($overallRanks[$playerId]) ? (string)$overallRanks[$playerId] : "-"; ?>
-                <?php $overallPointsPrefix = $overallMode === "avg" ? "Ø " : ""; ?>
+                <?php $overallPointsPrefix = $overallMode === "avg" ? t("common.avg_prefix", "Ø ") : ""; ?>
                 <?php
                   $nameParts = [(string)($player["first_name"] ?? ""), (string)($player["last_name"] ?? "")];
                   $hasLongNamePart = false;
@@ -3515,13 +3558,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 <li class="list-item<?php echo ($selectedPlayerId && (int)$selectedPlayerId === $playerId) ? " is-active" : ""; ?>">
                   <a class="list-link" href="<?php echo htmlspecialchars($detailUrl, ENT_QUOTES, "UTF-8"); ?>">
                     <div class="result-name">
-                      <span class="rank-pill">Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                      <span class="rank-pill"><?php echo htmlspecialchars(t("common.place", "Platz"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?></span>
                       <strong class="player-name<?php echo $hasLongNamePart ? " is-condensed" : ""; ?>">
                         <?php echo htmlspecialchars($player["first_name"], ENT_QUOTES, "UTF-8"); ?>
                         <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                       </strong>
                     </div>
-                    <span class="badge"><?php echo htmlspecialchars($overallPointsPrefix . uc_format_points($overallPoints) . " P", ENT_QUOTES, "UTF-8"); ?></span>
+                    <span class="badge"><?php echo htmlspecialchars($overallPointsPrefix . uc_format_points($overallPoints) . " " . t("common.points_abbr", "P"), ENT_QUOTES, "UTF-8"); ?></span>
                   </a>
                 </li>
               <?php endforeach; ?>
@@ -3572,23 +3615,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           <div class="info-card player-detail">
             <div class="card-header">
               <h3>
-                Ergebnisse: <?php echo htmlspecialchars($selectedPlayer["first_name"], ENT_QUOTES, "UTF-8"); ?>
+                <?php echo htmlspecialchars(t("combine.player.results", "Ergebnisse"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($selectedPlayer["first_name"], ENT_QUOTES, "UTF-8"); ?>
                 <?php echo " " . htmlspecialchars($selectedPlayer["last_name"], ENT_QUOTES, "UTF-8"); ?>
               </h3>
               <div class="card-actions">
-                <a class="pill-button is-share" href="<?php echo htmlspecialchars($playerShareUrl, ENT_QUOTES, "UTF-8"); ?>">Teilen</a>
-                <a class="pill-button is-muted" href="<?php echo htmlspecialchars($resetUrl, ENT_QUOTES, "UTF-8"); ?>">Schließen</a>
+                <a class="pill-button is-share" href="<?php echo htmlspecialchars($playerShareUrl, ENT_QUOTES, "UTF-8"); ?>"><?php echo htmlspecialchars(t("common.share", "Teilen"), ENT_QUOTES, "UTF-8"); ?></a>
+                <a class="pill-button is-muted" href="<?php echo htmlspecialchars($resetUrl, ENT_QUOTES, "UTF-8"); ?>"><?php echo htmlspecialchars(t("common.close", "Schließen"), ENT_QUOTES, "UTF-8"); ?></a>
               </div>
             </div>
             <?php if (empty($radarData)): ?>
-              <p class="help">Keine Kategorien für die Anzeige.</p>
+              <p class="help"><?php echo htmlspecialchars(t("combine.categories.empty_display", "Keine Kategorien für die Anzeige."), ENT_QUOTES, "UTF-8"); ?></p>
             <?php else: ?>
               <div class="radar-grid">
                 <div class="radar-chart">
                   <canvas id="radar-chart" width="360" height="360"></canvas>
                   <div class="radar-legend is-overlay">
-                    <span class="legend-item legend-player">Spieler</span>
-                    <span class="legend-item legend-team">Team</span>
+                    <span class="legend-item legend-player"><?php echo htmlspecialchars(t("common.player", "Spieler"), ENT_QUOTES, "UTF-8"); ?></span>
+                    <span class="legend-item legend-team"><?php echo htmlspecialchars(t("common.team", "Team"), ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </div>
                 <div class="radar-details">
@@ -3636,9 +3679,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                       <?php if (count($displayDisciplines) > 1): ?>
                         <?php
                           $categoryScore = $categoryAverages[$category][$selectedPlayerId] ?? null;
-                          $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " P";
+                          $categoryScoreLabel = $categoryScore === null ? "-" : uc_format_points($categoryScore) . " " . t("common.points_abbr", "P");
                         ?>
-                        <p class="help">Kategorie-Score: <?php echo htmlspecialchars($categoryScoreLabel, ENT_QUOTES, "UTF-8"); ?></p>
+                        <p class="help"><?php echo htmlspecialchars(t("combine.category.score", "Kategorie-Score"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($categoryScoreLabel, ENT_QUOTES, "UTF-8"); ?></p>
                       <?php endif; ?>
                       <ul class="list">
                         <?php foreach ($displayDisciplines as $discipline): ?>
@@ -3733,7 +3776,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             if ($overallMode === "sum" && $bonusRel > 0 && $numericValue !== null && $bestValue !== null && $numericValue == $bestValue) {
                               $points += $bonusRel;
                             }
-                            $pointsLabel = uc_format_points($points) . " P";
+                            $pointsLabel = uc_format_points($points) . " " . t("common.points_abbr", "P");
                             $rankLabel = isset($ranks[$selectedPlayerId]) ? (string)$ranks[$selectedPlayerId] : "-";
                           ?>
                           <li class="list-item">
@@ -3746,11 +3789,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                                 <span class="meta"><?php echo htmlspecialchars($display, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
                               <?php if ($overallMode === "abs"): ?>
-                                <span class="meta">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                                <span class="meta"><?php echo htmlspecialchars(t("combine.label.worst", "Schlechtester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · <?php echo htmlspecialchars(t("combine.label.best", "Bester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                               <?php endif; ?>
                             </div>
                             <span class="badge">
-                              <?php echo htmlspecialchars("Platz " . $rankLabel . " · " . $pointsLabel, ENT_QUOTES, "UTF-8"); ?>
+                              <?php echo htmlspecialchars(t("common.place", "Platz") . " " . $rankLabel . " · " . $pointsLabel, ENT_QUOTES, "UTF-8"); ?>
                             </span>
                           </li>
                         <?php endforeach; ?>
@@ -3764,7 +3807,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           </div>
         <?php endif; ?>
         <?php if (empty($assignedDisciplines)): ?>
-          <p class="help">Keine Disziplinen zugeordnet.</p>
+          <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.empty_assigned", "Keine Disziplinen zugeordnet."), ENT_QUOTES, "UTF-8"); ?></p>
         <?php else: ?>
           <?php
             $showCategoryWeights = false;
@@ -3899,7 +3942,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                         <span class="meta">(<?php echo htmlspecialchars($disciplineWeight, ENT_QUOTES, "UTF-8"); ?>x)</span>
                       <?php endif; ?>
                       <?php if ($overallMode === "abs"): ?>
-                        <span class="meta">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
+                        <span class="meta"><?php echo htmlspecialchars(t("combine.label.worst", "Schlechtester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · <?php echo htmlspecialchars(t("combine.label.best", "Bester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></span>
                       <?php endif; ?>
                       <span class="meta">
                         <?php
@@ -3910,9 +3953,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             : uc_display_value(number_format($averageValue, 2, ".", ""), "-");
                           if ($avgLabel !== "-" && $unit !== "") { $avgLabel .= " " . $unit; }
                         ?>
-                        Top: <?php echo htmlspecialchars($topLabel, ENT_QUOTES, "UTF-8"); ?>
+                        <?php echo htmlspecialchars(t("combine.label.top", "Top"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($topLabel, ENT_QUOTES, "UTF-8"); ?>
                         &middot;
-                        Ø: <?php echo htmlspecialchars($avgLabel, ENT_QUOTES, "UTF-8"); ?>
+                        <?php echo htmlspecialchars(t("combine.label.avg", "Ø"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($avgLabel, ENT_QUOTES, "UTF-8"); ?>
                       </span>
                       <?php if (!empty($topPlayerIds)): ?>
                         <?php
@@ -3927,17 +3970,17 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                           }
                         ?>
                         <div class="detail">
-                          Top: <?php echo htmlspecialchars(implode(", ", $topNames), ENT_QUOTES, "UTF-8"); ?>
+                          <?php echo htmlspecialchars(t("combine.label.top", "Top"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars(implode(", ", $topNames), ENT_QUOTES, "UTF-8"); ?>
                         </div>
                       <?php else: ?>
-                        <div class="detail">Top: -</div>
+                        <div class="detail"><?php echo htmlspecialchars(t("combine.label.top", "Top"), ENT_QUOTES, "UTF-8"); ?>: -</div>
                       <?php endif; ?>
                     </summary>
                     <?php if (empty($filteredPlayers)): ?>
-                      <p class="help">Keine Spieler für den gewählten Filter.</p>
+                      <p class="help"><?php echo htmlspecialchars(t("combine.players.empty_filtered", "Keine Spieler für den gewählten Filter."), ENT_QUOTES, "UTF-8"); ?></p>
                     <?php else: ?>
                       <?php if ($unitLabel !== ""): ?>
-                        <p class="help">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></p>
+                        <p class="help"><?php echo htmlspecialchars(t("common.unit", "Einheit"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></p>
                       <?php endif; ?>
                       <?php
                         $orderedPlayers = [];
@@ -3983,13 +4026,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                             if ($overallMode === "sum" && $bonusRel > 0 && $numericValue !== null && $bestValue !== null && $numericValue == $bestValue) {
                               $points += $bonusRel;
                             }
-                            $pointsLabel = uc_format_points($points) . " P";
+                            $pointsLabel = uc_format_points($points) . " " . t("common.points_abbr", "P");
                           ?>
                           <?php $rankLabel = isset($ranks[$playerId]) ? (string)$ranks[$playerId] : "-"; ?>
                           <li class="list-item">
                             <div class="result-name">
                               <span class="rank-pill">
-                                Platz <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?>
+                                <?php echo htmlspecialchars(t("common.place", "Platz"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars($rankLabel, ENT_QUOTES, "UTF-8"); ?>
                                 &middot;
                                 <?php echo htmlspecialchars($pointsLabel, ENT_QUOTES, "UTF-8"); ?>
                               </span>
@@ -4016,7 +4059,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     <?php if (!$pageError && !$combineError && $mode === "h2h"): ?>
       <section class="info">
-        <h2>Head 2 Head</h2>
+        <h2><?php echo htmlspecialchars(t("combine.section.h2h", "Head 2 Head"), ENT_QUOTES, "UTF-8"); ?></h2>
         <?php
           $playerMap = [];
           foreach ($assignedPlayers as $player) {
@@ -4043,23 +4086,23 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
         <div class="info-card">
           <div class="card-header">
             <div class="card-actions">
-              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>'">Relativ</button>
-              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>'">Ø Relativ</button>
-              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>'">Absolut</button>
+              <button class="pill-button<?php echo $overallMode === "sum" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hSumUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.relative", "Relativ"), ENT_QUOTES, "UTF-8"); ?></button>
+              <button class="pill-button<?php echo $overallMode === "avg" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAvgUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.relative_avg", "Ø Relativ"), ENT_QUOTES, "UTF-8"); ?></button>
+              <button class="pill-button<?php echo $overallMode === "abs" ? " is-active" : ""; ?>" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hAbsUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("combine.mode.absolute", "Absolut"), ENT_QUOTES, "UTF-8"); ?></button>
               <?php if ($h2hReady): ?>
                 <?php
                   $h2hShareUrl = $h2hBaseUrl . "&overall=" . urlencode($overallMode) . "&share=img";
                 ?>
-                <button class="pill-button is-share" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hShareUrl, ENT_QUOTES, "UTF-8"); ?>'">Teilen</button>
+                <button class="pill-button is-share" type="button" onclick="window.location.href='<?php echo htmlspecialchars($h2hShareUrl, ENT_QUOTES, "UTF-8"); ?>'"><?php echo htmlspecialchars(t("common.share", "Teilen"), ENT_QUOTES, "UTF-8"); ?></button>
               <?php endif; ?>
             </div>
           </div>
           <?php if ($overallMode === "sum"): ?>
-            <p class="help">Relativ: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.h2h.help.relative", "Relativ: Punkte werden relativ zu allen Teilnehmern berechnet."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php elseif ($overallMode === "avg"): ?>
-            <p class="help">Ø Relativ: Punkte werden relativ zu allen Teilnehmern berechnet.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.h2h.help.relative_avg", "Ø Relativ: Punkte werden relativ zu allen Teilnehmern berechnet."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php else: ?>
-            <p class="help">Absolut: Punkte anhand Erwartungs-Min/Max. Es werden nur Disziplinen mit Erwartungswerten angezeigt.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.h2h.help.absolute", "Absolut: Punkte anhand Erwartungs-Min/Max. Es werden nur Disziplinen mit Erwartungswerten angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
           <form class="form" method="get" action="combine.php">
             <input type="hidden" name="id" value="<?php echo (int)$combineId; ?>">
@@ -4067,7 +4110,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             <input type="hidden" name="overall" value="<?php echo htmlspecialchars($overallMode, ENT_QUOTES, "UTF-8"); ?>">
             <label class="field">
               <select name="player_a" required>
-                <option value="">Bitte wählen</option>
+                <option value=""><?php echo htmlspecialchars(t("common.choose", "Bitte wählen"), ENT_QUOTES, "UTF-8"); ?></option>
                 <?php foreach ($assignedPlayers as $player): ?>
                   <?php $isDisabled = (int)$player["id"] === (int)$h2hPlayerBId; ?>
                   <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerAId ? " selected" : ""; ?><?php echo $isDisabled ? " disabled" : ""; ?>>
@@ -4078,7 +4121,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             </label>
             <label class="field">
               <select name="player_b" required>
-                <option value="">Bitte wählen</option>
+                <option value=""><?php echo htmlspecialchars(t("common.choose", "Bitte wählen"), ENT_QUOTES, "UTF-8"); ?></option>
                 <?php foreach ($assignedPlayers as $player): ?>
                   <?php $isDisabled = (int)$player["id"] === (int)$h2hPlayerAId; ?>
                   <option value="<?php echo (int)$player["id"]; ?>"<?php echo (int)$player["id"] === (int)$h2hPlayerBId ? " selected" : ""; ?><?php echo $isDisabled ? " disabled" : ""; ?>>
@@ -4088,11 +4131,11 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               </select>
             </label>
             <div class="form-actions">
-              <button class="primary-button" type="submit">Vergleichen</button>
+              <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("combine.h2h.compare", "Vergleichen"), ENT_QUOTES, "UTF-8"); ?></button>
             </div>
           </form>
           <?php if ($h2hPlayerAId && $h2hPlayerBId && $h2hPlayerAId === $h2hPlayerBId): ?>
-            <p class="help">Bitte zwei unterschiedliche Spieler auswählen.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.h2h.error.same_player", "Bitte zwei unterschiedliche Spieler auswählen."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
         </div>
 
@@ -4254,7 +4297,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
             }
             $playerALabel = $h2hPlayerA["first_name"] . " " . $h2hPlayerA["last_name"];
             $playerBLabel = $h2hPlayerB["first_name"] . " " . $h2hPlayerB["last_name"];
-            $overallPointsPrefix = $overallMode === "avg" ? "Ø " : "";
+            $overallPointsPrefix = $overallMode === "avg" ? t("common.avg_prefix", "Ø ") : "";
             $overallPointsA = $overallScores[$h2hPlayerAId] ?? 0;
             $overallPointsB = $overallScores[$h2hPlayerBId] ?? 0;
             $overallRankA = $overallRanks[$h2hPlayerAId] ?? "-";
@@ -4505,7 +4548,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           ?>
           <div class="info-card">
             <div class="card-header">
-              <h3>Overall</h3>
+              <h3><?php echo htmlspecialchars(t("combine.overall.short", "Overall"), ENT_QUOTES, "UTF-8"); ?></h3>
             </div>
             <ul class="list">
               <li class="list-item">
@@ -4513,7 +4556,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   <strong><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></strong>
                 </div>
                 <span class="badge">
-                  <?php echo htmlspecialchars("Platz " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " P", ENT_QUOTES, "UTF-8"); ?>
+                  <?php echo htmlspecialchars(t("common.place", "Platz") . " " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " " . t("common.points_abbr", "P"), ENT_QUOTES, "UTF-8"); ?>
                 </span>
               </li>
               <li class="list-item">
@@ -4521,13 +4564,13 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   <strong><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></strong>
                 </div>
                 <span class="badge">
-                  <?php echo htmlspecialchars("Platz " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " P", ENT_QUOTES, "UTF-8"); ?>
+                  <?php echo htmlspecialchars(t("common.place", "Platz") . " " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " " . t("common.points_abbr", "P"), ENT_QUOTES, "UTF-8"); ?>
                 </span>
               </li>
             </ul>
           </div>
           <?php if (empty($assignedDisciplines)): ?>
-            <p class="help">Keine Disziplinen zugeordnet.</p>
+            <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.empty_assigned", "Keine Disziplinen zugeordnet."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php else: ?>
             <div class="info-card">
               <div class="h2h-legend">
@@ -4649,10 +4692,10 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                           <strong><?php echo htmlspecialchars($discipline["discipline_name"], ENT_QUOTES, "UTF-8"); ?></strong>
                         </div>
                         <?php if (!empty($unitLabel)): ?>
-                          <div class="detail h2h-unit">Einheit: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                          <div class="detail h2h-unit"><?php echo htmlspecialchars(t("common.unit", "Einheit"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($unitLabel, ENT_QUOTES, "UTF-8"); ?></div>
                         <?php endif; ?>
                         <?php if ($overallMode === "abs"): ?>
-                          <div class="detail h2h-unit">Schlechtester: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · Bester: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></div>
+                          <div class="detail h2h-unit"><?php echo htmlspecialchars(t("combine.label.worst", "Schlechtester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($minLabel, ENT_QUOTES, "UTF-8"); ?> · <?php echo htmlspecialchars(t("combine.label.best", "Bester"), ENT_QUOTES, "UTF-8"); ?>: <?php echo htmlspecialchars($maxLabel, ENT_QUOTES, "UTF-8"); ?></div>
                         <?php endif; ?>
                       </div>
                       <div class="h2h-bars">
@@ -4677,7 +4720,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                   <div class="radar-legend">
                     <span class="legend-item legend-player"><?php echo htmlspecialchars($playerALabel, ENT_QUOTES, "UTF-8"); ?></span>
                     <span class="legend-item legend-team"><?php echo htmlspecialchars($playerBLabel, ENT_QUOTES, "UTF-8"); ?></span>
-                    <span class="legend-item legend-average">Team</span>
+                    <span class="legend-item legend-average"><?php echo htmlspecialchars(t("common.team", "Team"), ENT_QUOTES, "UTF-8"); ?></span>
                   </div>
                 </div>
               </div>
@@ -4690,30 +4733,30 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
 
     <?php if ($editMode && !$pageError && !$combineError): ?>
         <section class="auth-card" id="edit">
-          <h2>Combine bearbeiten</h2>
+          <h2><?php echo htmlspecialchars(t("combine.edit.title", "Combine bearbeiten"), ENT_QUOTES, "UTF-8"); ?></h2>
           <form class="form" method="post" action="">
             <input type="hidden" name="action" value="update_combine">
           <label class="field">
-            <span>Name</span>
+            <span><?php echo htmlspecialchars(t("common.name", "Name"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="text" name="combine_name" value="<?php echo htmlspecialchars($formCombineName, ENT_QUOTES, "UTF-8"); ?>" required>
           </label>
           <label class="field">
-            <span>Datum</span>
+            <span><?php echo htmlspecialchars(t("common.date", "Datum"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="date" name="event_date" value="<?php echo htmlspecialchars($formEventDate, ENT_QUOTES, "UTF-8"); ?>" required>
           </label>
           <label class="field">
-            <span>Ort</span>
+            <span><?php echo htmlspecialchars(t("common.location", "Ort"), ENT_QUOTES, "UTF-8"); ?></span>
             <input type="text" name="combine_location" value="<?php echo htmlspecialchars($formCombineLocation, ENT_QUOTES, "UTF-8"); ?>">
           </label>
           <label class="field">
-            <span>Notizen</span>
+            <span><?php echo htmlspecialchars(t("common.notes", "Notizen"), ENT_QUOTES, "UTF-8"); ?></span>
             <textarea name="combine_notes" rows="3"><?php echo htmlspecialchars($formCombineNotes, ENT_QUOTES, "UTF-8"); ?></textarea>
           </label>
 
           <div class="field">
-            <span>Spieler</span>
+            <span><?php echo htmlspecialchars(t("common.players", "Spieler"), ENT_QUOTES, "UTF-8"); ?></span>
             <?php if (empty($players)): ?>
-              <p class="help">Noch keine Spieler angelegt.</p>
+              <p class="help"><?php echo htmlspecialchars(t("combine.players.empty", "Noch keine Spieler angelegt."), ENT_QUOTES, "UTF-8"); ?></p>
             <?php else: ?>
               <div class="check-grid">
                 <?php foreach ($players as $player): ?>
@@ -4733,9 +4776,9 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           </div>
 
           <div class="field">
-            <span>Disziplinen</span>
+            <span><?php echo htmlspecialchars(t("common.disciplines", "Disziplinen"), ENT_QUOTES, "UTF-8"); ?></span>
             <?php if (empty($disciplines)): ?>
-              <p class="help">Noch keine Disziplinen angelegt.</p>
+              <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.empty", "Noch keine Disziplinen angelegt."), ENT_QUOTES, "UTF-8"); ?></p>
             <?php else: ?>
               <?php
                 $globalDisciplines = [];
@@ -4749,7 +4792,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 }
               ?>
               <?php if (!empty($teamDisciplines)): ?>
-                <p class="help">Team-Disziplinen</p>
+                <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.team", "Team-Disziplinen"), ENT_QUOTES, "UTF-8"); ?></p>
                 <div class="check-grid">
                   <?php foreach ($teamDisciplines as $discipline): ?>
                     <label class="check-item">
@@ -4775,7 +4818,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
                 </div>
               <?php endif; ?>
               <?php if (!empty($globalDisciplines)): ?>
-                <p class="help">Globale Disziplinen</p>
+                <p class="help"><?php echo htmlspecialchars(t("combine.disciplines.global", "Globale Disziplinen"), ENT_QUOTES, "UTF-8"); ?></p>
                 <div class="check-grid">
                   <?php foreach ($globalDisciplines as $discipline): ?>
                     <label class="check-item">
@@ -4812,7 +4855,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
               }
               $category = trim((string)($discipline["category"] ?? ""));
               if ($category === "") {
-                $category = "Ohne Kategorie";
+                $category = t("common.uncategorized", "Ohne Kategorie");
               }
               $selectedDisciplinesByCategory[$category][] = $discipline;
             }
@@ -4821,8 +4864,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           <?php if (!empty($selectedDisciplinesByCategory)): ?>
             <div class="field">
               <div class="section-header">
-                <span>Gewichtungen</span>
-                <button class="info-icon js-info" type="button" aria-label="Erklärung: <?php echo $formatLabel($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen. 1x entspricht der Standardgewichtung."); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["weights"] ?? "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\n1x entspricht der Standardgewichtung.\nKategorien gewichten den Mittelwert der Disziplinen, Disziplinen gewichten innerhalb der Kategorie."); ?>">i</button>
+                <span><?php echo htmlspecialchars(t("combine.weights.title", "Gewichtungen"), ENT_QUOTES, "UTF-8"); ?></span>
+                <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo $formatLabel($infoTexts["weights"] ?? t("combine.info.weights", "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie.")); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["weights"] ?? t("combine.info.weights", "Gewichtungen legen fest, wie stark Kategorien und Disziplinen in die Gesamtwertung einfließen.\nKategorien Gewichtung beeinflussen den Einfluss auf den Gesamtscore, Disziplinen Gewichtung die Zusammensetzung des Scores dieser Kategorie.")); ?>">i</button>
               </div>
               <div class="category-block">
                 <?php foreach ($selectedDisciplinesByCategory as $category => $categoryDisciplines): ?>
@@ -4856,8 +4899,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
           <?php endif; ?>
 
           <div class="form-actions">
-            <button class="primary-button" type="submit">Speichern</button>
-            <button class="pill-button is-muted" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'">Abbrechen</button>
+            <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button is-muted" type="button" onclick="window.location.href='combine.php?id=<?php echo (int)$combineId; ?>'"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
           </div>
           <?php if ($combineFeedback): ?>
             <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
@@ -4867,8 +4910,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
     <?php endif; ?>
   </main>
   <footer class="site-footer">
-    <a class="footer-link" href="impressum.php">Impressum</a>
-    <a class="footer-link" href="feedback.php">Feedback</a>
+    <a class="footer-link" href="impressum.php"><?php echo htmlspecialchars(t("footer.impressum", "Impressum"), ENT_QUOTES, "UTF-8"); ?></a>
+    <a class="footer-link" href="feedback.php"><?php echo htmlspecialchars(t("footer.feedback", "Feedback"), ENT_QUOTES, "UTF-8"); ?></a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
   <script src="theme.js"></script>
@@ -4887,7 +4930,8 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       disciplineSelect.addEventListener("change", () => {
         const nextValue = disciplineSelect.value;
         if (isDirty) {
-          const ok = window.confirm("Ungesicherte Aenderungen gehen verloren. Trotzdem wechseln?");
+          const confirmMessage = disciplineSelect.dataset.confirmUnsaved || "Ungesicherte Aenderungen gehen verloren. Trotzdem wechseln?";
+          const ok = window.confirm(confirmMessage);
           if (!ok) {
             disciplineSelect.value = lastValue;
             return;

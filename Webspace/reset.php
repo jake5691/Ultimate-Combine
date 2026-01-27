@@ -8,9 +8,9 @@ $success = null;
 $teamId = null;
 
 if ($tokenHash === "") {
-  $error = "Token fehlt oder ist ungültig.";
+  $error = t("reset.error.token_missing", "Token fehlt oder ist ungültig.");
 } elseif (!$pdo) {
-  $error = $dbError ?? "Datenbank ist nicht erreichbar.";
+  $error = $dbError ?? t("error.db_unreachable", "Datenbank ist nicht erreichbar.");
 } else {
   $stmt = $pdo->prepare(
     "SELECT id, team_id, expires_at, used_at
@@ -22,11 +22,11 @@ if ($tokenHash === "") {
   $resetRow = $stmt->fetch();
 
   if (!$resetRow) {
-    $error = "Token ist ungültig.";
+    $error = t("reset.error.token_invalid", "Token ist ungültig.");
   } elseif (!empty($resetRow["used_at"])) {
-    $error = "Token wurde bereits verwendet.";
+    $error = t("reset.error.token_used", "Token wurde bereits verwendet.");
   } elseif (strtotime($resetRow["expires_at"]) < time()) {
-    $error = "Token ist abgelaufen.";
+    $error = t("reset.error.token_expired", "Token ist abgelaufen.");
   } else {
     $teamId = (int)$resetRow["team_id"];
   }
@@ -36,9 +36,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $teamId) {
   $newKey = trim($_POST["team_key_new"] ?? "");
   $newKeyRepeat = trim($_POST["team_key_repeat"] ?? "");
   if ($newKey === "" || $newKeyRepeat === "") {
-    $error = "Bitte beide Felder ausfüllen.";
+    $error = t("reset.error.required", "Bitte beide Felder ausfüllen.");
   } elseif ($newKey !== $newKeyRepeat) {
-    $error = "Die Passwörter stimmen nicht überein.";
+    $error = t("reset.error.mismatch", "Die Passwörter stimmen nicht überein.");
   } else {
     $newKeyHash = password_hash($newKey, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare(
@@ -56,17 +56,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $teamId) {
        WHERE token_hash = :token_hash"
     );
     $stmt->execute([":token_hash" => $tokenHash]);
-    $success = "Passwort wurde aktualisiert. Du kannst dich jetzt einloggen.";
+    $success = t("reset.success", "Passwort wurde aktualisiert. Du kannst dich jetzt einloggen.");
     $teamId = null;
   }
 }
 ?>
 <!doctype html>
-<html lang="de">
+<html lang="<?php echo htmlspecialchars($lang, ENT_QUOTES, "UTF-8"); ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ultimate Combine – Neues Passwort</title>
+  <title><?php echo htmlspecialchars(t("reset.title", "Ultimate Combine – Neues Passwort"), ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -81,19 +81,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $teamId) {
     <span class="topbar-spacer"></span>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
-      <span class="brand-text">Ultimate Combine</span>
+      <span class="brand-text"><?php echo htmlspecialchars(t("site.title", "Ultimate Combine"), ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <div class="topbar-actions">
-      <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Auto</button>
+      <details class="header-menu">
+        <summary class="pill-button is-muted" aria-label="<?php echo htmlspecialchars(t("common.menu", "Menü"), ENT_QUOTES, "UTF-8"); ?>">☰</summary>
+        <div class="menu-panel">
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.theme", "Design"), ENT_QUOTES, "UTF-8"); ?></span>
+            <button
+              class="pill-button is-muted theme-toggle"
+              type="button"
+              data-theme-toggle
+              data-theme-label-system="<?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-dark="<?php echo htmlspecialchars(t("common.theme_dark", "Dunkel"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-light="<?php echo htmlspecialchars(t("common.theme_light", "Hell"), ENT_QUOTES, "UTF-8"); ?>"
+              aria-pressed="false"
+            ><?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.language", "Sprache"), ENT_QUOTES, "UTF-8"); ?></span>
+            <div class="menu-links">
+              <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
+              <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   </header>
 
   <main class="auth is-wide">
     <section class="auth-card">
-      <h1>Neues Passwort setzen</h1>
+      <h1><?php echo htmlspecialchars(t("reset.heading", "Neues Passwort setzen"), ENT_QUOTES, "UTF-8"); ?></h1>
       <?php if ($success): ?>
         <p class="help"><?php echo htmlspecialchars($success, ENT_QUOTES, "UTF-8"); ?></p>
-        <a class="pill-button" href="index.php">Zum Login</a>
+        <a class="pill-button" href="index.php"><?php echo htmlspecialchars(t("reset.back_to_login", "Zum Login"), ENT_QUOTES, "UTF-8"); ?></a>
       <?php else: ?>
         <?php if ($error): ?>
           <p class="help"><?php echo htmlspecialchars($error, ENT_QUOTES, "UTF-8"); ?></p>
@@ -101,28 +124,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $teamId) {
         <?php if ($teamId): ?>
           <form class="form" method="post" action="">
             <label class="field">
-              <span>Neues Passwort</span>
+              <span><?php echo htmlspecialchars(t("reset.field.new_password", "Neues Passwort"), ENT_QUOTES, "UTF-8"); ?></span>
               <input type="password" name="team_key_new" required>
             </label>
             <label class="field">
-              <span>Passwort wiederholen</span>
+              <span><?php echo htmlspecialchars(t("reset.field.repeat_password", "Passwort wiederholen"), ENT_QUOTES, "UTF-8"); ?></span>
               <input type="password" name="team_key_repeat" required>
             </label>
             <div class="form-actions">
-              <button class="primary-button" type="submit">Passwort speichern</button>
-              <a class="pill-button is-muted" href="index.php">Abbrechen</a>
+              <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("reset.submit", "Passwort speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+              <a class="pill-button is-muted" href="index.php"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></a>
             </div>
           </form>
         <?php else: ?>
-          <a class="pill-button" href="reset-request.php">Neuen Link anfordern</a>
+          <a class="pill-button" href="reset-request.php"><?php echo htmlspecialchars(t("reset.request_new", "Neuen Link anfordern"), ENT_QUOTES, "UTF-8"); ?></a>
         <?php endif; ?>
       <?php endif; ?>
     </section>
   </main>
 
   <footer class="site-footer">
-    <a class="footer-link" href="impressum.php">Impressum</a>
-    <a class="footer-link" href="feedback.php">Feedback</a>
+    <a class="footer-link" href="impressum.php"><?php echo htmlspecialchars(t("footer.impressum", "Impressum"), ENT_QUOTES, "UTF-8"); ?></a>
+    <a class="footer-link" href="feedback.php"><?php echo htmlspecialchars(t("footer.feedback", "Feedback"), ENT_QUOTES, "UTF-8"); ?></a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
   <script src="theme.js"></script>

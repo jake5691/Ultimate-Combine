@@ -8,11 +8,11 @@ $contactEmail = trim($_POST["contact_email"] ?? "");
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($teamName === "" || $contactEmail === "") {
-    $error = "Bitte Teamname und Kontakt-E-Mail angeben.";
+    $error = t("reset_request.error.required", "Bitte Teamname und Kontakt-E-Mail angeben.");
   } elseif (!filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
-    $error = "Bitte eine gültige E-Mail-Adresse angeben.";
+    $error = t("common.error.email_invalid", "Bitte eine gültige E-Mail-Adresse angeben.");
   } elseif (!$pdo) {
-    $error = $dbError ?? "Datenbank ist nicht erreichbar.";
+    $error = $dbError ?? t("error.db_unreachable", "Datenbank ist nicht erreichbar.");
   } else {
     $stmt = $pdo->prepare(
       "SELECT id, contact
@@ -40,24 +40,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
       $baseUrl = uc_base_url($env);
       $resetLink = ($baseUrl !== "" ? $baseUrl : "") . "/reset.php?token=" . urlencode($token);
-      $greeting = "Hi " . $teamName . "-Kontakt,";
-      $mailBody = $greeting . "\n\nhier ist dein Link zum Zurücksetzen des Team-Passworts:\n" . $resetLink . "\n\nDer Link ist 60 Minuten gültig.\n\nFalls du das nicht angefordert hast, ignoriere diese Mail.";
+      $greeting = sprintf(t("reset_request.mail.greeting", "Hi %s-Kontakt,"), $teamName);
+      $mailBody = $greeting
+        . "\n\n"
+        . t("reset_request.mail.intro", "hier ist dein Link zum Zurücksetzen des Team-Passworts:")
+        . "\n"
+        . $resetLink
+        . "\n\n"
+        . t("reset_request.mail.expiry", "Der Link ist 60 Minuten gültig.")
+        . "\n\n"
+        . t("reset_request.mail.ignore", "Falls du das nicht angefordert hast, ignoriere diese Mail.");
       $mailError = null;
-      uc_smtp_send($env, $contactEmail, "Passwort zurücksetzen", $mailBody, $mailError);
+      uc_smtp_send($env, $contactEmail, t("reset_request.mail.subject", "Passwort zurücksetzen"), $mailBody, $mailError);
     }
 
-    $feedback = "Wenn die Angaben stimmen, wurde eine Reset-Mail versendet.";
+    $feedback = t("reset_request.feedback.sent", "Wenn die Angaben stimmen, wurde eine Reset-Mail versendet.");
     $teamName = "";
     $contactEmail = "";
   }
 }
 ?>
 <!doctype html>
-<html lang="de">
+<html lang="<?php echo htmlspecialchars($lang, ENT_QUOTES, "UTF-8"); ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ultimate Combine – Passwort zurücksetzen</title>
+  <title><?php echo htmlspecialchars(t("reset_request.title", "Ultimate Combine – Passwort zurücksetzen"), ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -72,17 +80,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <span class="topbar-spacer"></span>
     <div class="brand">
       <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
-      <span class="brand-text">Ultimate Combine</span>
+      <span class="brand-text"><?php echo htmlspecialchars(t("site.title", "Ultimate Combine"), ENT_QUOTES, "UTF-8"); ?></span>
     </div>
     <div class="topbar-actions">
-      <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Auto</button>
+      <details class="header-menu">
+        <summary class="pill-button is-muted" aria-label="<?php echo htmlspecialchars(t("common.menu", "Menü"), ENT_QUOTES, "UTF-8"); ?>">☰</summary>
+        <div class="menu-panel">
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.theme", "Design"), ENT_QUOTES, "UTF-8"); ?></span>
+            <button
+              class="pill-button is-muted theme-toggle"
+              type="button"
+              data-theme-toggle
+              data-theme-label-system="<?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-dark="<?php echo htmlspecialchars(t("common.theme_dark", "Dunkel"), ENT_QUOTES, "UTF-8"); ?>"
+              data-theme-label-light="<?php echo htmlspecialchars(t("common.theme_light", "Hell"), ENT_QUOTES, "UTF-8"); ?>"
+              aria-pressed="false"
+            ><?php echo htmlspecialchars(t("common.theme_auto", "Auto"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
+          <div class="menu-item">
+            <span class="menu-label"><?php echo htmlspecialchars(t("common.language", "Sprache"), ENT_QUOTES, "UTF-8"); ?></span>
+            <div class="menu-links">
+              <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
+              <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   </header>
 
   <main class="auth is-wide">
     <section class="auth-card">
-      <h1>Passwort zurücksetzen</h1>
-      <p class="lead">Gib Teamname und Kontakt-E-Mail an. Nur wenn beides passt, bekommst du eine Reset-Mail.</p>
+      <h1><?php echo htmlspecialchars(t("reset_request.heading", "Passwort zurücksetzen"), ENT_QUOTES, "UTF-8"); ?></h1>
+      <p class="lead"><?php echo htmlspecialchars(t("reset_request.lead", "Gib Teamname und Kontakt-E-Mail an. Nur wenn beides passt, bekommst du eine Reset-Mail."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php if ($feedback): ?>
         <p class="help"><?php echo htmlspecialchars($feedback, ENT_QUOTES, "UTF-8"); ?></p>
       <?php endif; ?>
@@ -91,24 +122,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       <?php endif; ?>
       <form class="form" method="post" action="">
         <label class="field">
-          <span>Teamname</span>
+          <span><?php echo htmlspecialchars(t("index.field.team", "Teamname"), ENT_QUOTES, "UTF-8"); ?></span>
           <input type="text" name="team_name" value="<?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?>" required>
         </label>
         <label class="field">
-          <span>Kontakt-E-Mail</span>
+          <span><?php echo htmlspecialchars(t("reset_request.field.contact_email", "Kontakt-E-Mail"), ENT_QUOTES, "UTF-8"); ?></span>
           <input type="email" name="contact_email" value="<?php echo htmlspecialchars($contactEmail, ENT_QUOTES, "UTF-8"); ?>" required>
         </label>
         <div class="form-actions">
-          <button class="primary-button" type="submit">Reset-Link anfordern</button>
-          <a class="pill-button is-muted" href="index.php">Zurück</a>
+          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("reset_request.submit", "Reset-Link anfordern"), ENT_QUOTES, "UTF-8"); ?></button>
+          <a class="pill-button is-muted" href="index.php"><?php echo htmlspecialchars(t("common.back", "Zurück"), ENT_QUOTES, "UTF-8"); ?></a>
         </div>
       </form>
     </section>
   </main>
 
   <footer class="site-footer">
-    <a class="footer-link" href="impressum.php">Impressum</a>
-    <a class="footer-link" href="feedback.php">Feedback</a>
+    <a class="footer-link" href="impressum.php"><?php echo htmlspecialchars(t("footer.impressum", "Impressum"), ENT_QUOTES, "UTF-8"); ?></a>
+    <a class="footer-link" href="feedback.php"><?php echo htmlspecialchars(t("footer.feedback", "Feedback"), ENT_QUOTES, "UTF-8"); ?></a>
     <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
   </footer>
   <script src="theme.js"></script>

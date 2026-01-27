@@ -14,7 +14,12 @@
   const updateToggles = () => {
     const mode = root.getAttribute("data-theme-mode") || "system";
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.textContent = mode === "system" ? "Auto" : (mode === "dark" ? "Dunkel" : "Hell");
+      const label = mode === "system"
+        ? (button.dataset.themeLabelSystem || "Auto")
+        : (mode === "dark"
+          ? (button.dataset.themeLabelDark || "Dunkel")
+          : (button.dataset.themeLabelLight || "Hell"));
+      button.textContent = label;
       button.setAttribute("aria-pressed", mode === "dark" ? "true" : "false");
     });
   };
@@ -34,6 +39,14 @@
       localStorage.setItem(storageKey, next);
     }
     updateToggles();
+  });
+
+  document.addEventListener("click", (event) => {
+    document.querySelectorAll("details.header-menu[open]").forEach((menu) => {
+      if (!menu.contains(event.target)) {
+        menu.removeAttribute("open");
+      }
+    });
   });
 
   if (media && media.addEventListener) {
