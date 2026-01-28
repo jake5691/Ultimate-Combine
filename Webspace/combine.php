@@ -2451,5 +2451,5 @@ require __DIR__ . "/partials/header-brand.php";
     <?php endif; ?>
   </main>
   <?php require __DIR__ . "/partials/footer.php"; ?>
-  <script src="combine.js"></script>
+  <script src="js/combine.js"></script>
   <?php require __DIR__ . "/partials/foot.php"; ?>
