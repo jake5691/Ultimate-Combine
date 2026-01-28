@@ -1170,6 +1170,10 @@ require __DIR__ . "/partials/header-brand.php";
       <?php endif; ?>
     </section>
 
+    <?php if ($editMode && !$pageError && !$combineError): ?>
+      <?php require __DIR__ . "/partials/combine/section-edit.php"; ?>
+    <?php endif; ?>
+
     <?php if (!$pageError && !$combineError && $mode === "view"): ?>
       <section class="info">
         <h2><?php echo htmlspecialchars(t("combine.section.overview", "Übersicht"), ENT_QUOTES, "UTF-8"); ?></h2>

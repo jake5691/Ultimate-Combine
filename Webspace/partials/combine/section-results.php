@@ -2,7 +2,7 @@
         <h2><?php echo htmlspecialchars(t("combine.section.results", "Ergebnisse"), ENT_QUOTES, "UTF-8"); ?></h2>
         <?php
         $filteredPlayers = uc_filter_players($assignedPlayers, $filterGender, $filterPosition);
-          require __DIR__ . "/lib/overall-results.php";
+          require __DIR__ . "/../../lib/overall-results.php";
         ?>
         <div class="section-header">
           <div class="card-actions">
