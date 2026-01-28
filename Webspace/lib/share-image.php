@@ -1,16 +1,5 @@
 <?php
-  $filteredPlayers = array_values(array_filter($assignedPlayers, function ($player) use ($filterGender, $filterPosition) {
-    if ($filterGender !== "" && ($player["gender"] ?? "") !== $filterGender) {
-      return false;
-    }
-    if ($filterPosition === "handler" && empty($player["position_handler"])) {
-      return false;
-    }
-    if ($filterPosition === "cutter" && empty($player["position_cutter"])) {
-      return false;
-    }
-    return true;
-  }));
+  $filteredPlayers = uc_filter_players($assignedPlayers, $filterGender, $filterPosition);
   $selectedPlayerId = filter_var($_GET["player_id"] ?? null, FILTER_VALIDATE_INT);
   $selectedPlayer = null;
   if ($selectedPlayerId) {
