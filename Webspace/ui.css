@@ -894,6 +894,9 @@ body {
 
   .topbar-actions {
     order: 2;
+    justify-self: end;
+    margin-left: auto;
+    grid-column: 2 / 3;
   }
 
   .topbar.is-simple {
