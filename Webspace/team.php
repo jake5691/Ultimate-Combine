@@ -47,6 +47,7 @@ $teamContact = "";
 $teamKeyHash = "";
 $teamEditFeedback = null;
 $teamEditSuccess = false;
+$action = "";
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
 $cloneSourceId = filter_var($_GET["clone"] ?? null, FILTER_VALIDATE_INT);
@@ -427,6 +428,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":team_id" => $teamId,
         ]);
         $playerFeedback = t("team.feedback.player_updated", "Spieler wurde aktualisiert.");
+        $editType = null;
+        $editId = null;
+        $editRecord = null;
       }
     }
   }
@@ -497,6 +501,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":team_id" => $teamId,
         ]);
         $combineFeedback = t("team.feedback.combine_updated", "Combine wurde aktualisiert.");
+        $editType = null;
+        $editId = null;
+        $editRecord = null;
       }
     }
   }
@@ -630,6 +637,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           ":team_id" => $teamId,
         ]);
         $disciplineFeedback = t("team.feedback.discipline_updated", "Disziplin wurde aktualisiert.");
+        $editType = null;
+        $editId = null;
+        $editRecord = null;
       }
     }
   }
@@ -1044,7 +1054,7 @@ require __DIR__ . "/partials/header-brand.php";
             <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.players.save", "Spieler speichern"), ENT_QUOTES, "UTF-8"); ?></button>
             <button class="pill-button is-muted js-close" type="button" data-target="create-player"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
           </div>
-          <?php if ($playerFeedback): ?>
+          <?php if ($playerFeedback && $action === "create_player"): ?>
             <p class="help"><?php echo htmlspecialchars($playerFeedback, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
         </form>
@@ -1074,7 +1084,7 @@ require __DIR__ . "/partials/header-brand.php";
             <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.combines.save", "Combine speichern"), ENT_QUOTES, "UTF-8"); ?></button>
             <button class="pill-button is-muted js-close" type="button" data-target="create-combine"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
           </div>
-          <?php if ($combineFeedback): ?>
+          <?php if ($combineFeedback && $action === "create_combine"): ?>
             <p class="help"><?php echo htmlspecialchars($combineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
         </form>
@@ -1153,9 +1163,9 @@ require __DIR__ . "/partials/header-brand.php";
           <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.disciplines.save", "Disziplin speichern"), ENT_QUOTES, "UTF-8"); ?></button>
           <button class="pill-button is-muted js-close" type="button" data-target="create-discipline"><?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?></button>
         </div>
-        <?php if ($disciplineFeedback): ?>
-          <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
-        <?php endif; ?>
+          <?php if ($disciplineFeedback && $action === "create_discipline"): ?>
+            <p class="help"><?php echo htmlspecialchars($disciplineFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
       </form>
     </section>
 
