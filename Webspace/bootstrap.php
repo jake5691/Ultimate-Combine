@@ -122,6 +122,21 @@ function uc_env(array $env, string $key, string $default = ""): string {
   return is_string($value) ? $value : $default;
 }
 
+function uc_filter_players(array $players, string $gender, string $position): array {
+  return array_values(array_filter($players, function ($player) use ($gender, $position) {
+    if ($gender !== "" && ($player["gender"] ?? "") !== $gender) {
+      return false;
+    }
+    if ($position === "handler" && empty($player["position_handler"])) {
+      return false;
+    }
+    if ($position === "cutter" && empty($player["position_cutter"])) {
+      return false;
+    }
+    return true;
+  }));
+}
+
 function uc_base_url(array $env): string {
   $configured = trim(uc_env($env, "APP_URL", ""));
   if ($configured !== "") {

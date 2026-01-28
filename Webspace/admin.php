@@ -513,54 +513,17 @@ if (!$pageError) {
   $teams = $stmt->fetchAll();
 }
 ?>
-<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?php echo htmlspecialchars(t("admin.title", "Ultimate Combine – Admin"), ENT_QUOTES, "UTF-8"); ?></title>
-  <link rel="icon" href="assets/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-  <link rel="manifest" href="assets/site.webmanifest">
-  <link rel="stylesheet" href="ui.css">
-</head>
-<body>
-  <div class="bg-grid"></div>
-
-  <header class="topbar">
-    <div class="brand">
-      <img class="brand-logo" src="assets/FrisbeeCatch.png" alt="Ultimate Combine">
-      <span class="brand-text">Ultimate Combine</span>
-      <span class="brand-sep">•</span>
-      <span class="brand-team"><?php echo htmlspecialchars(t("admin.brand", "Admin"), ENT_QUOTES, "UTF-8"); ?></span>
-    </div>
-    <div class="topbar-actions">
-      <details class="header-menu">
-        <summary class="pill-button is-muted" aria-label="<?php echo htmlspecialchars(t("common.menu", "Menü"), ENT_QUOTES, "UTF-8"); ?>">☰</summary>
-        <div class="menu-panel">
-          <div class="menu-item">
-            <span class="menu-label"><?php echo htmlspecialchars(t("common.theme", "Design"), ENT_QUOTES, "UTF-8"); ?></span>
-            <button class="pill-button is-muted theme-toggle" type="button" data-theme-toggle aria-pressed="false">Auto</button>
-          </div>
-          <div class="menu-item">
-            <span class="menu-label"><?php echo htmlspecialchars(t("common.language", "Sprache"), ENT_QUOTES, "UTF-8"); ?></span>
-            <div class="menu-links">
-              <a class="pill-button is-muted<?php echo $lang === "de" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("de"), ENT_QUOTES, "UTF-8"); ?>">DE</a>
-              <a class="pill-button is-muted<?php echo $lang === "en" ? " is-active" : ""; ?>" href="<?php echo htmlspecialchars(uc_lang_url("en"), ENT_QUOTES, "UTF-8"); ?>">EN</a>
-            </div>
-          </div>
-          <div class="menu-item">
-            <form method="post" action="">
-              <input type="hidden" name="action" value="logout">
-              <button class="pill-button is-logout" type="submit"><?php echo htmlspecialchars(t("common.logout", "Abmelden"), ENT_QUOTES, "UTF-8"); ?></button>
-            </form>
-          </div>
-        </div>
-      </details>
-    </div>
-  </header>
+<?php
+$pageTitle = t("admin.title", "Ultimate Combine – Admin");
+$pageLang = "de";
+require __DIR__ . "/partials/head.php";
+$brandText = "Ultimate Combine";
+$brandSuffix = t("admin.brand", "Admin");
+$showLogout = true;
+$themeLabels = false;
+$themeToggleText = "Auto";
+require __DIR__ . "/partials/header-brand.php";
+?>
 
   <main class="team">
     <section class="auth-card">
@@ -940,115 +903,6 @@ if (!$pageError) {
       <?php endif; ?>
     </section>
   </main>
-  <footer class="site-footer">
-    <a class="footer-link" href="impressum.php"><?php echo htmlspecialchars(t("footer.impressum", "Impressum"), ENT_QUOTES, "UTF-8"); ?></a>
-    <a class="footer-link" href="feedback.php"><?php echo htmlspecialchars(t("footer.feedback", "Feedback"), ENT_QUOTES, "UTF-8"); ?></a>
-    <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jakob.christen" data-color="#ff7b4b" data-emoji="☕" data-font="Inter" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00"></script>
-  </footer>
-  <script src="theme.js"></script>
-  <script>
-    const toggles = document.querySelectorAll(".js-toggle");
-    toggles.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const targetId = btn.dataset.target;
-        const target = document.getElementById(targetId);
-        if (!target) return;
-        const isHidden = target.classList.toggle("is-hidden");
-        target.hidden = isHidden;
-        btn.setAttribute("aria-expanded", String(!isHidden));
-        if (!isHidden) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    });
-
-    const editButton = document.querySelector("[data-edit-units]");
-    const cancelButton = document.querySelector("[data-edit-units-cancel]");
-    const editPanel = document.getElementById("edit-units");
-    const overviewList = document.getElementById("units-overview");
-    const addUnitPanel = document.getElementById("add-unit");
-    const viewActions = document.getElementById("units-actions-view");
-    const editActions = document.getElementById("units-actions-edit");
-
-    const setEditMode = (isEdit) => {
-      const show = isEdit ? "true" : "false";
-      if (editPanel) {
-        editPanel.classList.toggle("is-hidden", !isEdit);
-        editPanel.hidden = !isEdit;
-      }
-      if (overviewList) overviewList.classList.toggle("is-hidden", isEdit);
-      if (addUnitPanel) {
-        addUnitPanel.classList.toggle("is-hidden", true);
-        addUnitPanel.hidden = true;
-      }
-      if (viewActions) viewActions.classList.toggle("is-hidden", isEdit);
-      if (editActions) {
-        editActions.classList.toggle("is-hidden", !isEdit);
-        editActions.hidden = !isEdit;
-      }
-      if (editButton) editButton.setAttribute("aria-expanded", show);
-      if (cancelButton) cancelButton.setAttribute("aria-expanded", show);
-    };
-
-    if (editButton) {
-      editButton.addEventListener("click", () => setEditMode(true));
-    }
-    if (cancelButton) {
-      cancelButton.addEventListener("click", () => setEditMode(false));
-    }
-
-    const editDisciplinesButton = document.querySelector("[data-edit-disciplines]");
-    const cancelDisciplinesButton = document.querySelector("[data-edit-disciplines-cancel]");
-    const editDisciplinesPanel = document.getElementById("edit-disciplines");
-    const disciplinesOverview = document.getElementById("disciplines-overview");
-    const addDisciplinePanel = document.getElementById("add-global-discipline");
-    const disciplinesViewActions = document.getElementById("disciplines-actions-view");
-    const disciplinesEditActions = document.getElementById("disciplines-actions-edit");
-
-    const setDisciplinesEditMode = (isEdit) => {
-      const show = isEdit ? "true" : "false";
-      if (editDisciplinesPanel) {
-        editDisciplinesPanel.classList.toggle("is-hidden", !isEdit);
-        editDisciplinesPanel.hidden = !isEdit;
-      }
-      if (disciplinesOverview) disciplinesOverview.classList.toggle("is-hidden", isEdit);
-      if (addDisciplinePanel) {
-        addDisciplinePanel.classList.toggle("is-hidden", true);
-        addDisciplinePanel.hidden = true;
-      }
-      if (disciplinesViewActions) disciplinesViewActions.classList.toggle("is-hidden", isEdit);
-      if (disciplinesEditActions) {
-        disciplinesEditActions.classList.toggle("is-hidden", !isEdit);
-        disciplinesEditActions.hidden = !isEdit;
-      }
-      if (editDisciplinesButton) editDisciplinesButton.setAttribute("aria-expanded", show);
-      if (cancelDisciplinesButton) cancelDisciplinesButton.setAttribute("aria-expanded", show);
-    };
-
-    if (editDisciplinesButton) {
-      editDisciplinesButton.addEventListener("click", () => setDisciplinesEditMode(true));
-    }
-    if (cancelDisciplinesButton) {
-      cancelDisciplinesButton.addEventListener("click", () => setDisciplinesEditMode(false));
-    }
-
-    const unitOptions = document.getElementById("admin-unit-options");
-    const unitNameInputs = document.querySelectorAll("input[data-unit-name]");
-    unitNameInputs.forEach((input) => {
-      const row = input.closest(".list-item") || input.closest("form");
-      const abbrInput = row ? row.querySelector("input[data-unit-abbr]") : null;
-      if (!abbrInput) return;
-      input.addEventListener("input", () => {
-        if (!unitOptions) return;
-        const match = Array.from(unitOptions.options).find((opt) => opt.value === input.value);
-        if (match) {
-          const abbr = match.getAttribute("data-abbr") || "";
-          if (abbr !== "") {
-            abbrInput.value = abbr;
-          }
-        }
-      });
-    });
-  </script>
-</body>
-</html>
+  <?php require __DIR__ . "/partials/footer.php"; ?>
+  <script src="js/admin.js"></script>
+  <?php require __DIR__ . "/partials/foot.php"; ?>
