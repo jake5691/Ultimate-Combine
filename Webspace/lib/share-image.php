@@ -221,8 +221,24 @@
   $disciplineTitleHeight = (int)round(22 * $scale);
   $disciplineGap = (int)round(14 * $scale);
 
-  $rowsOverall = max(1, count($filteredPlayers));
-  $heightOverall = 48 + ($rowsOverall * $lineHeight) + $cardPadding * 2;
+  $overallNameWrap = 22;
+  $disciplineNameWrap = 20;
+  $overallRowsHeight = 0;
+  foreach ($overallRankValues as $playerId => $score) {
+    foreach ($filteredPlayers as $player) {
+      if ((int)$player["id"] === (int)$playerId) {
+        $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+        $nameLines = uc_wrap_text($playerName, $overallNameWrap);
+        $lineCount = max(1, count($nameLines));
+        $overallRowsHeight += $lineCount * $lineHeight;
+        break;
+      }
+    }
+  }
+  if ($overallRowsHeight === 0) {
+    $overallRowsHeight = $lineHeight;
+  }
+  $heightOverall = 48 + $overallRowsHeight + $cardPadding * 2;
 
   $categoryBlocks = [];
   foreach ($assignedDisciplinesByCategory as $category => $categoryDisciplines) {
@@ -285,6 +301,7 @@
       foreach ($filteredPlayers as $player) {
         $playerId = (int)$player["id"];
         $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+        $nameLines = uc_wrap_text($playerName, $disciplineNameWrap);
         $value = $resultsByDiscipline[$discId][$playerId] ?? null;
         $numericValue = uc_value_to_float($value);
         if ($overallMode === "abs") {
@@ -309,6 +326,7 @@
         $rows[] = [
           "player_id" => $playerId,
           "name" => $playerName,
+          "name_lines" => $nameLines,
           "value" => $value,
           "points" => $points,
         ];
@@ -334,7 +352,15 @@
       $unitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
       $unitLabel = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
       $discLabel = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
-      $discHeight = $disciplineTitleHeight + (max(1, count($rows)) * $lineHeight);
+      $rowsHeight = 0;
+      foreach ($rows as $row) {
+        $lineCount = isset($row["name_lines"]) ? max(1, count($row["name_lines"])) : 1;
+        $rowsHeight += $lineCount * $lineHeight;
+      }
+      if ($rowsHeight === 0) {
+        $rowsHeight = $lineHeight;
+      }
+      $discHeight = $disciplineTitleHeight + $rowsHeight;
       if ($unitLabel !== "") {
         $discHeight += $unitLineHeight;
       }
@@ -1335,12 +1361,51 @@
       $summaryNameSize = (int)round(18 * $scale);
       $summaryMetaSize = (int)round(13 * $scale);
       $summaryLineGap = (int)round(8 * $scale);
-      $summaryHeight = ($summaryNameSize + $summaryLineGap) * 4;
-      $summaryHeight = max(0, $summaryHeight - $summaryLineGap);
+      $summaryNameLineHeight = $summaryNameSize + max($summaryLineGap, (int)round(8 * $scale));
+      $summaryNameToMetaGap = (int)round(8 * $scale);
+
+      $summaryMaxWidth = $cardWidth - ($radarSize + $summaryGap + ($cardPadding * 2));
+      $summaryNameWrap = max(10, (int)floor($summaryMaxWidth / max(1, ($summaryNameSize * 0.6))));
+      $summaryLinesA = uc_wrap_text($playerALabel, $summaryNameWrap);
+      $summaryLinesB = uc_wrap_text($playerBLabel, $summaryNameWrap);
+      $summaryBlockAHeight = max($summaryNameSize, $summaryNameLineHeight * count($summaryLinesA));
+      $summaryBlockBHeight = max($summaryNameSize, $summaryNameLineHeight * count($summaryLinesB));
+      $summaryHeight = $summaryBlockAHeight + $summaryNameToMetaGap + $summaryMetaSize + (int)round(14 * $scale) + $summaryBlockBHeight + $summaryNameToMetaGap + $summaryMetaSize;
       $summaryCardHeight = max($radarSize + ($cardPadding * 2), $summaryHeight + ($cardPadding * 2));
 
       $h2hTitleSize = (int)round(16 * $scale);
-      $h2hTitleHeight = (int)round(24 * $scale);
+      $baseH2hTitleHeight = (int)round(24 * $scale);
+      $h2hTitleHeight = $baseH2hTitleHeight;
+
+      $nameLine = $playerALabel . " vs. " . $playerBLabel;
+      $nameSize = $h2hTitleSize;
+      $minNameSize = (int)round(11 * $scale);
+      $maxNameWidth = $radarSize - (int)round(20 * $scale);
+      while ($nameSize > $minNameSize) {
+        [$nameWidth] = uc_gd_text_box($nameLine, $nameSize);
+        if ($nameWidth <= $maxNameWidth) {
+          break;
+        }
+        $nameSize -= 1;
+      }
+      $nameLines = [$nameLine];
+      [$nameWidth] = uc_gd_text_box($nameLine, $nameSize);
+      if ($nameWidth > $maxNameWidth) {
+        $headerWrap = max(12, (int)floor($maxNameWidth / max(1, ($nameSize * 0.6))));
+        $nameLines = array_merge(
+          uc_wrap_text($playerALabel, $headerWrap),
+          ["vs. " . $playerBLabel]
+        );
+        $wrapped = [];
+        foreach ($nameLines as $line) {
+          foreach (uc_wrap_text($line, $headerWrap) as $wrappedLine) {
+            $wrapped[] = $wrappedLine;
+          }
+        }
+        $nameLines = $wrapped;
+      }
+      $nameLineHeight = (int)round($nameSize + (6 * $scale));
+      $h2hTitleHeight = max($baseH2hTitleHeight, $nameLineHeight * count($nameLines));
       $height = $padding + $headerHeight + $cardGap + $h2hTitleHeight + $summaryCardHeight;
       foreach ($h2hCategoryBlocks as $block) {
         $height += $cardGap + $block["height"];
@@ -1402,20 +1467,12 @@
       uc_gd_text($image, $imageWidth - $padding, $y, $modeLabel, $accentDark, (int)round(13 * $scale), "right");
 
       $y += $headerHeight + $cardGap;
-      $nameLine = $playerALabel . " vs. " . $playerBLabel;
-      $nameSize = $h2hTitleSize;
-      $minNameSize = (int)round(11 * $scale);
-      $maxNameWidth = $radarSize - (int)round(20 * $scale);
-      while ($nameSize > $minNameSize) {
-        [$nameWidth] = uc_gd_text_box($nameLine, $nameSize);
-        if ($nameWidth <= $maxNameWidth) {
-          break;
-        }
-        $nameSize -= 1;
-      }
       $nameX = $x + (int)round($radarSize / 2) + $cardPadding;
       $nameY = $y + (int)round(2 * $scale);
-      uc_gd_text($image, $nameX, $nameY, $nameLine, $accentDark, $nameSize, "center");
+      foreach ($nameLines as $line) {
+        uc_gd_text($image, $nameX, $nameY, $line, $accentDark, $nameSize, "center");
+        $nameY += $nameLineHeight;
+      }
 
       $y += $h2hTitleHeight;
       imagefilledrectangle($image, $x, $y, $x + $cardWidth, $y + $summaryCardHeight, $white);
@@ -1448,23 +1505,48 @@
       $legendX = $radarX + (int)round(12 * $scale);
       $legendY = $radarY + (int)round(12 * $scale);
       $legendDot = (int)round(8 * $scale);
+      $legendFontSize = (int)round(11 * $scale);
+      $legendLineHeight = (int)round(16 * $scale);
+      $legendTextOffset = (int)round(12 * $scale);
+      $legendGroupGap = (int)round(6 * $scale);
+      $legendMaxWidth = $radarSize - (int)round(24 * $scale);
+      $legendWrap = max(8, (int)floor($legendMaxWidth / max(1, ($legendFontSize * 0.6))));
+      $legendLinesA = uc_wrap_text($playerALabel, $legendWrap);
+      $legendLinesB = uc_wrap_text($playerBLabel, $legendWrap);
+
       imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accent);
-      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), $playerALabel, $muted, (int)round(11 * $scale), "left");
-      $legendY += (int)round(18 * $scale);
+      $legendTextY = $legendY - $legendTextOffset;
+      foreach ($legendLinesA as $line) {
+        uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendTextY, $line, $muted, $legendFontSize, "left");
+        $legendTextY += $legendLineHeight;
+      }
+      $legendY = $legendTextY + $legendGroupGap;
+
       imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $accentDark);
-      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), $playerBLabel, $muted, (int)round(11 * $scale), "left");
-      $legendY += (int)round(18 * $scale);
+      $legendTextY = $legendY - $legendTextOffset;
+      foreach ($legendLinesB as $line) {
+        uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendTextY, $line, $muted, $legendFontSize, "left");
+        $legendTextY += $legendLineHeight;
+      }
+      $legendY = $legendTextY + $legendGroupGap;
+
       imagefilledellipse($image, $legendX, $legendY, $legendDot, $legendDot, $muted);
-      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - (int)round(10 * $scale), t("common.team", "Team"), $muted, (int)round(11 * $scale), "left");
+      uc_gd_text($image, $legendX + (int)round(10 * $scale), $legendY - $legendTextOffset, t("common.team", "Team"), $muted, $legendFontSize, "left");
 
       $summaryX = $radarX + $radarSize + $summaryGap;
       $summaryY = $y + $cardPadding;
-      uc_gd_text($image, $summaryX, $summaryY, $playerALabel, $ink, $summaryNameSize, "left");
-      $summaryY += $summaryNameSize + $summaryLineGap;
+      foreach ($summaryLinesA as $line) {
+        uc_gd_text($image, $summaryX, $summaryY, $line, $ink, $summaryNameSize, "left");
+        $summaryY += $summaryNameLineHeight;
+      }
+      $summaryY += $summaryNameToMetaGap;
       uc_gd_text($image, $summaryX, $summaryY, t("common.place", "Platz") . " " . $overallRankA . " · " . $overallPointsPrefix . uc_format_points($overallPointsA) . " " . t("common.points_abbr", "P"), $accentDark, $summaryMetaSize, "left");
       $summaryY += $summaryMetaSize + (int)round(14 * $scale);
-      uc_gd_text($image, $summaryX, $summaryY, $playerBLabel, $ink, $summaryNameSize, "left");
-      $summaryY += $summaryNameSize + $summaryLineGap;
+      foreach ($summaryLinesB as $line) {
+        uc_gd_text($image, $summaryX, $summaryY, $line, $ink, $summaryNameSize, "left");
+        $summaryY += $summaryNameLineHeight;
+      }
+      $summaryY += $summaryNameToMetaGap;
       uc_gd_text($image, $summaryX, $summaryY, t("common.place", "Platz") . " " . $overallRankB . " · " . $overallPointsPrefix . uc_format_points($overallPointsB) . " " . t("common.points_abbr", "P"), $accentDark, $summaryMetaSize, "left");
 
       $y += $summaryCardHeight + $cardGap;
@@ -1644,6 +1726,10 @@
     foreach ($filteredPlayers as $player) {
       if ((int)$player["id"] === (int)$playerId) {
         $playerName = trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? ""));
+        $nameLines = uc_wrap_text($playerName, $overallNameWrap);
+        if (empty($nameLines)) {
+          $nameLines = [$playerName];
+        }
         $rankLabel = $overallRanks[$playerId] ?? "-";
         $scoreLabel = ($overallMode === "avg" ? t("common.avg_prefix", "Ø ") : "") . uc_format_points($score) . " " . t("common.points_abbr", "P");
         $textX = $x + $cardPadding;
@@ -1660,12 +1746,23 @@
           imagefilledellipse($image, $circleX, $circleY, $circleSize, $circleSize, $rankColor);
           uc_gd_text($image, $circleX, $circleY - (int)round(6 * $scale), (string)$rankLabel, $whiteText, (int)round(11 * $scale), "center");
           $textX += (int)round(22 * $scale);
-          uc_gd_text($image, $textX, $rowY, $playerName, $ink, (int)round(12 * $scale), "left");
+          $lineY = $rowY;
+          foreach ($nameLines as $lineIndex => $line) {
+            uc_gd_text($image, $textX, $lineY, $line, $ink, (int)round(12 * $scale), "left");
+            $lineY += $lineHeight;
+          }
         } else {
-          uc_gd_text($image, $textX, $rowY, $rankLabel . ". " . $playerName, $ink, (int)round(12 * $scale), "left");
+          $firstLine = array_shift($nameLines);
+          $labelLine = $rankLabel . ". " . ($firstLine ?? $playerName);
+          uc_gd_text($image, $textX, $rowY, $labelLine, $ink, (int)round(12 * $scale), "left");
+          $lineY = $rowY + $lineHeight;
+          foreach ($nameLines as $line) {
+            uc_gd_text($image, $textX + (int)round(12 * $scale), $lineY, $line, $ink, (int)round(12 * $scale), "left");
+            $lineY += $lineHeight;
+          }
         }
         uc_gd_text($image, $x + $cardWidth - $cardPadding, $rowY, $scoreLabel, $ink, (int)round(12 * $scale), "right");
-        $rowY += $lineHeight;
+        $rowY += max(1, count($nameLines) + (in_array((int)$rankLabel, [1, 2, 3], true) ? 0 : 1)) * $lineHeight;
         break;
       }
     }
@@ -1697,6 +1794,10 @@
         foreach ($disc["rows"] as $row) {
           $rankLabel = $disc["ranks"][$row["player_id"]] ?? "-";
           $playerName = $row["name"];
+          $nameLines = $row["name_lines"] ?? uc_wrap_text($playerName, $disciplineNameWrap);
+          if (empty($nameLines)) {
+            $nameLines = [$playerName];
+          }
           $display = uc_display_value($row["value"], "-");
           if ($display !== "-" && $disc["unit_abbr"] !== "") {
             $display .= " " . $disc["unit_abbr"];
@@ -1716,12 +1817,23 @@
             imagefilledellipse($image, $circleX, $circleY, $circleSize, $circleSize, $rankColor);
             uc_gd_text($image, $circleX, $circleY - (int)round(6 * $scale), (string)$rankLabel, $whiteText, (int)round(10 * $scale), "center");
             $textX += (int)round(22 * $scale);
-            uc_gd_text($image, $textX, $rowY, $playerName, $ink, (int)round(11 * $scale), "left");
+            $lineY = $rowY;
+            foreach ($nameLines as $line) {
+              uc_gd_text($image, $textX, $lineY, $line, $ink, (int)round(11 * $scale), "left");
+              $lineY += $lineHeight;
+            }
           } else {
-            uc_gd_text($image, $textX, $rowY, $rankLabel . ". " . $playerName, $ink, (int)round(11 * $scale), "left");
+            $firstLine = array_shift($nameLines);
+            $labelLine = $rankLabel . ". " . ($firstLine ?? $playerName);
+            uc_gd_text($image, $textX, $rowY, $labelLine, $ink, (int)round(11 * $scale), "left");
+            $lineY = $rowY + $lineHeight;
+            foreach ($nameLines as $line) {
+              uc_gd_text($image, $textX + (int)round(10 * $scale), $lineY, $line, $ink, (int)round(11 * $scale), "left");
+              $lineY += $lineHeight;
+            }
           }
           uc_gd_text($image, $colX + $colWidth - $cardPadding, $rowY, $display . " · " . $pointsLabel, $ink, (int)round(11 * $scale), "right");
-          $rowY += $lineHeight;
+          $rowY += max(1, count($nameLines) + (in_array((int)$rankLabel, [1, 2, 3], true) ? 0 : 1)) * $lineHeight;
         }
         $cursorY = $rowY + $disciplineGap;
       }
