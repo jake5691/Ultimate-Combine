@@ -7,6 +7,12 @@
         const isHidden = target.classList.toggle("is-hidden");
         target.hidden = isHidden;
         btn.setAttribute("aria-expanded", String(!isHidden));
+        if (btn.hasAttribute("data-toggle-label")) {
+          const label = !isHidden ? btn.getAttribute("data-label-open") : btn.getAttribute("data-label-closed");
+          if (label) {
+            btn.textContent = label;
+          }
+        }
         if (!isHidden) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
         }

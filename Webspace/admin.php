@@ -18,6 +18,8 @@ $units = [];
 $globalDisciplines = [];
 $feedbackEntries = [];
 $teams = [];
+$broadcastSubject = "";
+$broadcastMessage = "";
 $validDirections = [
   "more" => t("common.more_is_better", "Mehr ist besser"),
   "less" => t("common.less_is_better", "Weniger ist besser"),
@@ -35,6 +37,56 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     session_destroy();
     header("Location: index.php");
     exit;
+  }
+
+  if ($action === "send_broadcast_email") {
+    $broadcastSubject = trim($_POST["broadcast_subject"] ?? "");
+    $broadcastMessage = trim($_POST["broadcast_message"] ?? "");
+    if ($broadcastSubject === "" || $broadcastMessage === "") {
+      $adminError = t("admin.mail.error.required", "Bitte Betreff und Nachricht angeben.");
+    } else {
+      $stmt = $pdo->prepare("SELECT contact FROM teams WHERE contact IS NOT NULL AND contact <> ''");
+      $stmt->execute();
+      $contacts = $stmt->fetchAll(PDO::FETCH_COLUMN);
+      $recipients = [];
+      foreach ($contacts as $contact) {
+        $email = trim((string)$contact);
+        if ($email !== "" && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+          $recipients[strtolower($email)] = $email;
+        }
+      }
+
+      if (empty($recipients)) {
+        $adminError = t("admin.mail.error.no_recipients", "Keine gültigen Empfänger gefunden.");
+      } else {
+        $sent = 0;
+        $failed = 0;
+        foreach ($recipients as $email) {
+          $mailError = null;
+          if (uc_smtp_send($env, $email, $broadcastSubject, $broadcastMessage, $mailError)) {
+            $sent++;
+          } else {
+            $failed++;
+          }
+        }
+        if ($sent === 0) {
+          $adminError = t("admin.mail.error.send_failed", "Mailversand fehlgeschlagen.");
+        } elseif ($failed > 0) {
+          $adminError = sprintf(
+            t("admin.mail.error.partial", "Mail teilweise gesendet (%d erfolgreich, %d fehlgeschlagen)."),
+            $sent,
+            $failed
+          );
+        } else {
+          $adminFeedback = sprintf(
+            t("admin.mail.feedback.sent", "Mail wurde an %d Empfänger gesendet."),
+            $sent
+          );
+          $broadcastSubject = "";
+          $broadcastMessage = "";
+        }
+      }
+    }
   }
 
   if ($action === "create_unit") {
@@ -867,7 +919,29 @@ require __DIR__ . "/partials/header-brand.php";
     </section>
 
     <section class="info">
-      <h2><?php echo htmlspecialchars(t("admin.teams.title", "Teams"), ENT_QUOTES, "UTF-8"); ?></h2>
+      <div class="card-header">
+        <h2><?php echo htmlspecialchars(t("admin.teams.title", "Teams"), ENT_QUOTES, "UTF-8"); ?></h2>
+        <div class="card-actions">
+          <button class="pill-button js-toggle" type="button" data-target="admin-broadcast" aria-expanded="false" aria-controls="admin-broadcast" data-toggle-label data-label-open="<?php echo htmlspecialchars(t("common.cancel", "Abbrechen"), ENT_QUOTES, "UTF-8"); ?>" data-label-closed="<?php echo htmlspecialchars(t("admin.mail.button", "Mail an alle"), ENT_QUOTES, "UTF-8"); ?>">
+            <?php echo htmlspecialchars(t("admin.mail.button", "Mail an alle"), ENT_QUOTES, "UTF-8"); ?>
+          </button>
+        </div>
+      </div>
+      <div id="admin-broadcast" class="is-hidden" hidden>
+        <form class="form" method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("admin.mail.confirm", "Mail wirklich an alle Teams senden?"), ENT_QUOTES, "UTF-8"); ?>');">
+          <input type="hidden" name="action" value="send_broadcast_email">
+          <label class="field">
+            <span><?php echo htmlspecialchars(t("admin.mail.subject", "Betreff"), ENT_QUOTES, "UTF-8"); ?></span>
+            <input type="text" name="broadcast_subject" value="<?php echo htmlspecialchars($broadcastSubject, ENT_QUOTES, "UTF-8"); ?>" required>
+          </label>
+          <label class="field">
+            <span><?php echo htmlspecialchars(t("admin.mail.message", "Nachricht"), ENT_QUOTES, "UTF-8"); ?></span>
+            <textarea name="broadcast_message" rows="6" required><?php echo htmlspecialchars($broadcastMessage, ENT_QUOTES, "UTF-8"); ?></textarea>
+          </label>
+          <p class="help"><?php echo htmlspecialchars(t("admin.mail.note", "Empfänger sind alle Teams mit hinterlegter Kontakt-E-Mail."), ENT_QUOTES, "UTF-8"); ?></p>
+          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("admin.mail.send", "Mail senden"), ENT_QUOTES, "UTF-8"); ?></button>
+        </form>
+      </div>
       <?php if (empty($teams)): ?>
         <p class="help"><?php echo htmlspecialchars(t("admin.teams.empty", "Noch keine Teams registriert."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
