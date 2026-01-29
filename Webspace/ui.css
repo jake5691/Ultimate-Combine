@@ -12,13 +12,13 @@
   --shadow: 0 24px 48px rgba(28, 24, 20, 0.12);
   --radius: 22px;
   --radius-sm: 14px;
-  --bg-overlay-1: rgba(247, 244, 239, 0.94);
-  --bg-overlay-2: rgba(247, 244, 239, 0.88);
+  --bg-overlay-1: rgba(247, 244, 239, 0.78);
+  --bg-overlay-2: rgba(247, 244, 239, 0.62);
   --bg-radial-1: #fff5e3;
   --bg-radial-2: #f1e7dc;
   --bg-radial-3: #efe3d6;
-  --grid-glow: rgba(255, 255, 255, 0.6);
-  --grid-line: rgba(31, 26, 20, 0.06);
+  --grid-glow: rgba(255, 255, 255, 0.35);
+  --grid-line: rgba(31, 26, 20, 0.035);
   --status-neu: #ff7b4b;
   --status-todo: #2c2a4a;
   --status-done: #2a9d6f;
@@ -36,13 +36,13 @@
     --accent: #ff7b4b;
     --accent-2: #8f89c7;
     --shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-    --bg-overlay-1: rgba(18, 16, 15, 0.92);
-    --bg-overlay-2: rgba(18, 16, 15, 0.88);
+    --bg-overlay-1: rgba(18, 16, 15, 0.78);
+    --bg-overlay-2: rgba(18, 16, 15, 0.65);
     --bg-radial-1: #2a2320;
     --bg-radial-2: #1d1917;
     --bg-radial-3: #141110;
-    --grid-glow: rgba(44, 42, 74, 0.2);
-    --grid-line: rgba(244, 237, 230, 0.08);
+    --grid-glow: rgba(44, 42, 74, 0.12);
+    --grid-line: rgba(244, 237, 230, 0.05);
     --status-neu: #ff7b4b;
     --status-todo: #8f89c7;
     --status-done: #46c08a;
@@ -60,13 +60,13 @@
   --accent: #ff7b4b;
   --accent-2: #8f89c7;
   --shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-  --bg-overlay-1: rgba(18, 16, 15, 0.92);
-  --bg-overlay-2: rgba(18, 16, 15, 0.88);
+  --bg-overlay-1: rgba(18, 16, 15, 0.78);
+  --bg-overlay-2: rgba(18, 16, 15, 0.65);
   --bg-radial-1: #2a2320;
   --bg-radial-2: #1d1917;
   --bg-radial-3: #141110;
-  --grid-glow: rgba(44, 42, 74, 0.2);
-  --grid-line: rgba(244, 237, 230, 0.08);
+  --grid-glow: rgba(44, 42, 74, 0.12);
+  --grid-line: rgba(244, 237, 230, 0.05);
 }
 
 :root[data-theme="light"] {
@@ -79,13 +79,13 @@
   --accent: #ff7b4b;
   --accent-2: #2c2a4a;
   --shadow: 0 24px 48px rgba(28, 24, 20, 0.12);
-  --bg-overlay-1: rgba(247, 244, 239, 0.94);
-  --bg-overlay-2: rgba(247, 244, 239, 0.88);
+  --bg-overlay-1: rgba(247, 244, 239, 0.78);
+  --bg-overlay-2: rgba(247, 244, 239, 0.62);
   --bg-radial-1: #fff5e3;
   --bg-radial-2: #f1e7dc;
   --bg-radial-3: #efe3d6;
-  --grid-glow: rgba(255, 255, 255, 0.6);
-  --grid-line: rgba(31, 26, 20, 0.06);
+  --grid-glow: rgba(255, 255, 255, 0.35);
+  --grid-line: rgba(31, 26, 20, 0.035);
 }
 
 * {
@@ -98,7 +98,7 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   background:
     linear-gradient(180deg, var(--bg-overlay-1), var(--bg-overlay-2)),
-    url("assets/FrisbeeCatch.png") center/cover no-repeat fixed,
+    url("assets/FrisbeeCatch_cut.png") top center/contain no-repeat,
     radial-gradient(circle at top, var(--bg-radial-1) 0%, var(--bg-radial-2) 40%, var(--bg-radial-3) 100%);
   color: var(--ink);
   min-height: 100vh;
