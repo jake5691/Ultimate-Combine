@@ -957,7 +957,9 @@ require __DIR__ . "/partials/header-brand.php";
             <h3><?php echo htmlspecialchars(t("team.disciplines.title", "Disziplinen"), ENT_QUOTES, "UTF-8"); ?></h3>
             <div class="card-actions">
               <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo $formatLabel($infoTexts["disciplines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["disciplines"]); ?>">i</button>
-              <button class="icon-button small js-toggle-global-disciplines" type="button" aria-pressed="false" aria-label="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-hide="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-show="<?php echo htmlspecialchars(t("team.disciplines.show_global", "Globale Disziplinen einblenden"), ENT_QUOTES, "UTF-8"); ?>">🌐</button>
+              <button class="icon-button small js-toggle-global-disciplines" type="button" aria-pressed="false" aria-label="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-hide="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-show="<?php echo htmlspecialchars(t("team.disciplines.show_global", "Globale Disziplinen einblenden"), ENT_QUOTES, "UTF-8"); ?>">
+                <span class="global-icon" aria-hidden="true">🌐</span>
+              </button>
               <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
             </div>
           </div>
