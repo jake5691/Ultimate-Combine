@@ -96,6 +96,8 @@ return [
   "team.info.players" => "Manage your roster with names, numbers, and positions.\nClick a player to edit.",
   "team.info.combines" => "Combines are single evaluation events.\nEach combine can track many players across disciplines.\nYou can create multiple combines per team.\nClick a combine to view details and enter results.",
   "team.info.disciplines" => "Disciplines are the exercises performed at a combine.\nEach discipline has a description, unit, and rating direction.\nDisciplines can be grouped into categories for overall scoring.\nClick a discipline to edit it. Global disciplines cannot be edited directly, but you can adopt them as team disciplines.",
+  "team.disciplines.hide_global" => "Hide global disciplines",
+  "team.disciplines.show_global" => "Show global disciplines",
   "team.error.player_required" => "Please fill all required player fields.",
   "team.error.player_exists" => "This player already exists.",
   "team.feedback.player_created" => "Player created.",

@@ -97,6 +97,41 @@
       }
     });
 
+    const globalToggle = document.querySelector(".js-toggle-global-disciplines");
+    const disciplinesList = document.getElementById("disciplines-list");
+    if (globalToggle && disciplinesList) {
+      const updateCategoryVisibility = (hideGlobal) => {
+        const blocks = disciplinesList.querySelectorAll("[data-category-block]");
+        blocks.forEach((block) => {
+          const items = block.querySelectorAll("[data-discipline-scope]");
+          const hasVisible = Array.from(items).some((item) => {
+            if (!hideGlobal) return true;
+            return item.dataset.disciplineScope !== "global";
+          });
+          block.classList.toggle("is-hidden", !hasVisible);
+          block.hidden = !hasVisible;
+        });
+      };
+
+      const setGlobalHidden = (hideGlobal) => {
+        disciplinesList.classList.toggle("is-hide-global", hideGlobal);
+        globalToggle.setAttribute("aria-pressed", String(hideGlobal));
+        globalToggle.classList.toggle("is-muted", hideGlobal);
+        const label = hideGlobal ? globalToggle.dataset.labelShow : globalToggle.dataset.labelHide;
+        if (label) {
+          globalToggle.setAttribute("aria-label", label);
+        }
+        updateCategoryVisibility(hideGlobal);
+      };
+
+      globalToggle.addEventListener("click", () => {
+        const hideGlobal = !disciplinesList.classList.contains("is-hide-global");
+        setGlobalHidden(hideGlobal);
+      });
+
+      setGlobalHidden(false);
+    }
+
     const flashMessage = document.querySelector(".js-flash");
     if (flashMessage) {
       window.setTimeout(() => {

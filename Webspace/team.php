@@ -957,18 +957,22 @@ require __DIR__ . "/partials/header-brand.php";
             <h3><?php echo htmlspecialchars(t("team.disciplines.title", "Disziplinen"), ENT_QUOTES, "UTF-8"); ?></h3>
             <div class="card-actions">
               <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo $formatLabel($infoTexts["disciplines"]); ?>" aria-expanded="false" data-tooltip="<?php echo $formatTooltip($infoTexts["disciplines"]); ?>">i</button>
+              <button class="icon-button small js-toggle-global-disciplines" type="button" aria-pressed="false" aria-label="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-hide="<?php echo htmlspecialchars(t("team.disciplines.hide_global", "Globale Disziplinen ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-show="<?php echo htmlspecialchars(t("team.disciplines.show_global", "Globale Disziplinen einblenden"), ENT_QUOTES, "UTF-8"); ?>">
+                <span class="global-icon" aria-hidden="true">🌐</span>
+              </button>
               <button class="icon-button small js-toggle" type="button" data-target="create-discipline" aria-expanded="false" aria-controls="create-discipline">+</button>
             </div>
           </div>
           <?php if (empty($disciplines)): ?>
             <p class="help"><?php echo htmlspecialchars(t("team.disciplines.empty", "Noch keine Disziplinen angelegt."), ENT_QUOTES, "UTF-8"); ?></p>
           <?php else: ?>
-            <?php foreach ($disciplinesByCategory as $category => $categoryDisciplines): ?>
-              <div class="category-block">
-                <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
-                <ul class="list">
-                  <?php foreach ($categoryDisciplines as $discipline): ?>
-                    <li class="list-item">
+            <div class="disciplines-list" id="disciplines-list">
+              <?php foreach ($disciplinesByCategory as $category => $categoryDisciplines): ?>
+                <div class="category-block" data-category-block>
+                  <h4 class="category-title"><?php echo htmlspecialchars($category, ENT_QUOTES, "UTF-8"); ?></h4>
+                  <ul class="list">
+                    <?php foreach ($categoryDisciplines as $discipline): ?>
+                      <li class="list-item" data-discipline-scope="<?php echo $discipline["team_id"] === null ? "global" : "team"; ?>">
                       <div>
                         <strong>
                           <?php if ($discipline["team_id"] !== null): ?>
@@ -1001,11 +1005,12 @@ require __DIR__ . "/partials/header-brand.php";
                       <?php if ($discipline["team_id"] === null): ?>
                         <a class="pill-button is-muted" href="?edit=discipline&clone=<?php echo (int)$discipline["id"]; ?>#edit"><?php echo htmlspecialchars(t("team.disciplines.adapt", "Anpassen"), ENT_QUOTES, "UTF-8"); ?></a>
                       <?php endif; ?>
-                    </li>
-                  <?php endforeach; ?>
-                </ul>
-              </div>
-            <?php endforeach; ?>
+                      </li>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+              <?php endforeach; ?>
+            </div>
           <?php endif; ?>
         </div>
       </div>

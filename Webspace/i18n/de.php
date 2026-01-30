@@ -96,6 +96,8 @@ return [
   "team.info.players" => "Hier pflegst du deinen Kader mit Namen, Nummern und Positionen.\nKlicke auf einen Spieler, um diesen zu bearbeiten.",
   "team.info.combines" => "Combines sind einzelne Leistungsbewertungsevents.\nPro Combine können beliebig viele Spieler in verschiedenen Disziplinen erfasst werden.\nEs können mehrere Combines pro Team angelegt werden.\nKlicke auf ein Combine, um Details zu sehen und Ergebnisse zu erfassen.",
   "team.info.disciplines" => "Disziplinen sind die verschiedenen Übungen, die bei einem Combine durchgeführt werden können (z. B. 40-Meter-Sprint, Weitsprung, etc.).\nJede Disziplin hat eine Beschreibung, eine Einheit (z. B. Sekunden, Meter) und eine Bewertungsrichtung (mehr ist besser / weniger ist besser).\nDisziplinen können in Kategorien zusammengefasst werden (z. B. Sprint, Sprung), diese bilden dann die Grundlage für die Gesamtbewertung eines Combines.\nKlicke auf eine Disziplin, um diese zu bearbeiten. Globale Disziplinen können nicht direkt bearbeitet werden, aber du kannst sie übernehmen und als Team-Disziplin anpassen.",
+  "team.disciplines.hide_global" => "Globale Disziplinen ausblenden",
+  "team.disciplines.show_global" => "Globale Disziplinen einblenden",
   "team.error.player_required" => "Bitte alle Pflichtfelder fuer den Spieler korrekt ausfuellen.",
   "team.error.player_exists" => "Dieser Spieler existiert bereits.",
   "team.feedback.player_created" => "Spieler wurde angelegt.",

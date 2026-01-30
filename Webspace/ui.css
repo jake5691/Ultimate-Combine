@@ -1035,6 +1035,31 @@ body {
   letter-spacing: 0.12em;
   color: var(--muted);
 }
+
+.disciplines-list.is-hide-global [data-discipline-scope="global"] {
+  display: none;
+}
+
+.category-block.is-hidden {
+  display: none;
+}
+
+.js-toggle-global-disciplines.is-muted .global-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.js-toggle-global-disciplines.is-muted .global-icon::after {
+  content: "";
+  position: absolute;
+  width: 140%;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-22deg);
+}
+
 .action-row {
   display: flex;
   gap: 12px;
