@@ -741,6 +741,11 @@ body {
   margin-left: 8px;
 }
 
+.list--teams-admin .meta {
+  display: block;
+  word-break: break-word;
+}
+
 .badge {
   background: var(--accent);
   color: #fff;
@@ -871,7 +876,30 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
+  .list--teams-admin .list-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .list--teams-admin .list-item > div,
+  .list--teams-admin .result-meta {
+    width: 100%;
+  }
+
+  .list--teams-admin .result-meta {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .list--teams-admin .result-meta .badge {
+    width: 100%;
+  }
+
+  .list--teams-admin .result-meta form {
+    margin-left: 0;
+  }
+
   .topbar {
     padding: 14px 16px;
     grid-template-columns: auto 1fr;

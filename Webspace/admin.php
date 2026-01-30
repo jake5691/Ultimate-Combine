@@ -861,7 +861,7 @@ require __DIR__ . "/partials/header-brand.php";
       <?php if (empty($feedbackEntries)): ?>
         <p class="help"><?php echo htmlspecialchars(t("admin.feedback.empty", "Noch kein Feedback eingegangen."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
-        <ul class="list">
+        <ul class="list list--teams-admin">
           <?php foreach ($feedbackEntries as $entry): ?>
             <?php $previewLine = strtok((string)($entry["message"] ?? ""), "\n"); ?>
             <li class="list-item">
@@ -945,7 +945,7 @@ require __DIR__ . "/partials/header-brand.php";
       <?php if (empty($teams)): ?>
         <p class="help"><?php echo htmlspecialchars(t("admin.teams.empty", "Noch keine Teams registriert."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
-        <ul class="list">
+        <ul class="list list--teams-admin">
           <?php foreach ($teams as $team): ?>
             <li class="list-item">
               <div>
