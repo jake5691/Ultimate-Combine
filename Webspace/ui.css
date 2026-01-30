@@ -1035,6 +1035,15 @@ body {
   letter-spacing: 0.12em;
   color: var(--muted);
 }
+
+.disciplines-list.is-hide-global [data-discipline-scope="global"] {
+  display: none;
+}
+
+.category-block.is-hidden {
+  display: none;
+}
+
 .action-row {
   display: flex;
   gap: 12px;
