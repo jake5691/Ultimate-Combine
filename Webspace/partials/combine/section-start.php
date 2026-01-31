@@ -71,7 +71,13 @@
 
       <?php if (!$startError && !empty($assignedDisciplines) && !empty($assignedPlayers) && $activeDisciplineId): ?>
         <section class="auth-card">
-          <h3><?php echo htmlspecialchars(t("combine.section.capture_results", "Ergebnisse erfassen"), ENT_QUOTES, "UTF-8"); ?></h3>
+          <div class="card-header">
+            <h3><?php echo htmlspecialchars(t("combine.section.capture_results", "Ergebnisse erfassen"), ENT_QUOTES, "UTF-8"); ?></h3>
+            <div class="card-actions">
+              <button class="pill-button" type="button" disabled><?php echo htmlspecialchars(t("combine.results.csv_upload", "CSV Ergebnisse hochladen"), ENT_QUOTES, "UTF-8"); ?></button>
+              <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>">i</button>
+            </div>
+          </div>
           <?php if (!empty($activeDisciplineUnit)): ?>
             <p class="help"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
