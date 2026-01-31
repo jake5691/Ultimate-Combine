@@ -511,6 +511,8 @@ $saveNotice = null;
 $startError = null;
 $csvNotice = null;
 $skipStartLoad = false;
+$csvImported = false;
+$csvOptionsByPlayer = [];
 $filterGender = "";
 $filterPosition = "";
 $genderOptions = [
@@ -1062,14 +1064,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     }
 
     if (!$startError) {
-      $handle = fopen($file["tmp_name"], "r");
-      if (!$handle) {
-        $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
-      } else {
-        $firstLine = fgets($handle);
-        if ($firstLine === false) {
+        $handle = fopen($file["tmp_name"], "r");
+        if (!$handle) {
           $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
         } else {
+          $firstLine = fgets($handle);
+          if ($firstLine === false) {
+            $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
+          } else {
           $delimiter = substr_count($firstLine, ";") >= substr_count($firstLine, ",") ? ";" : ",";
           rewind($handle);
           $header = fgetcsv($handle, 0, $delimiter);
@@ -1088,6 +1090,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           if ($athleteIndex === null || $timeIndex === null) {
             $startError = t("combine.results.csv_upload_missing_columns", "CSV Header muss \"Athlet\" und \"Finale Zeit\" enthalten.");
           } else {
+            $availableColumns = [$timeIndex];
+            $extraColumns = [];
+            if (is_array($header)) {
+              for ($i = $timeIndex + 1; $i < count($header); $i++) {
+                $label = trim((string)($header[$i] ?? ""));
+                if ($label !== "") {
+                  $extraColumns[] = $i;
+                }
+              }
+            }
+            if (!empty($extraColumns)) {
+              $availableColumns = array_merge($availableColumns, $extraColumns);
+            }
             $playerByName = [];
             foreach ($assignedPlayers as $player) {
               $fullName = trim((string)($player["first_name"] ?? "")) . " " . trim((string)($player["last_name"] ?? ""));
@@ -1096,6 +1111,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
                 $playerByName[$normalized] = (int)$player["id"];
               }
             }
+            $normalizeCsvValue = static function ($value): ?string {
+              if (is_string($value)) {
+                $value = trim($value);
+                $value = preg_replace('/\s*s\s*$/i', '', $value);
+              }
+              return uc_normalize_value($value);
+            };
             while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
               $athlete = trim((string)($row[$athleteIndex] ?? ""));
               if ($athlete === "") {
@@ -1106,15 +1128,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
               if (!$playerId) {
                 continue;
               }
-              $valueRaw = $row[$timeIndex] ?? null;
-              if (is_string($valueRaw)) {
-                $valueRaw = trim($valueRaw);
-                $valueRaw = preg_replace('/\s*s\s*$/i', '', $valueRaw);
+              foreach ($availableColumns as $colIndex) {
+                $valueRaw = $row[$colIndex] ?? null;
+                $normalizedValue = $normalizeCsvValue($valueRaw);
+                if ($normalizedValue === null) {
+                  continue;
+                }
+                $label = trim((string)($header[$colIndex] ?? ""));
+                if ($label === "") {
+                  $label = t("combine.results.csv_column", "Spalte");
+                }
+                $csvOptionsByPlayer[$playerId][] = [
+                  "label" => $label,
+                  "value" => $normalizedValue,
+                  "raw" => is_scalar($valueRaw) ? (string)$valueRaw : "",
+                ];
+                if ($colIndex === $timeIndex) {
+                  $resultValues[$playerId] = $normalizedValue;
+                }
               }
-              $resultValues[$playerId] = uc_normalize_value($valueRaw);
             }
             $csvNotice = t("combine.results.csv_upload_success", "CSV importiert. Bitte speichern, um die Ergebnisse zu übernehmen.");
             $skipStartLoad = true;
+            $csvImported = true;
           }
         }
         fclose($handle);

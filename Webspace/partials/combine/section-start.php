@@ -101,7 +101,34 @@
                     <?php echo " " . htmlspecialchars($player["last_name"], ENT_QUOTES, "UTF-8"); ?>
                   </span>
                   <span class="result-value">
-                    <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
+                    <?php if (!empty($csvImported)): ?>
+                      <?php
+                        $playerOptions = $csvOptionsByPlayer[$playerId] ?? [];
+                        $currentValue = $resultValues[$playerId] ?? null;
+                        $currentLabel = $currentValue !== null ? uc_display_value($currentValue) : "";
+                      ?>
+                      <select class="result-input" name="result[<?php echo $playerId; ?>]">
+                        <option value=""><?php echo htmlspecialchars(t("combine.results.csv_select", "Bitte wählen"), ENT_QUOTES, "UTF-8"); ?></option>
+                        <?php if (empty($playerOptions) && $currentValue !== null): ?>
+                          <option value="<?php echo htmlspecialchars((string)$currentValue, ENT_QUOTES, "UTF-8"); ?>" selected>
+                            <?php echo htmlspecialchars(t("combine.results.current_value", "Aktuell") . ": " . $currentLabel, ENT_QUOTES, "UTF-8"); ?>
+                          </option>
+                        <?php endif; ?>
+                        <?php foreach ($playerOptions as $option): ?>
+                          <?php
+                            $optionValue = (string)($option["value"] ?? "");
+                            $optionLabel = trim((string)($option["label"] ?? ""));
+                            $optionRaw = trim((string)($option["raw"] ?? ""));
+                            $optionText = $optionLabel !== "" ? $optionLabel . ": " . $optionRaw : $optionRaw;
+                          ?>
+                          <option value="<?php echo htmlspecialchars($optionValue, ENT_QUOTES, "UTF-8"); ?>"<?php echo $currentValue !== null && (string)$currentValue === $optionValue ? " selected" : ""; ?>>
+                            <?php echo htmlspecialchars($optionText, ENT_QUOTES, "UTF-8"); ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    <?php else: ?>
+                      <input class="result-input" type="text" name="result[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars(uc_display_value($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
+                    <?php endif; ?>
                     <?php if (!empty($activeDisciplineUnitAbbr)): ?>
                       <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnitAbbr, ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
