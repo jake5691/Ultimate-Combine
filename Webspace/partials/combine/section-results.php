@@ -8,6 +8,8 @@
           <div class="card-actions">
             <button class="pill-button is-muted" type="button" data-target="results-filters" aria-expanded="false"><?php echo htmlspecialchars(t("combine.filter.title", "Filter"), ENT_QUOTES, "UTF-8"); ?></button>
             <button class="pill-button is-share" type="button" data-target="share-combine" aria-expanded="false"><?php echo htmlspecialchars(t("common.share", "Teilen"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="pill-button" type="button" disabled><?php echo htmlspecialchars(t("combine.results.csv_upload", "CSV Ergebnisse hochladen"), ENT_QUOTES, "UTF-8"); ?></button>
+            <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>">i</button>
           </div>
         </div>
         <?php if ($filterGender !== "" || $filterPosition !== ""): ?>

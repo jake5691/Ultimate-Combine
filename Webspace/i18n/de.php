@@ -188,6 +188,8 @@ return [
   "combine.csv.jersey" => "Trikotnummer",
   "combine.csv.gender" => "Geschlecht",
   "combine.csv.positions" => "Positionen",
+  "combine.results.csv_upload" => "CSV Ergebnisse hochladen",
+  "combine.results.csv_upload_info" => "Upload der Ergebnisse mittels CSV-Datei aus der Photofinish-App. Bitte beachten, dass die Trikotnummer zum matching genutzt wird.",
   "combine.error.not_found" => "Combine wurde nicht gefunden.",
   "combine.error.assignments_load_failed" => "Zuordnungen konnten nicht geladen werden.",
   "combine.error.required" => "Bitte Name und Datum fuer das Combine angeben.",

@@ -188,6 +188,8 @@ return [
   "combine.csv.jersey" => "Jersey number",
   "combine.csv.gender" => "Gender",
   "combine.csv.positions" => "Positions",
+  "combine.results.csv_upload" => "Upload CSV results",
+  "combine.results.csv_upload_info" => "Upload using the results CSV from the Photofinish-App. Be aware that jersey number is used for matching.",
   "combine.error.not_found" => "Combine not found.",
   "combine.error.assignments_load_failed" => "Assignments could not be loaded.",
   "combine.error.required" => "Please provide name and date for the combine.",
