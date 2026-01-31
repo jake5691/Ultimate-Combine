@@ -105,12 +105,13 @@
                       <?php
                         $playerOptions = $csvOptionsByPlayer[$playerId] ?? [];
                         $currentValue = $resultValues[$playerId] ?? null;
-                        $currentLabel = $currentValue !== null ? uc_display_value($currentValue) : "";
+                        $currentDbValue = $resultOriginalValues[$playerId] ?? null;
+                        $currentLabel = $currentDbValue !== null ? uc_display_value($currentDbValue) : "";
                       ?>
                       <select class="result-input" name="result[<?php echo $playerId; ?>]">
                         <option value=""><?php echo htmlspecialchars(t("combine.results.csv_select", "Bitte wählen"), ENT_QUOTES, "UTF-8"); ?></option>
-                        <?php if (empty($playerOptions) && $currentValue !== null): ?>
-                          <option value="<?php echo htmlspecialchars((string)$currentValue, ENT_QUOTES, "UTF-8"); ?>" selected>
+                        <?php if ($currentDbValue !== null): ?>
+                          <option value="<?php echo htmlspecialchars((string)$currentDbValue, ENT_QUOTES, "UTF-8"); ?>"<?php echo $currentValue !== null && (string)$currentValue === (string)$currentDbValue ? " selected" : ""; ?>>
                             <?php echo htmlspecialchars(t("combine.results.current_value", "Aktuell") . ": " . $currentLabel, ENT_QUOTES, "UTF-8"); ?>
                           </option>
                         <?php endif; ?>
