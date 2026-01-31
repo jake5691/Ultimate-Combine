@@ -133,7 +133,7 @@
                       <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnitAbbr, ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
                   </span>
-                  <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
+                  <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultOriginalValues[$playerId] ?? ($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
                 </label>
               <?php endforeach; ?>
             </div>

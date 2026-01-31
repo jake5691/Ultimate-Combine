@@ -501,10 +501,11 @@ $assignedDisciplineIds = [];
   $assignedDisciplines = [];
   $combineDisciplineWeights = [];
   $combineCategoryWeights = [];
-  $resultsByDiscipline = [];
-  $resultValues = [];
-  $formDisciplineWeights = [];
-  $formCategoryWeights = [];
+$resultsByDiscipline = [];
+$resultValues = [];
+$resultOriginalValues = [];
+$formDisciplineWeights = [];
+$formCategoryWeights = [];
 $conflicts = [];
 $needsConfirmation = false;
 $saveNotice = null;
@@ -1057,6 +1058,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
           foreach ($stmt->fetchAll() as $row) {
             $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
           }
+          $resultOriginalValues = $resultValues;
         } catch (Throwable $e) {
           $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
         }
@@ -1203,6 +1205,7 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
         foreach ($stmt->fetchAll() as $row) {
           $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
         }
+        $resultOriginalValues = $resultValues;
       } catch (Throwable $e) {
         $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
