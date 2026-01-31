@@ -1354,9 +1354,12 @@ body {
 }
 
 .csv-upload-input {
-  font-size: 0.9rem;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
-
 .site-footer {
   display: flex;
   justify-content: flex-start;

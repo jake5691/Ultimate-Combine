@@ -347,4 +347,19 @@
     document.addEventListener("click", () => {
       closeAllInfos();
     });
+
+    const csvTriggers = document.querySelectorAll(".csv-upload-trigger");
+    csvTriggers.forEach((trigger) => {
+      const form = trigger.closest("form");
+      const input = form ? form.querySelector(".csv-upload-input") : null;
+      if (!input || !form) return;
+      trigger.addEventListener("click", () => {
+        input.click();
+      });
+      input.addEventListener("change", () => {
+        if (input.files && input.files.length) {
+          form.submit();
+        }
+      });
+    });
   

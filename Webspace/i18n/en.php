@@ -188,7 +188,7 @@ return [
   "combine.csv.jersey" => "Jersey number",
   "combine.csv.gender" => "Gender",
   "combine.csv.positions" => "Positions",
-  "combine.results.csv_upload" => "Upload CSV results",
+  "combine.results.csv_upload" => "Import",
   "combine.results.csv_upload_info" => "CSV header: Athlet, Finale Zeit. Values are applied to the selected discipline.",
   "combine.results.csv_select" => "Please select",
   "combine.results.current_value" => "Current",

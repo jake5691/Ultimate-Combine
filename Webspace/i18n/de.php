@@ -188,7 +188,7 @@ return [
   "combine.csv.jersey" => "Trikotnummer",
   "combine.csv.gender" => "Geschlecht",
   "combine.csv.positions" => "Positionen",
-  "combine.results.csv_upload" => "CSV Ergebnisse hochladen",
+  "combine.results.csv_upload" => "importieren",
   "combine.results.csv_upload_info" => "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen.",
   "combine.results.csv_select" => "Bitte wählen",
   "combine.results.current_value" => "Aktuell",
