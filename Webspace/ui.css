@@ -1346,6 +1346,17 @@ body {
   font-weight: 600;
 }
 
+.csv-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.csv-upload-input {
+  font-size: 0.9rem;
+}
+
 .site-footer {
   display: flex;
   justify-content: flex-start;

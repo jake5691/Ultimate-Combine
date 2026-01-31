@@ -74,12 +74,20 @@
           <div class="card-header">
             <h3><?php echo htmlspecialchars(t("combine.section.capture_results", "Ergebnisse erfassen"), ENT_QUOTES, "UTF-8"); ?></h3>
             <div class="card-actions">
-              <button class="pill-button" type="button" disabled><?php echo htmlspecialchars(t("combine.results.csv_upload", "CSV Ergebnisse hochladen"), ENT_QUOTES, "UTF-8"); ?></button>
-              <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV Upload folgt später. Format: Spieler, Disziplin, Ergebnis."), ENT_QUOTES, "UTF-8"); ?>">i</button>
+              <form class="csv-upload" method="post" action="" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_results_csv">
+                <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">
+                <input class="csv-upload-input" type="file" name="results_csv" accept=".csv,text/csv" required>
+                <button class="pill-button" type="submit"><?php echo htmlspecialchars(t("combine.results.csv_upload", "CSV Ergebnisse hochladen"), ENT_QUOTES, "UTF-8"); ?></button>
+              </form>
+              <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>">i</button>
             </div>
           </div>
           <?php if (!empty($activeDisciplineUnit)): ?>
             <p class="help"><?php echo htmlspecialchars($activeDisciplineUnit, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
+          <?php if (!empty($csvNotice)): ?>
+            <p class="help"><?php echo htmlspecialchars($csvNotice, ENT_QUOTES, "UTF-8"); ?></p>
           <?php endif; ?>
           <form class="form" method="post" action="">
             <input type="hidden" name="action" value="save_results">

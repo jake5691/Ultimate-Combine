@@ -509,6 +509,8 @@ $conflicts = [];
 $needsConfirmation = false;
 $saveNotice = null;
 $startError = null;
+$csvNotice = null;
+$skipStartLoad = false;
 $filterGender = "";
 $filterPosition = "";
 $genderOptions = [
@@ -1017,9 +1019,111 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       }
     }
   }
+
+  if ($action === "upload_results_csv" && !$combineError) {
+    $mode = "start";
+    $activeDisciplineId = filter_var($_POST["discipline_id"] ?? null, FILTER_VALIDATE_INT);
+    $disciplineAllowed = false;
+    foreach ($assignedDisciplines as $discipline) {
+      if ((int)$discipline["id"] === (int)$activeDisciplineId) {
+        $disciplineAllowed = true;
+        $activeDisciplineDescription = $discipline["description"] ?? "";
+        $activeDisciplineUnit = uc_format_unit_label($discipline["unit"] ?? "", $unitAbbrMap);
+        $activeDisciplineUnitAbbr = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+        break;
+      }
+    }
+
+    if (!$activeDisciplineId || !$disciplineAllowed) {
+      $startError = t("combine.error.invalid_discipline", "Disziplin ist ungültig.");
+    } else {
+      $file = $_FILES["results_csv"] ?? null;
+      if (!$file || !isset($file["tmp_name"]) || !is_uploaded_file($file["tmp_name"])) {
+        $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
+      } else {
+        $resultValues = [];
+        try {
+          $stmt = $pdo->prepare(
+            "SELECT player_id, result_value
+             FROM combine_results
+             WHERE combine_id = :combine_id AND discipline_id = :discipline_id"
+          );
+          $stmt->execute([
+            ":combine_id" => $combineId,
+            ":discipline_id" => $activeDisciplineId,
+          ]);
+          foreach ($stmt->fetchAll() as $row) {
+            $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
+          }
+        } catch (Throwable $e) {
+          $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
+        }
+      }
+    }
+
+    if (!$startError) {
+      $handle = fopen($file["tmp_name"], "r");
+      if (!$handle) {
+        $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
+      } else {
+        $firstLine = fgets($handle);
+        if ($firstLine === false) {
+          $startError = t("combine.results.csv_upload_error", "CSV konnte nicht gelesen werden.");
+        } else {
+          $delimiter = substr_count($firstLine, ";") >= substr_count($firstLine, ",") ? ";" : ",";
+          rewind($handle);
+          $header = fgetcsv($handle, 0, $delimiter);
+          if (is_array($header)) {
+            $header[0] = preg_replace('/^\xEF\xBB\xBF/', "", (string)$header[0]);
+          }
+          $headerMap = [];
+          if (is_array($header)) {
+            foreach ($header as $index => $label) {
+              $normalized = mb_strtolower(trim((string)$label));
+              $headerMap[$normalized] = $index;
+            }
+          }
+          $athleteIndex = $headerMap["athlet"] ?? null;
+          $timeIndex = $headerMap["finale zeit"] ?? null;
+          if ($athleteIndex === null || $timeIndex === null) {
+            $startError = t("combine.results.csv_upload_missing_columns", "CSV Header muss \"Athlet\" und \"Finale Zeit\" enthalten.");
+          } else {
+            $playerByName = [];
+            foreach ($assignedPlayers as $player) {
+              $fullName = trim((string)($player["first_name"] ?? "")) . " " . trim((string)($player["last_name"] ?? ""));
+              $normalized = mb_strtolower(preg_replace('/\s+/', " ", trim($fullName)));
+              if ($normalized !== "") {
+                $playerByName[$normalized] = (int)$player["id"];
+              }
+            }
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+              $athlete = trim((string)($row[$athleteIndex] ?? ""));
+              if ($athlete === "") {
+                continue;
+              }
+              $normalizedAthlete = mb_strtolower(preg_replace('/\s+/', " ", $athlete));
+              $playerId = $playerByName[$normalizedAthlete] ?? null;
+              if (!$playerId) {
+                continue;
+              }
+              $valueRaw = $row[$timeIndex] ?? null;
+              if (is_string($valueRaw)) {
+                $valueRaw = trim($valueRaw);
+                $valueRaw = preg_replace('/\s*s\s*$/i', '', $valueRaw);
+              }
+              $resultValues[$playerId] = uc_normalize_value($valueRaw);
+            }
+            $csvNotice = t("combine.results.csv_upload_success", "CSV importiert. Bitte speichern, um die Ergebnisse zu übernehmen.");
+            $skipStartLoad = true;
+          }
+        }
+        fclose($handle);
+      }
+    }
+  }
 }
 
-if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation && !$startError) {
+if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation && !$startError && !$skipStartLoad) {
   if (empty($assignedDisciplines) || empty($assignedPlayers)) {
     $startError = t("combine.error.assign_before_start", "Bitte zuerst Spieler und Disziplinen zuordnen.");
   } else {
