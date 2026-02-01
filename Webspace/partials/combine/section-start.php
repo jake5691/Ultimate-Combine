@@ -71,9 +71,9 @@
 
       <?php if (!$startError && !empty($assignedDisciplines) && !empty($assignedPlayers) && $activeDisciplineId): ?>
         <section class="auth-card">
-          <div class="card-header">
+          <div class="card-header card-header--stack">
             <h3><?php echo htmlspecialchars(t("combine.section.capture_results", "Ergebnisse erfassen"), ENT_QUOTES, "UTF-8"); ?></h3>
-            <div class="card-actions">
+            <div class="card-actions card-actions--csv">
               <form class="csv-upload" method="post" action="" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="upload_results_csv">
                 <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">

@@ -601,6 +601,11 @@ body {
   max-width: 100%;
 }
 
+.card-actions--csv {
+  justify-content: flex-end;
+  flex: 1 1 auto;
+}
+
 .info-icon {
   border: 1px solid rgba(31, 26, 20, 0.35);
   background: var(--surface);
@@ -1351,6 +1356,7 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .csv-upload-input {
@@ -1359,6 +1365,44 @@ body {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .result-item {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .result-value {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .result-input {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .card-header--stack {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .card-actions--csv {
+    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .csv-upload {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .csv-upload-trigger {
+    width: 100%;
+  }
 }
 .site-footer {
   display: flex;
