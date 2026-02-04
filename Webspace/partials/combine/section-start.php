@@ -23,22 +23,22 @@
                 <?php endforeach; ?>
               </select>
             </label>
-            <?php if (!empty($activeDisciplineDescription)): ?>
-              <p class="help"><?php echo htmlspecialchars($activeDisciplineDescription, ENT_QUOTES, "UTF-8"); ?></p>
-            <?php endif; ?>
-            <?php if ($activeDisciplineId): ?>
-              <div class="card-actions card-actions--csv">
-                <form class="csv-upload" method="post" action="" enctype="multipart/form-data">
-                  <input type="hidden" name="action" value="upload_results_csv">
-                  <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">
-                  <input class="csv-upload-input" type="file" name="results_csv" accept=".csv,text/csv" required>
-                  <button class="pill-button csv-upload-trigger" type="button"><?php echo htmlspecialchars(t("combine.results.csv_upload", "importieren"), ENT_QUOTES, "UTF-8"); ?></button>
-                </form>
-                <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>&share=entry_csv"><?php echo htmlspecialchars(t("combine.results.csv_download", "CSV herunterladen"), ENT_QUOTES, "UTF-8"); ?></a>
-                <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>">i</button>
-              </div>
-            <?php endif; ?>
           </form>
+          <?php if (!empty($activeDisciplineDescription)): ?>
+            <p class="help"><?php echo htmlspecialchars($activeDisciplineDescription, ENT_QUOTES, "UTF-8"); ?></p>
+          <?php endif; ?>
+          <?php if ($activeDisciplineId): ?>
+            <div class="card-actions card-actions--csv">
+              <form class="csv-upload" method="post" action="" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_results_csv">
+                <input type="hidden" name="discipline_id" value="<?php echo (int)$activeDisciplineId; ?>">
+                <input class="csv-upload-input" type="file" name="results_csv" accept=".csv,text/csv" required>
+                <button class="pill-button csv-upload-trigger" type="button"><?php echo htmlspecialchars(t("combine.results.csv_upload", "importieren"), ENT_QUOTES, "UTF-8"); ?></button>
+              </form>
+              <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>&share=entry_csv"><?php echo htmlspecialchars(t("combine.results.csv_download", "CSV herunterladen"), ENT_QUOTES, "UTF-8"); ?></a>
+              <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>">i</button>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
       </section>
 
@@ -137,7 +137,7 @@
                       <span class="unit-tag"><?php echo htmlspecialchars($activeDisciplineUnitAbbr, ENT_QUOTES, "UTF-8"); ?></span>
                     <?php endif; ?>
                   </span>
-                  <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultOriginalValues[$playerId] ?? ($resultValues[$playerId] ?? ""), ENT_QUOTES, "UTF-8"); ?>">
+                  <input type="hidden" name="original[<?php echo $playerId; ?>]" value="<?php echo htmlspecialchars($resultOriginalValues[$playerId] ?? "", ENT_QUOTES, "UTF-8"); ?>">
                 </label>
               <?php endforeach; ?>
             </div>

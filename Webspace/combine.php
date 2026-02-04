@@ -1059,6 +1059,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
           }
           $resultOriginalValues = $resultValues;
+          foreach ($assignedPlayers as $player) {
+            $playerId = (int)$player["id"];
+            if (!array_key_exists($playerId, $resultOriginalValues)) {
+              $resultOriginalValues[$playerId] = null;
+            }
+          }
         } catch (Throwable $e) {
           $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
         }
@@ -1088,9 +1094,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
             }
           }
           $athleteIndex = $headerMap["athlet"] ?? null;
-          $timeIndex = $headerMap["finale zeit"] ?? null;
+          $legacyTimeIndex = $headerMap["finale zeit"] ?? null;
+          $resultIndex = null;
+          if (is_array($header)) {
+            foreach ($header as $index => $label) {
+              $normalized = mb_strtolower(trim((string)$label));
+              if ($normalized === "") {
+                continue;
+              }
+              if (preg_match('/^ergebnis\\b/', $normalized)) {
+                $resultIndex = $index;
+                break;
+              }
+            }
+          }
+          $timeIndex = $resultIndex !== null ? $resultIndex : $legacyTimeIndex;
           if ($athleteIndex === null || $timeIndex === null) {
-            $startError = t("combine.results.csv_upload_missing_columns", "CSV Header muss \"Athlet\" und \"Finale Zeit\" enthalten.");
+            $startError = t("combine.results.csv_upload_missing_columns", "CSV Header muss \"Athlet\" und \"Finale Zeit\" oder \"Ergebnis (Einheit)\" enthalten.");
           } else {
             $availableColumns = [$timeIndex];
             $extraColumns = [];
@@ -1206,6 +1226,12 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
           $resultValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
         }
         $resultOriginalValues = $resultValues;
+        foreach ($assignedPlayers as $player) {
+          $playerId = (int)$player["id"];
+          if (!array_key_exists($playerId, $resultOriginalValues)) {
+            $resultOriginalValues[$playerId] = null;
+          }
+        }
       } catch (Throwable $e) {
         $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
