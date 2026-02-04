@@ -475,10 +475,10 @@ if (!in_array($mode, ["view", "start", "results", "h2h"], true)) {
   $mode = "view";
 }
 $shareFormat = $_GET["share"] ?? "";
-if (!in_array($shareFormat, ["csv", "img"], true)) {
+if (!in_array($shareFormat, ["csv", "img", "entry_csv"], true)) {
   $shareFormat = "";
 }
-if ($shareFormat !== "" && $mode !== "h2h") {
+if ($shareFormat !== "" && $shareFormat !== "entry_csv" && $mode !== "h2h") {
   $mode = "results";
 }
 if ($editMode) {
@@ -1239,25 +1239,60 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   if ($shareDate !== "value") {
     $shareFileBase .= "-" . $shareDate;
   }
-  $disciplinesForExport = $assignedDisciplines;
-  $headers = [
-    t("common.player", "Spieler"),
-    t("combine.csv.jersey", "Trikotnummer"),
-    t("combine.csv.gender", "Geschlecht"),
-    t("combine.csv.positions", "Positionen"),
-  ];
-  foreach ($disciplinesForExport as $discipline) {
-    $label = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
-    $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
-    if ($unitLabel !== "") {
-      $label .= " (" . $unitLabel . ")";
+  if ($shareFormat === "entry_csv") {
+    $entryDiscipline = null;
+    foreach ($assignedDisciplines as $discipline) {
+      if ((int)$discipline["id"] === (int)$activeDisciplineId) {
+        $entryDiscipline = $discipline;
+        break;
+      }
     }
-    $headers[] = $label;
-  }
-  $filteredPlayers = uc_filter_players($assignedPlayers, $filterGender, $filterPosition);
-  require __DIR__ . "/lib/share-csv.php";
+    if ($entryDiscipline === null) {
+      $combineError = t("combine.error.invalid_discipline", "Disziplin ist ungültig.");
+    } else {
+      $shareFileBase .= "-" . uc_slug($entryDiscipline["discipline_name"] ?? "discipline") . "-entry";
+      $entryUnitLabel = uc_format_unit($entryDiscipline["unit"] ?? "", $unitAbbrMap);
+      $entryHeader = t("combine.entry.csv_result", "Ergebnis");
+      if ($entryUnitLabel !== "") {
+        $entryHeader .= " (" . $entryUnitLabel . ")";
+      }
+      $entryCsvHeaders = [
+        t("combine.entry.csv_number", "#"),
+        t("combine.entry.csv_athlete", "Athlet"),
+        $entryHeader,
+      ];
+      $entryCsvRows = [];
+      foreach ($orderedPlayers as $player) {
+        $playerId = (int)$player["id"];
+        $entryCsvRows[] = [
+          $player["jersey_number"] !== null ? (string)$player["jersey_number"] : "-",
+          trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
+          uc_display_value($resultValues[$playerId] ?? "", ""),
+        ];
+      }
+      require __DIR__ . "/lib/share-csv.php";
+    }
+  } else {
+    $disciplinesForExport = $assignedDisciplines;
+    $headers = [
+      t("common.player", "Spieler"),
+      t("combine.csv.jersey", "Trikotnummer"),
+      t("combine.csv.gender", "Geschlecht"),
+      t("combine.csv.positions", "Positionen"),
+    ];
+    foreach ($disciplinesForExport as $discipline) {
+      $label = $discipline["discipline_name"] ?? t("common.discipline", "Disziplin");
+      $unitLabel = uc_format_unit($discipline["unit"] ?? "", $unitAbbrMap);
+      if ($unitLabel !== "") {
+        $label .= " (" . $unitLabel . ")";
+      }
+      $headers[] = $label;
+    }
+    $filteredPlayers = uc_filter_players($assignedPlayers, $filterGender, $filterPosition);
+    require __DIR__ . "/lib/share-csv.php";
 
-  require __DIR__ . "/lib/share-image.php";
+    require __DIR__ . "/lib/share-image.php";
+  }
 }
 ?>
 <?php

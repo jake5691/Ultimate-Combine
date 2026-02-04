@@ -1,4 +1,14 @@
 <?php
+  if ($shareFormat === "entry_csv") {
+    header("Content-Type: text/csv; charset=utf-8");
+    header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".csv\"");
+    echo implode(",", array_map("uc_csv_escape", $entryCsvHeaders)) . "\r\n";
+    foreach ($entryCsvRows as $row) {
+      echo implode(",", array_map("uc_csv_escape", $row)) . "\r\n";
+    }
+    exit;
+  }
+
   if ($shareFormat === "csv") {
     header("Content-Type: text/csv; charset=utf-8");
     header("Content-Disposition: attachment; filename=\"" . $shareFileBase . ".csv\"");
