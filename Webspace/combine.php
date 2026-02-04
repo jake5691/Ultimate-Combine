@@ -475,10 +475,10 @@ if (!in_array($mode, ["view", "start", "results", "h2h"], true)) {
   $mode = "view";
 }
 $shareFormat = $_GET["share"] ?? "";
-if (!in_array($shareFormat, ["csv", "img", "entry_csv"], true)) {
+if (!in_array($shareFormat, ["csv", "img", "entry_csv", "entry_pdf"], true)) {
   $shareFormat = "";
 }
-if ($shareFormat !== "" && $shareFormat !== "entry_csv" && $mode !== "h2h") {
+if ($shareFormat !== "" && $shareFormat !== "entry_csv" && $shareFormat !== "entry_pdf" && $mode !== "h2h") {
   $mode = "results";
 }
 if ($editMode) {
@@ -1265,7 +1265,7 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
   if ($shareDate !== "value") {
     $shareFileBase .= "-" . $shareDate;
   }
-  if ($shareFormat === "entry_csv") {
+  if ($shareFormat === "entry_csv" || $shareFormat === "entry_pdf") {
     $entryDiscipline = null;
     foreach ($assignedDisciplines as $discipline) {
       if ((int)$discipline["id"] === (int)$activeDisciplineId) {
@@ -1282,21 +1282,36 @@ if ($shareFormat !== "" && !$pageError && !$combineError) {
       if ($entryUnitLabel !== "") {
         $entryHeader .= " (" . $entryUnitLabel . ")";
       }
-      $entryCsvHeaders = [
-        t("combine.entry.csv_number", "#"),
-        t("combine.entry.csv_athlete", "Athlet"),
-        $entryHeader,
-      ];
-      $entryCsvRows = [];
-      foreach ($orderedPlayers as $player) {
-        $playerId = (int)$player["id"];
-        $entryCsvRows[] = [
-          $player["jersey_number"] !== null ? (string)$player["jersey_number"] : "-",
-          trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
-          uc_display_value($resultValues[$playerId] ?? "", ""),
+      if ($shareFormat === "entry_csv") {
+        $entryCsvHeaders = [
+          t("combine.entry.csv_number", "#"),
+          t("combine.entry.csv_athlete", "Athlet"),
+          $entryHeader,
         ];
+        $entryCsvRows = [];
+        foreach ($orderedPlayers as $player) {
+          $playerId = (int)$player["id"];
+          $entryCsvRows[] = [
+            $player["jersey_number"] !== null ? (string)$player["jersey_number"] : "-",
+            trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
+            uc_display_value($resultValues[$playerId] ?? "", ""),
+          ];
+        }
+        require __DIR__ . "/lib/share-csv.php";
+      } else {
+        $pdfTitle = trim($teamName . " · " . ($combine["combine_name"] ?? "Combine"));
+        $pdfDiscipline = $entryDiscipline["discipline_name"] ?? t("common.discipline", "Disziplin");
+        $pdfDescription = trim((string)($entryDiscipline["description"] ?? ""));
+        $pdfResultHeader = $entryHeader;
+        $pdfRows = [];
+        foreach ($orderedPlayers as $player) {
+          $pdfRows[] = [
+            trim(($player["first_name"] ?? "") . " " . ($player["last_name"] ?? "")),
+            "",
+          ];
+        }
+        require __DIR__ . "/lib/share-pdf.php";
       }
-      require __DIR__ . "/lib/share-csv.php";
     }
   } else {
     $disciplinesForExport = $assignedDisciplines;

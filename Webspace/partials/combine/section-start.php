@@ -36,6 +36,7 @@
                 <button class="pill-button csv-upload-trigger" type="button"><?php echo htmlspecialchars(t("combine.results.csv_upload", "importieren"), ENT_QUOTES, "UTF-8"); ?></button>
               </form>
               <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>&share=entry_csv"><?php echo htmlspecialchars(t("combine.results.csv_download", "CSV herunterladen"), ENT_QUOTES, "UTF-8"); ?></a>
+              <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>&share=entry_pdf"><?php echo htmlspecialchars(t("combine.results.pdf_download", "PDF herunterladen"), ENT_QUOTES, "UTF-8"); ?></a>
               <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>">i</button>
             </div>
           <?php endif; ?>
