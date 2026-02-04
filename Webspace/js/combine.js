@@ -347,4 +347,29 @@
     document.addEventListener("click", () => {
       closeAllInfos();
     });
+
+    const csvTriggers = document.querySelectorAll(".csv-upload-trigger");
+    csvTriggers.forEach((trigger) => {
+      const form = trigger.closest("form");
+      const input = form ? form.querySelector(".csv-upload-input") : null;
+      if (!input || !form) return;
+      trigger.addEventListener("click", () => {
+        input.click();
+      });
+      input.addEventListener("change", () => {
+        if (input.files && input.files.length) {
+          form.submit();
+        }
+      });
+    });
+
+    const downloadMenus = document.querySelectorAll(".download-menu");
+    if (downloadMenus.length) {
+      document.addEventListener("click", (event) => {
+        downloadMenus.forEach((menu) => {
+          if (menu.contains(event.target)) return;
+          menu.removeAttribute("open");
+        });
+      });
+    }
   
