@@ -362,4 +362,14 @@
         }
       });
     });
+
+    const downloadMenus = document.querySelectorAll(".download-menu");
+    if (downloadMenus.length) {
+      document.addEventListener("click", (event) => {
+        downloadMenus.forEach((menu) => {
+          if (menu.contains(event.target)) return;
+          menu.removeAttribute("open");
+        });
+      });
+    }
   

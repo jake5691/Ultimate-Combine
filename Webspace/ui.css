@@ -606,6 +606,46 @@ body {
   flex: 1 1 auto;
 }
 
+.download-menu {
+  position: relative;
+}
+
+.download-menu summary {
+  list-style: none;
+}
+
+.download-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.download-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+  z-index: 6;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.download-panel a {
+  text-decoration: none;
+}
+
+.download-menu[open] .download-panel {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .info-icon {
   border: 1px solid rgba(31, 26, 20, 0.35);
   background: var(--surface);
