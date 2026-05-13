@@ -47,6 +47,8 @@ $teamContact = "";
 $teamKeyHash = "";
 $teamEditFeedback = null;
 $teamEditSuccess = false;
+$apiTokenFeedback = null;
+$apiTokenPlain = null;
 $action = "";
 $editType = $_GET["edit"] ?? null;
 $editId = filter_var($_GET["id"] ?? null, FILTER_VALIDATE_INT);
@@ -367,6 +369,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     exit;
   }
 
+  if ($action === "create_api_token") {
+    $tokenName = trim($_POST["token_name"] ?? "");
+    if ($tokenName === "") {
+      $tokenName = t("team.api.default_token_name", "Externer Read-Zugriff");
+    }
+
+    try {
+      $apiTokenPlain = "uc_read_" . bin2hex(random_bytes(32));
+      $stmt = $pdo->prepare(
+        "INSERT INTO api_tokens (team_id, token_hash, name, scopes)
+         VALUES (:team_id, :token_hash, :name, 'read')"
+      );
+      $stmt->execute([
+        ":team_id" => $teamId,
+        ":token_hash" => hash("sha256", $apiTokenPlain),
+        ":name" => $tokenName,
+      ]);
+      $apiTokenFeedback = t("team.api.feedback.created", "API Token wurde erstellt. Kopiere ihn jetzt, er wird später nicht erneut angezeigt.");
+    } catch (Throwable $e) {
+      $apiTokenPlain = null;
+      $apiTokenFeedback = t("team.api.error.create_failed", "API Token konnte nicht erstellt werden.");
+    }
+  }
+
+  if ($action === "revoke_api_token") {
+    $tokenId = filter_var($_POST["token_id"] ?? null, FILTER_VALIDATE_INT);
+    if (!$tokenId) {
+      $apiTokenFeedback = t("team.api.error.revoke_failed", "API Token konnte nicht widerrufen werden.");
+    } else {
+      $stmt = $pdo->prepare(
+        "UPDATE api_tokens
+         SET revoked_at = CURRENT_TIMESTAMP
+         WHERE id = :id AND team_id = :team_id AND revoked_at IS NULL"
+      );
+      $stmt->execute([
+        ":id" => $tokenId,
+        ":team_id" => $teamId,
+      ]);
+      $apiTokenFeedback = $stmt->rowCount() > 0
+        ? t("team.api.feedback.revoked", "API Token wurde widerrufen.")
+        : t("team.api.error.revoke_failed", "API Token konnte nicht widerrufen werden.");
+    }
+  }
+
   if ($action === "update_player") {
     $editType = "player";
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
@@ -667,6 +713,7 @@ $players = [];
 $combines = [];
 $disciplines = [];
 $units = [];
+$apiTokens = [];
 $disciplineCategories = [];
 $disciplinesByCategory = [];
 
@@ -775,6 +822,15 @@ if (!$pageError) {
   );
   $stmt->execute([":team_id" => $teamId]);
   $units = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
+    "SELECT id, name, scopes, last_used_at, created_at
+     FROM api_tokens
+     WHERE team_id = :team_id AND revoked_at IS NULL
+     ORDER BY created_at DESC"
+  );
+  $stmt->execute([":team_id" => $teamId]);
+  $apiTokens = $stmt->fetchAll();
 
   $unitNameToAbbr = [];
   foreach ($units as $unit) {
@@ -887,6 +943,61 @@ require __DIR__ . "/partials/header-brand.php";
       <form id="delete-team-form" method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("team.confirm.delete_team", "Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("team.confirm.delete_team_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
         <input type="hidden" name="action" value="delete_team">
       </form>
+    </section>
+
+    <section class="auth-card" id="api-tokens">
+      <div class="section-header">
+        <h2><?php echo htmlspecialchars(t("team.api.title", "API Zugriff"), ENT_QUOTES, "UTF-8"); ?></h2>
+      </div>
+      <p class="lead"><?php echo htmlspecialchars(t("team.api.lead", "Erstelle read-only Tokens für externe Clients. Der Token wird nur direkt nach dem Erstellen im Klartext angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
+
+      <?php if ($apiTokenFeedback): ?>
+        <p class="help js-flash"><?php echo htmlspecialchars($apiTokenFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+      <?php endif; ?>
+
+      <?php if ($apiTokenPlain): ?>
+        <label class="field">
+          <span><?php echo htmlspecialchars(t("team.api.generated_token", "Neuer API Token"), ENT_QUOTES, "UTF-8"); ?></span>
+          <textarea class="token-output" readonly rows="3"><?php echo htmlspecialchars($apiTokenPlain, ENT_QUOTES, "UTF-8"); ?></textarea>
+        </label>
+        <p class="help"><?php echo htmlspecialchars(t("team.api.generated_help", "Kopiere diesen Token jetzt. Aus Sicherheitsgründen wird später nur noch der Hash verwendet."), ENT_QUOTES, "UTF-8"); ?></p>
+      <?php endif; ?>
+
+      <form class="form" method="post" action="#api-tokens">
+        <input type="hidden" name="action" value="create_api_token">
+        <label class="field">
+          <span><?php echo htmlspecialchars(t("team.api.token_name", "Token Name"), ENT_QUOTES, "UTF-8"); ?></span>
+          <input type="text" name="token_name" placeholder="<?php echo htmlspecialchars(t("team.api.token_name_placeholder", "z. B. Dashboard Export"), ENT_QUOTES, "UTF-8"); ?>">
+        </label>
+        <div class="form-actions">
+          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.api.create", "Read-only Token erstellen"), ENT_QUOTES, "UTF-8"); ?></button>
+        </div>
+      </form>
+
+      <?php if (empty($apiTokens)): ?>
+        <p class="help"><?php echo htmlspecialchars(t("team.api.empty", "Noch keine aktiven API Tokens."), ENT_QUOTES, "UTF-8"); ?></p>
+      <?php else: ?>
+        <ul class="list">
+          <?php foreach ($apiTokens as $token): ?>
+            <li class="list-item">
+              <div>
+                <strong><?php echo htmlspecialchars($token["name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                <span class="meta">
+                  <?php echo htmlspecialchars(sprintf(t("team.api.created_at", "Erstellt: %s"), $token["created_at"]), ENT_QUOTES, "UTF-8"); ?>
+                  <?php if (!empty($token["last_used_at"])): ?>
+                    <?php echo htmlspecialchars(sprintf(t("team.api.last_used_at", "Zuletzt genutzt: %s"), $token["last_used_at"]), ENT_QUOTES, "UTF-8"); ?>
+                  <?php endif; ?>
+                </span>
+              </div>
+              <form method="post" action="#api-tokens" onsubmit="return confirm('<?php echo htmlspecialchars(t("team.api.confirm_revoke", "API Token wirklich widerrufen? Externe Clients mit diesem Token verlieren sofort Zugriff."), ENT_QUOTES, "UTF-8"); ?>');">
+                <input type="hidden" name="action" value="revoke_api_token">
+                <input type="hidden" name="token_id" value="<?php echo (int)$token["id"]; ?>">
+                <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("team.api.revoke", "Widerrufen"), ENT_QUOTES, "UTF-8"); ?></button>
+              </form>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </section>
 
     <section class="info">

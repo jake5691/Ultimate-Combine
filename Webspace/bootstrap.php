@@ -1,5 +1,8 @@
 <?php
-session_start();
+$isApiRequest = defined("UC_API_REQUEST") && UC_API_REQUEST;
+if (!$isApiRequest && session_status() !== PHP_SESSION_ACTIVE) {
+  session_start();
+}
 
 function uc_load_env(string $path): array {
   if (!is_readable($path)) {
@@ -30,12 +33,16 @@ function uc_load_env(string $path): array {
 function uc_detect_lang(array $supported, string $default): string {
   $queryLang = $_GET["lang"] ?? null;
   if (is_string($queryLang) && in_array($queryLang, $supported, true)) {
-    $_SESSION["lang"] = $queryLang;
+    if (session_status() === PHP_SESSION_ACTIVE) {
+      $_SESSION["lang"] = $queryLang;
+    }
     return $queryLang;
   }
-  $sessionLang = $_SESSION["lang"] ?? null;
-  if (is_string($sessionLang) && in_array($sessionLang, $supported, true)) {
-    return $sessionLang;
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    $sessionLang = $_SESSION["lang"] ?? null;
+    if (is_string($sessionLang) && in_array($sessionLang, $supported, true)) {
+      return $sessionLang;
+    }
   }
   $accept = $_SERVER["HTTP_ACCEPT_LANGUAGE"] ?? "";
   if (is_string($accept) && $accept !== "") {
@@ -449,6 +456,23 @@ function uc_ensure_schema(PDO $pdo): void {
       used_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_password_resets_team
+        FOREIGN KEY (team_id) REFERENCES teams(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS api_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      team_id INT NOT NULL,
+      token_hash CHAR(64) NOT NULL UNIQUE,
+      name VARCHAR(120) NOT NULL,
+      scopes VARCHAR(120) NOT NULL DEFAULT 'read',
+      last_used_at DATETIME NULL,
+      revoked_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_api_tokens_team (team_id),
+      CONSTRAINT fk_api_tokens_team
         FOREIGN KEY (team_id) REFERENCES teams(id)
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
