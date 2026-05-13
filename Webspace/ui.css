@@ -504,6 +504,14 @@ body {
   overflow-wrap: anywhere;
 }
 
+.api-token-panel {
+  border-top: 1px solid rgba(111, 98, 89, 0.2);
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
 .text-link {
   color: var(--accent-2);
   text-decoration: underline;

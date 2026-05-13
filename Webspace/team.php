@@ -869,7 +869,7 @@ require __DIR__ . "/partials/header-brand.php";
 ?>
 
   <main class="team">
-    <?php $teamEditOpen = ($teamEditFeedback !== null && !$teamEditSuccess); ?>
+    <?php $teamEditOpen = ($teamEditFeedback !== null && !$teamEditSuccess) || $apiTokenFeedback !== null || $apiTokenPlain !== null; ?>
     <section class="auth-card">
       <div class="section-header">
         <h1><?php echo htmlspecialchars($teamName, ENT_QUOTES, "UTF-8"); ?><?php echo htmlspecialchars(t("team.overview_suffix", "-Übersicht"), ENT_QUOTES, "UTF-8"); ?></h1>
@@ -943,61 +943,59 @@ require __DIR__ . "/partials/header-brand.php";
       <form id="delete-team-form" method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("team.confirm.delete_team", "Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("team.confirm.delete_team_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
         <input type="hidden" name="action" value="delete_team">
       </form>
-    </section>
 
-    <section class="auth-card" id="api-tokens">
-      <div class="section-header">
-        <h2><?php echo htmlspecialchars(t("team.api.title", "API Zugriff"), ENT_QUOTES, "UTF-8"); ?></h2>
+      <div class="api-token-panel" id="api-tokens">
+        <h3><?php echo htmlspecialchars(t("team.api.title", "API Zugriff"), ENT_QUOTES, "UTF-8"); ?></h3>
+        <p class="help"><?php echo htmlspecialchars(t("team.api.lead", "Erstelle read-only Tokens für externe Clients. Der Token wird nur direkt nach dem Erstellen im Klartext angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
+
+        <?php if ($apiTokenFeedback): ?>
+          <p class="help js-flash"><?php echo htmlspecialchars($apiTokenFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+
+        <?php if ($apiTokenPlain): ?>
+          <label class="field">
+            <span><?php echo htmlspecialchars(t("team.api.generated_token", "Neuer API Token"), ENT_QUOTES, "UTF-8"); ?></span>
+            <textarea class="token-output" readonly rows="3"><?php echo htmlspecialchars($apiTokenPlain, ENT_QUOTES, "UTF-8"); ?></textarea>
+          </label>
+          <p class="help"><?php echo htmlspecialchars(t("team.api.generated_help", "Kopiere diesen Token jetzt. Aus Sicherheitsgründen wird später nur noch der Hash verwendet."), ENT_QUOTES, "UTF-8"); ?></p>
+        <?php endif; ?>
+
+        <form class="form" method="post" action="#api-tokens">
+          <input type="hidden" name="action" value="create_api_token">
+          <label class="field">
+            <span><?php echo htmlspecialchars(t("team.api.token_name", "Token Name"), ENT_QUOTES, "UTF-8"); ?></span>
+            <input type="text" name="token_name" placeholder="<?php echo htmlspecialchars(t("team.api.token_name_placeholder", "z. B. Dashboard Export"), ENT_QUOTES, "UTF-8"); ?>">
+          </label>
+          <div class="form-actions">
+            <button class="pill-button is-primary" type="submit"><?php echo htmlspecialchars(t("team.api.create", "Read-only Token erstellen"), ENT_QUOTES, "UTF-8"); ?></button>
+          </div>
+        </form>
+
+        <?php if (empty($apiTokens)): ?>
+          <p class="help"><?php echo htmlspecialchars(t("team.api.empty", "Noch keine aktiven API Tokens."), ENT_QUOTES, "UTF-8"); ?></p>
+        <?php else: ?>
+          <ul class="list">
+            <?php foreach ($apiTokens as $token): ?>
+              <li class="list-item">
+                <div>
+                  <strong><?php echo htmlspecialchars($token["name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                  <span class="meta">
+                    <?php echo htmlspecialchars(sprintf(t("team.api.created_at", "Erstellt: %s"), $token["created_at"]), ENT_QUOTES, "UTF-8"); ?>
+                    <?php if (!empty($token["last_used_at"])): ?>
+                      <?php echo htmlspecialchars(sprintf(t("team.api.last_used_at", "Zuletzt genutzt: %s"), $token["last_used_at"]), ENT_QUOTES, "UTF-8"); ?>
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <form method="post" action="#api-tokens" onsubmit="return confirm('<?php echo htmlspecialchars(t("team.api.confirm_revoke", "API Token wirklich widerrufen? Externe Clients mit diesem Token verlieren sofort Zugriff."), ENT_QUOTES, "UTF-8"); ?>');">
+                  <input type="hidden" name="action" value="revoke_api_token">
+                  <input type="hidden" name="token_id" value="<?php echo (int)$token["id"]; ?>">
+                  <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("team.api.revoke", "Widerrufen"), ENT_QUOTES, "UTF-8"); ?></button>
+                </form>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
       </div>
-      <p class="lead"><?php echo htmlspecialchars(t("team.api.lead", "Erstelle read-only Tokens für externe Clients. Der Token wird nur direkt nach dem Erstellen im Klartext angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
-
-      <?php if ($apiTokenFeedback): ?>
-        <p class="help js-flash"><?php echo htmlspecialchars($apiTokenFeedback, ENT_QUOTES, "UTF-8"); ?></p>
-      <?php endif; ?>
-
-      <?php if ($apiTokenPlain): ?>
-        <label class="field">
-          <span><?php echo htmlspecialchars(t("team.api.generated_token", "Neuer API Token"), ENT_QUOTES, "UTF-8"); ?></span>
-          <textarea class="token-output" readonly rows="3"><?php echo htmlspecialchars($apiTokenPlain, ENT_QUOTES, "UTF-8"); ?></textarea>
-        </label>
-        <p class="help"><?php echo htmlspecialchars(t("team.api.generated_help", "Kopiere diesen Token jetzt. Aus Sicherheitsgründen wird später nur noch der Hash verwendet."), ENT_QUOTES, "UTF-8"); ?></p>
-      <?php endif; ?>
-
-      <form class="form" method="post" action="#api-tokens">
-        <input type="hidden" name="action" value="create_api_token">
-        <label class="field">
-          <span><?php echo htmlspecialchars(t("team.api.token_name", "Token Name"), ENT_QUOTES, "UTF-8"); ?></span>
-          <input type="text" name="token_name" placeholder="<?php echo htmlspecialchars(t("team.api.token_name_placeholder", "z. B. Dashboard Export"), ENT_QUOTES, "UTF-8"); ?>">
-        </label>
-        <div class="form-actions">
-          <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("team.api.create", "Read-only Token erstellen"), ENT_QUOTES, "UTF-8"); ?></button>
-        </div>
-      </form>
-
-      <?php if (empty($apiTokens)): ?>
-        <p class="help"><?php echo htmlspecialchars(t("team.api.empty", "Noch keine aktiven API Tokens."), ENT_QUOTES, "UTF-8"); ?></p>
-      <?php else: ?>
-        <ul class="list">
-          <?php foreach ($apiTokens as $token): ?>
-            <li class="list-item">
-              <div>
-                <strong><?php echo htmlspecialchars($token["name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                <span class="meta">
-                  <?php echo htmlspecialchars(sprintf(t("team.api.created_at", "Erstellt: %s"), $token["created_at"]), ENT_QUOTES, "UTF-8"); ?>
-                  <?php if (!empty($token["last_used_at"])): ?>
-                    <?php echo htmlspecialchars(sprintf(t("team.api.last_used_at", "Zuletzt genutzt: %s"), $token["last_used_at"]), ENT_QUOTES, "UTF-8"); ?>
-                  <?php endif; ?>
-                </span>
-              </div>
-              <form method="post" action="#api-tokens" onsubmit="return confirm('<?php echo htmlspecialchars(t("team.api.confirm_revoke", "API Token wirklich widerrufen? Externe Clients mit diesem Token verlieren sofort Zugriff."), ENT_QUOTES, "UTF-8"); ?>');">
-                <input type="hidden" name="action" value="revoke_api_token">
-                <input type="hidden" name="token_id" value="<?php echo (int)$token["id"]; ?>">
-                <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("team.api.revoke", "Widerrufen"), ENT_QUOTES, "UTF-8"); ?></button>
-              </form>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
     </section>
 
     <section class="info">
