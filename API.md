@@ -88,9 +88,14 @@ Ohne `id` wird die Combine-Liste geliefert. Mit `id` enthält die Antwort zusät
 
 ```http
 GET /api/v1/results.php?combine_id=123
+GET /api/v1/results_raw.php?combine_id=123
+GET /api/v1/results_relative.php?combine_id=123
+GET /api/v1/results_absolut.php?combine_id=123
 ```
 
-Liefert Rohdaten für ein Combine:
+`results.php` bleibt aus Kompatibilitätsgründen als Alias für `results_raw.php` bestehen.
+
+`results_raw.php` liefert Rohdaten für ein Combine:
 
 - `combine`
 - `players`
@@ -98,7 +103,21 @@ Liefert Rohdaten für ein Combine:
 - `category_weights`
 - `results`
 
-Die API berechnet aktuell keine Rankings oder Punkte. Externe Clients können damit auf stabilen Rohdaten arbeiten; ein späterer Rankings-Endpunkt sollte einen eigenen Contract bekommen.
+`results_relative.php` liefert nur das relative Ranking:
+
+- `combine`
+- `ranking.overall`
+- `ranking.disciplines`
+
+Das relative Ranking folgt der Ergebnisansicht: pro Disziplin erhalten die besten Werte 2 Punkte, die schlechtesten Werte 1 Punkt, fehlende Werte 0 Punkte. Das Overall-Ranking nutzt Disziplin- und Kategorie-Gewichte.
+
+`results_absolut.php` liefert nur das absolute Ranking:
+
+- `combine`
+- `ranking.overall`
+- `ranking.disciplines`
+
+Das absolute Ranking nutzt die erwarteten Min-/Max-Werte der Disziplinen. Disziplinen ohne absolute Skala werden im Overall übersprungen und in der Disziplinliste mit `has_absolute_scale: false` markiert. Zusätzlich existiert `results_absolute.php` als englischer Alias.
 
 ## Statuscodes
 

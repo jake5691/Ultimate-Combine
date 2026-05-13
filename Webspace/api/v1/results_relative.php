@@ -19,10 +19,7 @@ $context = uc_api_results_context($pdo, $teamId, $combineId);
 uc_api_send_json([
   "data" => [
     "combine" => $context["combine"],
-    "players" => $context["players"],
-    "disciplines" => $context["disciplines"],
-    "category_weights" => $context["category_weights"],
-    "results" => $context["results"],
+    "ranking" => uc_api_relative_rankings($context),
   ],
   "meta" => uc_api_results_meta($context, $teamId),
 ]);
