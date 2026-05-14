@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . "/bootstrap.php";
+require_once __DIR__ . "/lib/combine-results-service.php";
+require_once __DIR__ . "/lib/ranking-service.php";
 
 function uc_normalize_value($value) {
   $value = trim((string)$value);
@@ -10,11 +12,7 @@ function uc_normalize_value($value) {
 }
 
 function uc_value_to_float($value) {
-  $value = uc_normalize_value($value);
-  if ($value === null || !is_numeric($value)) {
-    return null;
-  }
-  return (float)$value;
+  return uc_ranking_float($value);
 }
 
 function uc_display_value($value, $empty = "") {
@@ -36,37 +34,11 @@ function uc_format_points($points) {
 }
 
 function uc_absolute_points($value, $min, $max, string $direction): ?float {
-  if ($value === null || $min === null || $max === null) {
-    return null;
-  }
-  $worst = (float)$min;
-  $best = (float)$max;
-  if ($worst == $best) {
-    return null;
-  }
-  $numericValue = (float)$value;
-  if ($direction === "less") {
-    $numericValue = -$numericValue;
-    $worst = -$best;
-    $best = -$min;
-  }
-  if ($best < $worst) {
-    $temp = $best;
-    $best = $worst;
-    $worst = $temp;
-  }
-  if ($numericValue >= $best) {
-    return 2.0;
-  }
-  if ($numericValue <= $worst) {
-    $points = 1 - (($worst - $numericValue) / ($best - $worst));
-    return max(0.0, $points);
-  }
-  return 1 + (($numericValue - $worst) / ($best - $worst));
+  return uc_ranking_absolute_points($value, $min, $max, $direction);
 }
 
 function uc_bonus_value($value): float {
-  $value = uc_value_to_float($value);
+  $value = uc_ranking_float($value);
   if ($value === null || $value <= 0) {
     return 0.0;
   }
@@ -74,13 +46,7 @@ function uc_bonus_value($value): float {
 }
 
 function uc_absolute_bonus_applies(?float $numericValue, ?float $bestExpected, string $direction): bool {
-  if ($numericValue === null || $bestExpected === null) {
-    return false;
-  }
-  if ($direction === "less") {
-    return $numericValue <= $bestExpected;
-  }
-  return $numericValue >= $bestExpected;
+  return uc_ranking_absolute_bonus_applies($numericValue, $bestExpected, $direction);
 }
 
 function uc_format_unit($unit, array $unitMap): string {
@@ -501,6 +467,7 @@ $assignedDisciplineIds = [];
   $assignedDisciplines = [];
   $combineDisciplineWeights = [];
   $combineCategoryWeights = [];
+$resultsContext = null;
 $resultsByDiscipline = [];
 $resultValues = [];
 $resultOriginalValues = [];
@@ -653,71 +620,54 @@ if (!$pageError) {
 
   if (!$combineError) {
     try {
-      $stmt = $pdo->prepare(
-        "SELECT player_id
-         FROM combine_players
-         WHERE combine_id = :combine_id"
-      );
-      $stmt->execute([":combine_id" => $combineId]);
-      $assignedPlayerIds = array_map("intval", array_column($stmt->fetchAll(), "player_id"));
+      $resultsContext = uc_results_context($pdo, (int)$teamId, (int)$combineId);
+      if (!$resultsContext) {
+        $combineError = t("combine.error.not_found", "Combine wurde nicht gefunden.");
+      } else {
+        $combine = $resultsContext["combine"];
+        $assignedPlayers = $resultsContext["players"];
+        $assignedDisciplines = $resultsContext["disciplines"];
+        $resultsByDiscipline = $resultsContext["results_by_discipline"];
+        $assignedPlayerIds = array_map(function ($player) {
+          return (int)$player["id"];
+        }, $assignedPlayers);
+        $assignedDisciplineIds = array_map(function ($discipline) {
+          return (int)$discipline["id"];
+        }, $assignedDisciplines);
 
-      $stmt = $pdo->prepare(
-        "SELECT discipline_id, weight
-         FROM combine_disciplines
-         WHERE combine_id = :combine_id"
-      );
-      $stmt->execute([":combine_id" => $combineId]);
-      $combineDisciplineRows = $stmt->fetchAll();
-      $assignedDisciplineIds = array_map("intval", array_column($combineDisciplineRows, "discipline_id"));
-      foreach ($combineDisciplineRows as $row) {
-        $discId = (int)$row["discipline_id"];
-        $weight = (float)($row["weight"] ?? 1);
-        if ($weight <= 0) {
-          $weight = 1;
-        }
-        $combineDisciplineWeights[$discId] = $weight;
-      }
+        foreach ($assignedDisciplines as $discipline) {
+          $discId = (int)$discipline["id"];
+          $weight = (float)($discipline["weight"] ?? 1);
+          if ($weight <= 0) {
+            $weight = 1;
+          }
+          $combineDisciplineWeights[$discId] = $weight;
 
-      $stmt = $pdo->prepare(
-        "SELECT category, weight
-         FROM combine_category_weights
-         WHERE combine_id = :combine_id"
-      );
-      $stmt->execute([":combine_id" => $combineId]);
-      foreach ($stmt->fetchAll() as $row) {
-        $categoryKey = trim((string)($row["category"] ?? ""));
-        if ($categoryKey === "") {
-          continue;
+          $category = trim((string)($discipline["category"] ?? ""));
+          if ($category === "") {
+            $category = t("common.uncategorized", "Ohne Kategorie");
+          }
+          $assignedDisciplinesByCategory[$category][] = $discipline;
         }
-        $weight = (float)($row["weight"] ?? 1);
-        if ($weight <= 0) {
-          $weight = 1;
+
+        foreach ($resultsContext["category_weights"] as $row) {
+          $categoryKey = trim((string)($row["category"] ?? ""));
+          if ($categoryKey === "") {
+            continue;
+          }
+          $weight = (float)($row["weight"] ?? 1);
+          if ($weight <= 0) {
+            $weight = 1;
+          }
+          $combineCategoryWeights[$categoryKey] = $weight;
         }
-        $combineCategoryWeights[$categoryKey] = $weight;
+        ksort($assignedDisciplinesByCategory, SORT_NATURAL | SORT_FLAG_CASE);
       }
     } catch (Throwable $e) {
       $combineError = t("combine.error.assignments_load_failed", "Zuordnungen konnten nicht geladen werden.");
     }
   }
 
-  foreach ($players as $player) {
-    if (in_array((int)$player["id"], $assignedPlayerIds, true)) {
-      $assignedPlayers[] = $player;
-    }
-  }
-
-  foreach ($disciplines as $discipline) {
-    if (!in_array((int)$discipline["id"], $assignedDisciplineIds, true)) {
-      continue;
-    }
-    $assignedDisciplines[] = $discipline;
-    $category = trim((string)$discipline["category"]);
-    if ($category === "") {
-      $category = t("common.uncategorized", "Ohne Kategorie");
-    }
-    $assignedDisciplinesByCategory[$category][] = $discipline;
-  }
-  ksort($assignedDisciplinesByCategory, SORT_NATURAL | SORT_FLAG_CASE);
   $orderedPlayers = $assignedPlayers;
   $activeDisciplineDescription = "";
   $activeDisciplineUnit = "";
@@ -1236,24 +1186,6 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
         $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
     }
-  }
-}
-
-if (!$pageError && !$combineError && in_array($mode, ["results", "h2h"], true)) {
-  try {
-    $stmt = $pdo->prepare(
-      "SELECT discipline_id, player_id, result_value
-       FROM combine_results
-       WHERE combine_id = :combine_id"
-    );
-    $stmt->execute([":combine_id" => $combineId]);
-    foreach ($stmt->fetchAll() as $row) {
-      $discId = (int)$row["discipline_id"];
-      $playerId = (int)$row["player_id"];
-      $resultsByDiscipline[$discId][$playerId] = $row["result_value"];
-    }
-  } catch (Throwable $e) {
-    $combineError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
   }
 }
 

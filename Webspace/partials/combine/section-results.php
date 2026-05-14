@@ -153,35 +153,7 @@
         </div>
         <?php if ($selectedPlayerId && $selectedPlayer): ?>
           <?php
-            $radarData = [];
-            $radarPlayerAverages = $categoryAverages;
-            $radarTeamAverages = $categoryTeamWeightedAverages;
-            $radarApplyWeight = true;
-            if ($overallMode === "abs") {
-              $radarPlayerAverages = $categoryAveragesAbs;
-              $radarTeamAverages = $categoryTeamWeightedAveragesAbs;
-              $radarApplyWeight = true;
-            } elseif ($overallMode === "avg") {
-              $radarPlayerAverages = $categoryAveragesAvg;
-              $radarTeamAverages = $categoryTeamAveragesAvg;
-              $radarApplyWeight = false;
-            }
-            foreach ($radarPlayerAverages as $category => $playerAverages) {
-              $categoryWeight = $combineCategoryWeights[$category] ?? 1;
-              if ($categoryWeight <= 0) {
-                $categoryWeight = 1;
-              }
-              $playerAverage = $playerAverages[$selectedPlayerId] ?? 0;
-              if ($radarApplyWeight) {
-                $playerAverage *= $categoryWeight;
-              }
-              $teamAverage = $radarTeamAverages[$category] ?? 0;
-              $radarData[] = [
-                "label" => $category,
-                "player" => $playerAverage,
-                "team" => $teamAverage,
-              ];
-            }
+            $radarData = uc_radar_for_player($overallView, $combineCategoryWeights, (int)$selectedPlayerId, $overallMode);
             $resetUrl = "combine.php?id=" . (int)$combineId . "&mode=results";
             if ($filterGender !== "") {
               $resetUrl .= "&gender=" . urlencode($filterGender);

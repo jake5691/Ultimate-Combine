@@ -499,6 +499,155 @@ body {
   box-shadow: 0 0 0 3px rgba(179, 50, 39, 0.15);
 }
 
+.token-output {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.api-token-panel {
+  border-top: 1px solid rgba(111, 98, 89, 0.2);
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.api-docs {
+  gap: 18px;
+}
+
+.api-docs-hero,
+.api-docs-section {
+  display: grid;
+  gap: 16px;
+}
+
+.api-docs-base {
+  display: grid;
+  gap: 6px;
+}
+
+.api-docs pre {
+  background: rgba(32, 28, 24, 0.06);
+  border: 1px solid rgba(111, 98, 89, 0.18);
+  border-radius: 8px;
+  max-width: 100%;
+  margin: 0;
+  overflow-x: auto;
+  padding: 14px;
+}
+
+.api-docs code {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+.api-docs-grid,
+.api-status-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.api-endpoint-list {
+  display: grid;
+  gap: 24px;
+}
+
+.api-endpoint {
+  background: rgba(32, 28, 24, 0.025);
+  border: 1px solid rgba(111, 98, 89, 0.18);
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.api-endpoint-header {
+  border-bottom: 1px solid rgba(111, 98, 89, 0.14);
+  display: grid;
+  gap: 6px;
+  padding-bottom: 14px;
+}
+
+.api-endpoint-header h3,
+.api-endpoint-header p {
+  margin: 0;
+}
+
+.api-subsection {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.api-subsection h4 {
+  color: var(--muted);
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.api-reference-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  min-width: 0;
+}
+
+.api-field-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+  padding: 0 0 0 18px;
+}
+
+.api-field-list li {
+  min-width: 0;
+  padding-left: 2px;
+}
+
+.api-field-list div {
+  position: relative;
+}
+
+.api-field-list div::before {
+  background: var(--accent-2);
+  border-radius: 50%;
+  content: "";
+  height: 5px;
+  left: -16px;
+  position: absolute;
+  top: 0.72em;
+  width: 5px;
+}
+
+.api-field-list dt {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.api-field-list dt span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.api-field-list dd {
+  color: var(--muted);
+  margin: 3px 0 0;
+}
+
+.api-field-list.is-compact {
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  list-style: disc;
+}
+
 .text-link {
   color: var(--accent-2);
   text-decoration: underline;
