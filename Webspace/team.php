@@ -947,6 +947,9 @@ require __DIR__ . "/partials/header-brand.php";
       <div class="api-token-panel" id="api-tokens">
         <h3><?php echo htmlspecialchars(t("team.api.title", "API Zugriff"), ENT_QUOTES, "UTF-8"); ?></h3>
         <p class="help"><?php echo htmlspecialchars(t("team.api.lead", "Erstelle read-only Tokens für externe Clients. Der Token wird nur direkt nach dem Erstellen im Klartext angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
+        <p class="help">
+          <a class="text-link" href="api-docs.php" target="_blank" rel="noopener"><?php echo htmlspecialchars(t("team.api.docs_link", "API Dokumentation öffnen"), ENT_QUOTES, "UTF-8"); ?></a>
+        </p>
 
         <?php if ($apiTokenFeedback): ?>
           <p class="help js-flash"><?php echo htmlspecialchars($apiTokenFeedback, ENT_QUOTES, "UTF-8"); ?></p>

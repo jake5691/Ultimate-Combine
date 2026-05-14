@@ -12,6 +12,7 @@ Es gibt aktuell keinen Composer-, npm- oder Framework-Build-Schritt. Die Anwendu
 - `Webspace/bootstrap.php`: Gemeinsamer Startpunkt für Sessions, `.secrets/.env`, Sprache, Übersetzungen, PDO-Verbindung, SMTP-Helfer und Datenbankschema.
 - `Webspace/index.php`: Login, Team-Registrierung und Admin-Login.
 - `Webspace/api/v1/`: Read-only JSON API für externe Clients mit Bearer-Token-Authentifizierung.
+- `Webspace/api-docs.php`: Öffentliche API-Dokumentation mit Endpunkten, Authentifizierung und Beispiel-Requests.
 - `Webspace/team.php`: Team-Dashboard für Spieler, Combines, Disziplinen und Teamdaten.
 - `Webspace/combine.php`: Combine-Detailseite, Ergebnis-Erfassung, Auswertung, CSV-Import/Export und Sharing-Logik.
 - `Webspace/admin.php`: Adminbereich für globale Disziplinen, Einheiten, Teams, Feedback und Broadcast-Mails.
