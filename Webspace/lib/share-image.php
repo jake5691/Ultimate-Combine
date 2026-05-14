@@ -1,6 +1,25 @@
 <?php
   require_once __DIR__ . "/radar-service.php";
 
+  /** @var array<int, array<string, mixed>> $assignedPlayers */
+  /** @var array<int, array<string, mixed>> $assignedDisciplines */
+  /** @var array<string, array<int, array<string, mixed>>> $assignedDisciplinesByCategory */
+  /** @var array<string, float|int|string> $combineCategoryWeights */
+  /** @var array<int, float|int|string> $combineDisciplineWeights */
+  /** @var array<int, array<int, mixed>> $resultsByDiscipline */
+  /** @var array<string, string> $unitAbbrMap */
+  /** @var array<string, string> $genderOptions */
+  /** @var array<string, mixed> $combine */
+  /** @var string $teamName */
+  /** @var string $filterGender */
+  /** @var string $filterPosition */
+  /** @var string $mode */
+  /** @var string $overallMode */
+  /** @var string $shareFormat */
+  /** @var string $shareFileBase */
+  /** @var int|null $h2hPlayerAId */
+  /** @var int|null $h2hPlayerBId */
+
   if (!function_exists("uc_share_category_score_for_player")) {
     function uc_share_category_score_for_player(
       int $selectedPlayerId,

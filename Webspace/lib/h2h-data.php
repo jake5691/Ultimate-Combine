@@ -2,6 +2,17 @@
 require_once __DIR__ . "/ranking-service.php";
 require_once __DIR__ . "/radar-service.php";
 
+/** @var array<int, array<string, mixed>> $assignedPlayers */
+/** @var array<string, array<int, array<string, mixed>>> $assignedDisciplinesByCategory */
+/** @var array<string, float|int|string> $combineCategoryWeights */
+/** @var array<int, float|int|string> $combineDisciplineWeights */
+/** @var array<int, array<int, mixed>> $resultsByDiscipline */
+/** @var string $overallMode */
+/** @var array<string, mixed> $h2hPlayerA */
+/** @var array<string, mixed> $h2hPlayerB */
+/** @var int $h2hPlayerAId */
+/** @var int $h2hPlayerBId */
+
 $h2hOverallView = uc_ranking_overall_view(
   $assignedPlayers,
   $assignedDisciplinesByCategory,
