@@ -149,7 +149,7 @@ Bei UI- oder Flow-Änderungen zusätzlich manuell im Browser prüfen:
 
 ## Vorsichtspunkte
 
-- `combine.php` enthält noch viel Auswertungs- und Grafiklogik. Neue Punkteberechnung oder Gewichtungslogik gehört bevorzugt in den Ranking-Service; bestehende HTML-Logik schrittweise dorthin migrieren.
+- `combine.php` nutzt für Results/H2H den gemeinsamen Combine-Result-Context. Edit- und Startmodus enthalten weiterhin eigene Schreib- und Konfliktprüfungsqueries. Neue Punkteberechnung oder Gewichtungslogik gehört bevorzugt in den Ranking-Service.
 - `bootstrap.php` läuft auf jeder relevanten Seite. Teure oder riskante Schemaänderungen dort besonders konservativ halten.
 - `team_id` ist die zentrale Mandantengrenze. Keine Queries ohne Teamfilter einführen, außer bewusst globale Admin-/Disziplin-/Einheitenlogik.
 - CSV-, Share- und Bildausgaben dürfen keine vorherige HTML-Ausgabe senden, wenn Header gesetzt werden.
