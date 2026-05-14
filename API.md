@@ -119,6 +119,31 @@ Das relative Ranking folgt der Ergebnisansicht: pro Disziplin erhalten die beste
 
 Das absolute Ranking nutzt die erwarteten Min-/Max-Werte der Disziplinen. Disziplinen ohne absolute Skala werden im Overall übersprungen und in der Disziplinliste mit `has_absolute_scale: false` markiert. Zusätzlich existiert `results_absolute.php` als englischer Alias.
 
+### Radar
+
+```http
+GET /api/v1/radar.php?combine_id=123
+GET /api/v1/radar.php?combine_id=123&player_id=456
+GET /api/v1/radar.php?combine_id=123&player_id=456&overall=avg
+GET /api/v1/radar.php?combine_id=123&player_id=456&compare_player_id=789
+```
+
+Liefert Radargraph-Werte pro Spieler und Kategorie. Ohne `player_id` enthält `items` alle Spieler des Combines. `overall` kann `sum`, `avg` oder `abs` sein und entspricht den Modi der Ergebnisansicht.
+
+Jedes Item enthält:
+
+- `player_id`
+- `player_name`
+- `mode`
+- `radar` mit Einträgen aus `label`, `player` und `team`
+
+Mit `compare_player_id` liefert der Endpunkt die H2H-Radarwerte direkt in `data.radar`. Jeder Eintrag enthält:
+
+- `label`
+- `player`
+- `playerB`
+- `team`
+
 ## Statuscodes
 
 - `200`: OK

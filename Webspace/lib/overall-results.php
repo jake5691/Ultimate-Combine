@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/ranking-service.php";
+require_once __DIR__ . "/radar-service.php";
 
 $selectedPlayerId = filter_var($_GET["player_id"] ?? null, FILTER_VALIDATE_INT);
 $selectedPlayer = null;

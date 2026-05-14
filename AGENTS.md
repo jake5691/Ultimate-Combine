@@ -27,6 +27,7 @@ Es gibt aktuell keinen Composer-, npm- oder Framework-Build-Schritt. Die Anwendu
 - `Webspace/lib/api-results.php`: dünner API-Adapter für Combine-Ergebnisdaten; übersetzt Service-Ergebnisse in API-Konventionen, enthält aber keine Datenbank- oder Ranking-Fachlogik.
 - `Webspace/lib/ranking-service.php`: Einstiegspunkt für gemeinsame Rankinglogik. Bindet `ranking-core.php`, `ranking-relative.php` und `ranking-absolute.php` ein.
 - `Webspace/lib/ranking-overall.php`: HTML-kompatibles Overall-View-Model für Results-Ansicht, Radar-Daten und Kategorie-Averages.
+- `Webspace/lib/radar-service.php`: Gemeinsame Radargraph-Daten für Results, H2H und API, basierend auf dem Overall-View-Model.
 - `Webspace/i18n/de.php`, `Webspace/i18n/en.php`: Übersetzungstabellen.
 - `Webspace/js/`: Seitenbezogene Vanilla-JS-Dateien.
 - `Webspace/ui.css`: Zentrale Styles, Theme-Variablen und responsive Layouts.
@@ -142,6 +143,7 @@ Bei UI- oder Flow-Änderungen zusätzlich manuell im Browser prüfen:
 - Neue Frontend-Interaktion: Markup mit `data-*` versehen, Logik in der passenden Datei unter `Webspace/js/` ergänzen.
 - Neuer API-Endpunkt: unter `Webspace/api/v1/` anlegen, `api-response.php` und `api-auth.php` verwenden, nur JSON senden und keine HTML-Partials einbinden.
 - Neue Ranking- oder Bewertungslogik: in den Ranking-Service unter `Webspace/lib/` einbauen und von API/HTML gemeinsam nutzen, statt Logik in Endpunkten oder Partials zu duplizieren. Für HTML-Overall-Daten bevorzugt `uc_ranking_overall_view()` nutzen.
+- Neue Radargraph-Daten: über `radar-service.php` bereitstellen, damit API, Results-HTML und H2H-HTML dieselben Kategorie-/Teamwerte nutzen.
 - Neue Combine-Ergebnisdatenzugriffe: bevorzugt über `combine-results-service.php` bereitstellen und API-spezifische Fehler/JSON-Formate im API-Adapter halten.
 
 ## Vorsichtspunkte
