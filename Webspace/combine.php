@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/bootstrap.php";
+require_once __DIR__ . "/lib/ranking-service.php";
 
 function uc_normalize_value($value) {
   $value = trim((string)$value);
@@ -10,11 +11,7 @@ function uc_normalize_value($value) {
 }
 
 function uc_value_to_float($value) {
-  $value = uc_normalize_value($value);
-  if ($value === null || !is_numeric($value)) {
-    return null;
-  }
-  return (float)$value;
+  return uc_ranking_float($value);
 }
 
 function uc_display_value($value, $empty = "") {
@@ -36,37 +33,11 @@ function uc_format_points($points) {
 }
 
 function uc_absolute_points($value, $min, $max, string $direction): ?float {
-  if ($value === null || $min === null || $max === null) {
-    return null;
-  }
-  $worst = (float)$min;
-  $best = (float)$max;
-  if ($worst == $best) {
-    return null;
-  }
-  $numericValue = (float)$value;
-  if ($direction === "less") {
-    $numericValue = -$numericValue;
-    $worst = -$best;
-    $best = -$min;
-  }
-  if ($best < $worst) {
-    $temp = $best;
-    $best = $worst;
-    $worst = $temp;
-  }
-  if ($numericValue >= $best) {
-    return 2.0;
-  }
-  if ($numericValue <= $worst) {
-    $points = 1 - (($worst - $numericValue) / ($best - $worst));
-    return max(0.0, $points);
-  }
-  return 1 + (($numericValue - $worst) / ($best - $worst));
+  return uc_ranking_absolute_points($value, $min, $max, $direction);
 }
 
 function uc_bonus_value($value): float {
-  $value = uc_value_to_float($value);
+  $value = uc_ranking_float($value);
   if ($value === null || $value <= 0) {
     return 0.0;
   }
@@ -74,13 +45,7 @@ function uc_bonus_value($value): float {
 }
 
 function uc_absolute_bonus_applies(?float $numericValue, ?float $bestExpected, string $direction): bool {
-  if ($numericValue === null || $bestExpected === null) {
-    return false;
-  }
-  if ($direction === "less") {
-    return $numericValue <= $bestExpected;
-  }
-  return $numericValue >= $bestExpected;
+  return uc_ranking_absolute_bonus_applies($numericValue, $bestExpected, $direction);
 }
 
 function uc_format_unit($unit, array $unitMap): string {

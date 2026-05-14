@@ -21,8 +21,10 @@ Es gibt aktuell keinen Composer-, npm- oder Framework-Build-Schritt. Die Anwendu
 - `Webspace/partials/`: Wiederverwendbares Markup für Head, Header, Footer, Navigation und Formular-/Section-Teile.
 - `Webspace/partials/team/`: Formulare und Edit-Views des Team-Dashboards.
 - `Webspace/partials/combine/`: Combine-Sections für Start, Edit, Results und Head-to-Head.
-- `Webspace/lib/`: Hilfsdateien für Ergebnisdaten und Share-Exports.
+- `Webspace/lib/`: Hilfsdateien, Backend-Services und Share-Exports.
 - `Webspace/lib/api-auth.php`, `Webspace/lib/api-response.php`: API-Authentifizierung und einheitliche JSON-Antworten.
+- `Webspace/lib/api-results.php`: API-Adapter für Combine-Ergebnisdaten; lädt Daten und formt API-Metadaten, enthält aber keine Ranking-Fachlogik.
+- `Webspace/lib/ranking-service.php`: Einstiegspunkt für gemeinsame Rankinglogik. Bindet `ranking-core.php`, `ranking-relative.php` und `ranking-absolute.php` ein.
 - `Webspace/i18n/de.php`, `Webspace/i18n/en.php`: Übersetzungstabellen.
 - `Webspace/js/`: Seitenbezogene Vanilla-JS-Dateien.
 - `Webspace/ui.css`: Zentrale Styles, Theme-Variablen und responsive Layouts.
@@ -71,6 +73,9 @@ Die wichtigsten URLs sind:
 - Neue sichtbare Texte gehören in `Webspace/i18n/de.php` und `Webspace/i18n/en.php`; im PHP immer `t("key", "Fallback")` verwenden.
 - Admin- und Team-Zugriffe müssen über Session-Prüfungen geschützt bleiben. Teamdaten immer über `team_id` einschränken.
 - API-Zugriffe verwenden keine Sessions. Externe Clients authentifizieren sich über Bearer Tokens aus `api_tokens`; jede Datenquery bleibt strikt auf das Token-Team begrenzt.
+- Gemeinsame Backendlogik gehört in `Webspace/lib/` und wird von HTML-Seiten und API-Endpunkten direkt eingebunden. Die HTML-Seiten sollen nicht per HTTP die eigene API aufrufen.
+- API-Dateien bleiben dünne JSON-Controller. Datenladen, Ranking und andere Fachlogik gehören in separate Lib-Dateien.
+- Halte Lib-Dateien fokussiert. Wenn eine Datei deutlich über ca. 300-400 Zeilen wächst oder zwei Verantwortlichkeiten enthält, splitte sie in kleinere Dateien mit klarem Einstiegspunkt.
 - Passwörter und Tokens nur gehasht speichern bzw. vergleichen (`password_hash`, `password_verify`, Token-Hash).
 - Keine Secrets, Zugangsdaten oder produktiven Dumps committen. `.secrets/.env` bleibt lokal.
 
@@ -134,10 +139,11 @@ Bei UI- oder Flow-Änderungen zusätzlich manuell im Browser prüfen:
 - Neue Combine-Section: unter `Webspace/partials/combine/` ablegen und aus `combine.php` einbinden.
 - Neue Frontend-Interaktion: Markup mit `data-*` versehen, Logik in der passenden Datei unter `Webspace/js/` ergänzen.
 - Neuer API-Endpunkt: unter `Webspace/api/v1/` anlegen, `api-response.php` und `api-auth.php` verwenden, nur JSON senden und keine HTML-Partials einbinden.
+- Neue Ranking- oder Bewertungslogik: in den Ranking-Service unter `Webspace/lib/` einbauen und von API/HTML gemeinsam nutzen, statt Logik in Endpunkten oder Partials zu duplizieren.
 
 ## Vorsichtspunkte
 
-- `combine.php` enthält viel Auswertungs- und Grafiklogik. Vor Änderungen an Punkteberechnung, Gewichtung oder Share-Export die vorhandenen Helper und Datenstrukturen prüfen.
+- `combine.php` enthält noch viel Auswertungs- und Grafiklogik. Neue Punkteberechnung oder Gewichtungslogik gehört bevorzugt in den Ranking-Service; bestehende HTML-Logik schrittweise dorthin migrieren.
 - `bootstrap.php` läuft auf jeder relevanten Seite. Teure oder riskante Schemaänderungen dort besonders konservativ halten.
 - `team_id` ist die zentrale Mandantengrenze. Keine Queries ohne Teamfilter einführen, außer bewusst globale Admin-/Disziplin-/Einheitenlogik.
 - CSV-, Share- und Bildausgaben dürfen keine vorherige HTML-Ausgabe senden, wenn Header gesetzt werden.
