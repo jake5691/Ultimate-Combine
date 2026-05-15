@@ -18,6 +18,7 @@ $units = [];
 $globalDisciplines = [];
 $feedbackEntries = [];
 $teams = [];
+$teamCombinesByTeam = [];
 $broadcastSubject = "";
 $broadcastMessage = "";
 $validDirections = [
@@ -550,7 +551,7 @@ if (!$pageError) {
   $feedbackEntries = $stmt->fetchAll();
 
   $stmt = $pdo->prepare(
-    "SELECT t.id, t.team_name, t.contact,
+    "SELECT t.id, t.team_name, t.contact, t.last_login_at,
             COUNT(DISTINCT p.id) AS player_count,
             COUNT(DISTINCT d.id) AS discipline_count,
             COUNT(DISTINCT c.id) AS combine_count
@@ -558,11 +559,29 @@ if (!$pageError) {
      LEFT JOIN players p ON p.team_id = t.id
      LEFT JOIN disciplines d ON d.team_id = t.id
      LEFT JOIN combines c ON c.team_id = t.id
-     GROUP BY t.id, t.team_name, t.contact
+     GROUP BY t.id, t.team_name, t.contact, t.last_login_at
      ORDER BY t.created_at DESC"
   );
   $stmt->execute();
   $teams = $stmt->fetchAll();
+
+  $stmt = $pdo->prepare(
+    "SELECT c.id, c.team_id, c.combine_name, c.event_date,
+            COUNT(DISTINCT cp.player_id) AS player_count,
+            COUNT(DISTINCT cd.discipline_id) AS discipline_count
+     FROM combines c
+     LEFT JOIN combine_players cp ON cp.combine_id = c.id
+     LEFT JOIN combine_disciplines cd ON cd.combine_id = c.id
+     GROUP BY c.id, c.team_id, c.combine_name, c.event_date, c.created_at
+     ORDER BY c.event_date DESC, c.created_at DESC"
+  );
+  $stmt->execute();
+  foreach ($stmt->fetchAll() as $combineRow) {
+    $teamId = (int)($combineRow["team_id"] ?? 0);
+    if ($teamId > 0) {
+      $teamCombinesByTeam[$teamId][] = $combineRow;
+    }
+  }
 }
 ?>
 <?php
@@ -957,30 +976,70 @@ require __DIR__ . "/partials/header-brand.php";
       <?php else: ?>
         <ul class="list list--teams-admin">
           <?php foreach ($teams as $team): ?>
-            <li class="list-item">
-              <div>
-                <strong><?php echo htmlspecialchars($team["team_name"], ENT_QUOTES, "UTF-8"); ?></strong>
-                <span class="meta"><?php echo htmlspecialchars($team["contact"] ?? "", ENT_QUOTES, "UTF-8"); ?></span>
-              </div>
-              <div class="result-meta">
-                <span class="badge">
-                  <?php
-                    $playersCount = (int)($team["player_count"] ?? 0);
-                    $disciplinesCount = (int)($team["discipline_count"] ?? 0);
-                    $combinesCount = (int)($team["combine_count"] ?? 0);
-                    echo htmlspecialchars(
-                    $playersCount . " " . t("common.players", "Spieler") . " · " . $disciplinesCount . " " . t("common.disciplines", "Disziplinen") . " · " . $combinesCount . " " . t("common.combines", "Combines"),
-                      ENT_QUOTES,
-                      "UTF-8"
-                    );
-                  ?>
-                </span>
-                <form method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete", "Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
-                  <input type="hidden" name="action" value="delete_team_admin">
-                  <input type="hidden" name="team_id" value="<?php echo (int)$team["id"]; ?>">
-                  <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("common.delete", "Löschen"), ENT_QUOTES, "UTF-8"); ?></button>
-                </form>
-              </div>
+            <?php
+              $teamId = (int)$team["id"];
+              $teamCombines = $teamCombinesByTeam[$teamId] ?? [];
+              $playersCount = (int)($team["player_count"] ?? 0);
+              $disciplinesCount = (int)($team["discipline_count"] ?? 0);
+              $combinesCount = (int)($team["combine_count"] ?? 0);
+            ?>
+            <li class="list-item list-item--admin-team">
+              <details class="admin-team-details">
+                <summary>
+                  <div class="admin-team-summary-main">
+                    <span class="admin-team-arrow" aria-hidden="true"></span>
+                    <strong><?php echo htmlspecialchars($team["team_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                    <span class="meta"><?php echo htmlspecialchars($team["contact"] ?? "", ENT_QUOTES, "UTF-8"); ?></span>
+                  </div>
+                  <div class="result-meta">
+                    <span class="badge">
+                      <?php
+                        echo htmlspecialchars(
+                          $playersCount . " " . t("common.players", "Spieler") . " · " . $disciplinesCount . " " . t("common.disciplines", "Disziplinen") . " · " . $combinesCount . " " . t("common.combines", "Combines"),
+                          ENT_QUOTES,
+                          "UTF-8"
+                        );
+                      ?>
+                    </span>
+                  </div>
+                </summary>
+                <div class="admin-team-detail">
+                  <p class="detail">
+                    <strong><?php echo htmlspecialchars(t("admin.teams.last_login", "Letzter Login"), ENT_QUOTES, "UTF-8"); ?>:</strong>
+                    <?php echo htmlspecialchars($team["last_login_at"] ?: t("admin.teams.last_login_never", "Noch nie"), ENT_QUOTES, "UTF-8"); ?>
+                  </p>
+                  <?php if (empty($teamCombines)): ?>
+                    <p class="help"><?php echo htmlspecialchars(t("admin.teams.combines_empty", "Noch keine Combines angelegt."), ENT_QUOTES, "UTF-8"); ?></p>
+                  <?php else: ?>
+                    <ul class="list admin-team-combines">
+                      <?php foreach ($teamCombines as $combine): ?>
+                        <li class="list-item">
+                          <div>
+                            <strong><?php echo htmlspecialchars($combine["combine_name"], ENT_QUOTES, "UTF-8"); ?></strong>
+                            <span class="meta"><?php echo htmlspecialchars($combine["event_date"], ENT_QUOTES, "UTF-8"); ?></span>
+                          </div>
+                          <span class="badge">
+                            <?php
+                              $combinePlayersCount = (int)($combine["player_count"] ?? 0);
+                              $combineDisciplinesCount = (int)($combine["discipline_count"] ?? 0);
+                              echo htmlspecialchars(
+                                $combinePlayersCount . " " . t("common.players", "Spieler") . " · " . $combineDisciplinesCount . " " . t("common.disciplines", "Disziplinen"),
+                                ENT_QUOTES,
+                                "UTF-8"
+                              );
+                            ?>
+                          </span>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                  <?php endif; ?>
+                </div>
+              </details>
+              <form method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete", "Team wirklich löschen? Alle Combines, Disziplinen und Spieler werden entfernt."), ENT_QUOTES, "UTF-8"); ?>') && confirm('<?php echo htmlspecialchars(t("admin.confirm.team_delete_final", "Letzte Warnung: Dieser Vorgang kann nicht rückgängig gemacht werden. Wirklich löschen?"), ENT_QUOTES, "UTF-8"); ?>');">
+                <input type="hidden" name="action" value="delete_team_admin">
+                <input type="hidden" name="team_id" value="<?php echo $teamId; ?>">
+                <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("common.delete", "Löschen"), ENT_QUOTES, "UTF-8"); ?></button>
+              </form>
             </li>
           <?php endforeach; ?>
         </ul>

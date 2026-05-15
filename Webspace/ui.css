@@ -877,6 +877,70 @@ body {
   align-items: flex-start;
 }
 
+.list-item--admin-team {
+  align-items: flex-start;
+}
+
+.admin-team-details {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.list-item--admin-team > form {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.admin-team-details summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+}
+
+.admin-team-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-team-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.admin-team-arrow {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--muted);
+  flex: 0 0 auto;
+  transition: transform 0.15s ease;
+}
+
+.admin-team-details[open] .admin-team-arrow {
+  transform: rotate(90deg);
+}
+
+.admin-team-detail {
+  border-top: 1px solid rgba(31, 26, 20, 0.12);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+:root[data-theme="dark"] .admin-team-detail {
+  border-top-color: rgba(244, 237, 230, 0.14);
+}
+
+.admin-team-combines .list-item {
+  box-shadow: none;
+  background: var(--bg-strong);
+}
+
 .inline-form {
   display: grid;
   gap: 10px;
@@ -1074,6 +1138,15 @@ body {
   .list--teams-admin .list-item {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .admin-team-details summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .list-item--admin-team > form {
+    margin-left: 0;
   }
 
   .list--teams-admin .list-item > div,
