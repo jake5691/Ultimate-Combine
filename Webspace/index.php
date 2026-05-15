@@ -40,7 +40,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ":contact" => $contact,
           ]);
 
-          $_SESSION["team_id"] = (int)$pdo->lastInsertId();
+          $teamId = (int)$pdo->lastInsertId();
+          $stmt = $pdo->prepare("UPDATE teams SET last_login_at = NOW() WHERE id = :id");
+          $stmt->execute([":id" => $teamId]);
+
+          $_SESSION["team_id"] = $teamId;
           $_SESSION["team_name"] = $team;
           header("Location: team.php");
           exit;
@@ -90,6 +94,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $row = $stmt->fetch();
 
         if ($row && password_verify($key, $row["team_key_hash"])) {
+          $stmt = $pdo->prepare("UPDATE teams SET last_login_at = NOW() WHERE id = :id");
+          $stmt->execute([":id" => (int)$row["id"]]);
+
           $_SESSION["is_admin"] = false;
           $_SESSION["team_id"] = (int)$row["id"];
           $_SESSION["team_name"] = $row["team_name"];

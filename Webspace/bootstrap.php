@@ -241,9 +241,23 @@ function uc_ensure_schema(PDO $pdo): void {
       team_name VARCHAR(120) NOT NULL UNIQUE,
       team_key_hash VARCHAR(255) NOT NULL,
       contact VARCHAR(160) NULL,
+      last_login_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $teamColumns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'teams'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+
+  if (!in_array("last_login_at", $teamColumns, true)) {
+    $pdo->exec("ALTER TABLE teams ADD COLUMN last_login_at DATETIME NULL AFTER contact");
+  }
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS players (
