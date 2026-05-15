@@ -593,8 +593,90 @@ require __DIR__ . "/partials/header-brand.php";
 
     <section class="info">
       <div class="card-header">
+        <h2><?php echo htmlspecialchars(t("admin.feedback.title", "Feedback"), ENT_QUOTES, "UTF-8"); ?></h2>
+        <form class="form" method="get" action="">
+          <label class="field">
+            <span><?php echo htmlspecialchars(t("admin.feedback.filter_label", "Status"), ENT_QUOTES, "UTF-8"); ?></span>
+            <select name="feedback_status" onchange="this.form.submit()">
+              <option value="all"<?php echo $feedbackFilter === "all" ? " selected" : ""; ?>><?php echo htmlspecialchars(t("admin.feedback.filter_all", "Alle"), ENT_QUOTES, "UTF-8"); ?></option>
+              <?php foreach ($feedbackStatuses as $status): ?>
+                <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo $feedbackFilter === $status ? " selected" : ""; ?>>
+                  <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+        </form>
+      </div>
+      <?php if (empty($feedbackEntries)): ?>
+        <p class="help"><?php echo htmlspecialchars(t("admin.feedback.empty", "Noch kein Feedback eingegangen."), ENT_QUOTES, "UTF-8"); ?></p>
+      <?php else: ?>
+        <ul class="list list--teams-admin">
+          <?php foreach ($feedbackEntries as $entry): ?>
+            <?php $previewLine = strtok((string)($entry["message"] ?? ""), "\n"); ?>
+            <li class="list-item">
+              <details>
+                <summary>
+                  <strong><?php echo htmlspecialchars($entry["subject"], ENT_QUOTES, "UTF-8"); ?></strong>
+                  <span class="badge status-badge status-<?php echo htmlspecialchars(strtolower((string)$entry["status"]), ENT_QUOTES, "UTF-8"); ?>">
+                    <?php echo htmlspecialchars($entry["status"] ?? "Neu", ENT_QUOTES, "UTF-8"); ?>
+                  </span>
+                  <span class="meta">
+                    <?php
+                      $metaParts = [];
+                      if (!empty($entry["sender_name"])) {
+                        $metaParts[] = $entry["sender_name"];
+                      }
+                      if (!empty($entry["sender_email"])) {
+                        $metaParts[] = $entry["sender_email"];
+                      }
+                      if (!empty($entry["team_name"])) {
+                        $metaParts[] = t("common.team_prefix", "Team: ") . $entry["team_name"];
+                      }
+                      if (!empty($entry["created_at"])) {
+                        $metaParts[] = $entry["created_at"];
+                      }
+                    ?>
+                    <?php echo htmlspecialchars(implode(" · ", $metaParts), ENT_QUOTES, "UTF-8"); ?>
+                  </span>
+                  <?php if ($previewLine !== ""): ?>
+                    <div class="detail feedback-preview"><?php echo htmlspecialchars($previewLine, ENT_QUOTES, "UTF-8"); ?></div>
+                  <?php endif; ?>
+                </summary>
+                <div class="detail"><?php echo nl2br(htmlspecialchars($entry["message"], ENT_QUOTES, "UTF-8")); ?></div>
+                <form class="form" method="post" action="">
+                  <input type="hidden" name="action" value="update_feedback_status">
+                  <input type="hidden" name="feedback_id" value="<?php echo (int)$entry["id"]; ?>">
+                  <div class="form-actions">
+                    <label class="field">
+                      <span><?php echo htmlspecialchars(t("admin.feedback.set_status", "Status setzen"), ENT_QUOTES, "UTF-8"); ?></span>
+                      <select name="status" required>
+                        <?php foreach ($feedbackStatuses as $status): ?>
+                          <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($entry["status"] ?? "Neu") === $status ? " selected" : ""; ?>>
+                            <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </label>
+                    <button class="pill-button" type="submit"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
+                  </div>
+                </form>
+              </details>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </section>
+
+    <section class="info">
+      <div class="card-header">
         <h2><?php echo htmlspecialchars(t("admin.units.title", "Einheiten"), ENT_QUOTES, "UTF-8"); ?></h2>
         <div class="card-actions" id="units-actions-view">
+          <?php if (!empty($units)): ?>
+            <button class="pill-button js-toggle" type="button" data-target="units-overview" aria-expanded="false" aria-controls="units-overview" data-toggle-label data-label-open="<?php echo htmlspecialchars(t("common.hide", "Ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-closed="<?php echo htmlspecialchars(t("common.show", "Anzeigen"), ENT_QUOTES, "UTF-8"); ?>">
+              <?php echo htmlspecialchars(t("common.show", "Anzeigen"), ENT_QUOTES, "UTF-8"); ?>
+            </button>
+          <?php endif; ?>
           <button class="pill-button" type="button" data-edit-units><?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?></button>
           <button class="icon-button small js-toggle" type="button" data-target="add-unit" aria-expanded="false" aria-controls="add-unit">+</button>
         </div>
@@ -622,7 +704,7 @@ require __DIR__ . "/partials/header-brand.php";
       <?php if (empty($units)): ?>
         <p class="help"><?php echo htmlspecialchars(t("admin.units.empty", "Noch keine Einheiten hinterlegt."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
-        <ul class="list" id="units-overview">
+        <ul class="list is-hidden" id="units-overview" hidden>
           <?php foreach ($units as $unit): ?>
             <li class="list-item">
               <div>
@@ -667,6 +749,11 @@ require __DIR__ . "/partials/header-brand.php";
       <div class="card-header">
         <h2><?php echo htmlspecialchars(t("admin.disciplines.title", "Globale Disziplinen"), ENT_QUOTES, "UTF-8"); ?></h2>
         <div class="card-actions" id="disciplines-actions-view">
+          <?php if (!empty($globalDisciplines)): ?>
+            <button class="pill-button js-toggle" type="button" data-target="disciplines-overview" aria-expanded="false" aria-controls="disciplines-overview" data-toggle-label data-label-open="<?php echo htmlspecialchars(t("common.hide", "Ausblenden"), ENT_QUOTES, "UTF-8"); ?>" data-label-closed="<?php echo htmlspecialchars(t("common.show", "Anzeigen"), ENT_QUOTES, "UTF-8"); ?>">
+              <?php echo htmlspecialchars(t("common.show", "Anzeigen"), ENT_QUOTES, "UTF-8"); ?>
+            </button>
+          <?php endif; ?>
           <button class="pill-button" type="button" data-edit-disciplines><?php echo htmlspecialchars(t("common.edit", "Bearbeiten"), ENT_QUOTES, "UTF-8"); ?></button>
           <button class="icon-button small js-toggle" type="button" data-target="add-global-discipline" aria-expanded="false" aria-controls="add-global-discipline">+</button>
         </div>
@@ -749,7 +836,7 @@ require __DIR__ . "/partials/header-brand.php";
       <?php if (empty($globalDisciplines)): ?>
         <p class="help"><?php echo htmlspecialchars(t("admin.disciplines.empty", "Noch keine globalen Disziplinen hinterlegt."), ENT_QUOTES, "UTF-8"); ?></p>
       <?php else: ?>
-        <ul class="list" id="disciplines-overview">
+        <ul class="list is-hidden" id="disciplines-overview" hidden>
           <?php foreach ($globalDisciplines as $discipline): ?>
             <li class="list-item">
               <div>
@@ -839,83 +926,6 @@ require __DIR__ . "/partials/header-brand.php";
           </form>
         <?php endif; ?>
       </div>
-    </section>
-
-    <section class="info">
-      <div class="card-header">
-        <h2><?php echo htmlspecialchars(t("admin.feedback.title", "Feedback"), ENT_QUOTES, "UTF-8"); ?></h2>
-        <form class="form" method="get" action="">
-          <label class="field">
-            <span><?php echo htmlspecialchars(t("admin.feedback.filter_label", "Status"), ENT_QUOTES, "UTF-8"); ?></span>
-            <select name="feedback_status" onchange="this.form.submit()">
-              <option value="all"<?php echo $feedbackFilter === "all" ? " selected" : ""; ?>><?php echo htmlspecialchars(t("admin.feedback.filter_all", "Alle"), ENT_QUOTES, "UTF-8"); ?></option>
-              <?php foreach ($feedbackStatuses as $status): ?>
-                <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo $feedbackFilter === $status ? " selected" : ""; ?>>
-                  <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </label>
-        </form>
-      </div>
-      <?php if (empty($feedbackEntries)): ?>
-        <p class="help"><?php echo htmlspecialchars(t("admin.feedback.empty", "Noch kein Feedback eingegangen."), ENT_QUOTES, "UTF-8"); ?></p>
-      <?php else: ?>
-        <ul class="list list--teams-admin">
-          <?php foreach ($feedbackEntries as $entry): ?>
-            <?php $previewLine = strtok((string)($entry["message"] ?? ""), "\n"); ?>
-            <li class="list-item">
-              <details>
-                <summary>
-                  <strong><?php echo htmlspecialchars($entry["subject"], ENT_QUOTES, "UTF-8"); ?></strong>
-                  <span class="badge status-badge status-<?php echo htmlspecialchars(strtolower((string)$entry["status"]), ENT_QUOTES, "UTF-8"); ?>">
-                    <?php echo htmlspecialchars($entry["status"] ?? "Neu", ENT_QUOTES, "UTF-8"); ?>
-                  </span>
-                  <span class="meta">
-                    <?php
-                      $metaParts = [];
-                      if (!empty($entry["sender_name"])) {
-                        $metaParts[] = $entry["sender_name"];
-                      }
-                      if (!empty($entry["sender_email"])) {
-                        $metaParts[] = $entry["sender_email"];
-                      }
-                    if (!empty($entry["team_name"])) {
-                      $metaParts[] = t("common.team_prefix", "Team: ") . $entry["team_name"];
-                    }
-                      if (!empty($entry["created_at"])) {
-                        $metaParts[] = $entry["created_at"];
-                      }
-                    ?>
-                    <?php echo htmlspecialchars(implode(" · ", $metaParts), ENT_QUOTES, "UTF-8"); ?>
-                  </span>
-                  <?php if ($previewLine !== ""): ?>
-                    <div class="detail feedback-preview"><?php echo htmlspecialchars($previewLine, ENT_QUOTES, "UTF-8"); ?></div>
-                  <?php endif; ?>
-                </summary>
-                <div class="detail"><?php echo nl2br(htmlspecialchars($entry["message"], ENT_QUOTES, "UTF-8")); ?></div>
-                <form class="form" method="post" action="">
-                  <input type="hidden" name="action" value="update_feedback_status">
-                  <input type="hidden" name="feedback_id" value="<?php echo (int)$entry["id"]; ?>">
-                  <div class="form-actions">
-                    <label class="field">
-                      <span><?php echo htmlspecialchars(t("admin.feedback.set_status", "Status setzen"), ENT_QUOTES, "UTF-8"); ?></span>
-                      <select name="status" required>
-                        <?php foreach ($feedbackStatuses as $status): ?>
-                          <option value="<?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>"<?php echo ($entry["status"] ?? "Neu") === $status ? " selected" : ""; ?>>
-                            <?php echo htmlspecialchars($status, ENT_QUOTES, "UTF-8"); ?>
-                          </option>
-                        <?php endforeach; ?>
-                      </select>
-                    </label>
-                    <button class="pill-button" type="submit"><?php echo htmlspecialchars(t("common.save", "Speichern"), ENT_QUOTES, "UTF-8"); ?></button>
-                  </div>
-                </form>
-              </details>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      <?php endif; ?>
     </section>
 
     <section class="info">

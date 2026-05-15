@@ -8,6 +8,8 @@ return [
   "common.save" => "Speichern",
   "common.delete" => "Löschen",
   "common.back" => "Zurück",
+  "common.show" => "Anzeigen",
+  "common.hide" => "Ausblenden",
   "common.name" => "Name",
   "common.description" => "Beschreibung",
   "common.discipline" => "Disziplin",

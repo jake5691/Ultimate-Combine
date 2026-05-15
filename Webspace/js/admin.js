@@ -26,14 +26,22 @@
     const addUnitPanel = document.getElementById("add-unit");
     const viewActions = document.getElementById("units-actions-view");
     const editActions = document.getElementById("units-actions-edit");
+    let unitsOverviewWasHidden = overviewList ? overviewList.classList.contains("is-hidden") : true;
 
     const setEditMode = (isEdit) => {
       const show = isEdit ? "true" : "false";
+      if (isEdit && overviewList) {
+        unitsOverviewWasHidden = overviewList.classList.contains("is-hidden");
+      }
       if (editPanel) {
         editPanel.classList.toggle("is-hidden", !isEdit);
         editPanel.hidden = !isEdit;
       }
-      if (overviewList) overviewList.classList.toggle("is-hidden", isEdit);
+      if (overviewList) {
+        const hideOverview = isEdit || unitsOverviewWasHidden;
+        overviewList.classList.toggle("is-hidden", hideOverview);
+        overviewList.hidden = hideOverview;
+      }
       if (addUnitPanel) {
         addUnitPanel.classList.toggle("is-hidden", true);
         addUnitPanel.hidden = true;
@@ -61,14 +69,22 @@
     const addDisciplinePanel = document.getElementById("add-global-discipline");
     const disciplinesViewActions = document.getElementById("disciplines-actions-view");
     const disciplinesEditActions = document.getElementById("disciplines-actions-edit");
+    let disciplinesOverviewWasHidden = disciplinesOverview ? disciplinesOverview.classList.contains("is-hidden") : true;
 
     const setDisciplinesEditMode = (isEdit) => {
       const show = isEdit ? "true" : "false";
+      if (isEdit && disciplinesOverview) {
+        disciplinesOverviewWasHidden = disciplinesOverview.classList.contains("is-hidden");
+      }
       if (editDisciplinesPanel) {
         editDisciplinesPanel.classList.toggle("is-hidden", !isEdit);
         editDisciplinesPanel.hidden = !isEdit;
       }
-      if (disciplinesOverview) disciplinesOverview.classList.toggle("is-hidden", isEdit);
+      if (disciplinesOverview) {
+        const hideOverview = isEdit || disciplinesOverviewWasHidden;
+        disciplinesOverview.classList.toggle("is-hidden", hideOverview);
+        disciplinesOverview.hidden = hideOverview;
+      }
       if (addDisciplinePanel) {
         addDisciplinePanel.classList.toggle("is-hidden", true);
         addDisciplinePanel.hidden = true;

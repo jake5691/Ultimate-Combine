@@ -8,6 +8,8 @@ return [
   "common.save" => "Save",
   "common.delete" => "Delete",
   "common.back" => "Back",
+  "common.show" => "Show",
+  "common.hide" => "Hide",
   "common.name" => "Name",
   "common.description" => "Description",
   "common.discipline" => "Discipline",
