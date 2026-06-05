@@ -263,6 +263,7 @@ function uc_ensure_schema(PDO $pdo): void {
     "CREATE TABLE IF NOT EXISTS players (
       id INT AUTO_INCREMENT PRIMARY KEY,
       team_id INT NOT NULL,
+      external_id VARCHAR(120) NULL,
       first_name VARCHAR(80) NOT NULL,
       last_name VARCHAR(120) NOT NULL,
       position_cutter TINYINT(1) NOT NULL,
@@ -275,6 +276,19 @@ function uc_ensure_schema(PDO $pdo): void {
         ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
   );
+
+  $playerColumns = $pdo
+    ->query(
+      "SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'players'"
+    )
+    ->fetchAll(PDO::FETCH_COLUMN);
+
+  if (!in_array("external_id", $playerColumns, true)) {
+    $pdo->exec("ALTER TABLE players ADD COLUMN external_id VARCHAR(120) NULL AFTER team_id");
+  }
 
   $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combines (

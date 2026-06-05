@@ -126,6 +126,7 @@ return [
   "team.players.empty" => "No players yet.",
   "team.players.create" => "Create player",
   "team.players.save" => "Save player",
+  "team.players.external_id" => "Custom ID",
   "team.players.first_name" => "First name",
   "team.players.last_name" => "Last name",
   "team.players.jersey_number" => "Jersey number",
