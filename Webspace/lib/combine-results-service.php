@@ -77,6 +77,18 @@ function uc_results_disciplines(PDO $pdo, int $teamId, int $combineId): array {
             disciplines.discipline_name,
             disciplines.description,
             disciplines.unit,
+            (
+              SELECT units.unit_abbreviation
+              FROM units
+              WHERE (
+                  units.unit_name = disciplines.unit
+                  OR units.unit_abbreviation = disciplines.unit
+                  OR CONCAT(units.unit_name, ' (', units.unit_abbreviation, ')') = disciplines.unit
+                )
+                AND (units.team_id = :team_id OR units.team_id IS NULL)
+              ORDER BY (units.team_id IS NULL) ASC
+              LIMIT 1
+            ) AS unit_abbreviation,
             disciplines.category,
             disciplines.rating_direction,
             disciplines.expected_min,

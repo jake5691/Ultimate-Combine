@@ -44,6 +44,7 @@ $endpointGroups = [
       "discipline_name",
       "description",
       "unit",
+      "unit_abbreviation",
       "category",
       "rating_direction",
       "expected_min",
