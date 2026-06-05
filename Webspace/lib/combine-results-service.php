@@ -50,6 +50,7 @@ function uc_results_context(PDO $pdo, int $teamId, int $combineId): ?array {
 function uc_results_players(PDO $pdo, int $teamId, int $combineId): array {
   $stmt = $pdo->prepare(
     "SELECT players.id,
+            players.external_id,
             players.first_name,
             players.last_name,
             players.jersey_number,

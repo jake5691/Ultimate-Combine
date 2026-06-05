@@ -18,6 +18,7 @@ $endpointGroups = [
     ],
     "fields" => [
       "id",
+      "external_id",
       "first_name",
       "last_name",
       "jersey_number",

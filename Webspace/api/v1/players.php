@@ -14,7 +14,7 @@ $auth = uc_api_require_auth($pdo);
 $teamId = $auth["team_id"];
 $playerId = uc_api_int_param("id");
 
-$sql = "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
+$sql = "SELECT id, external_id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
         FROM players
         WHERE team_id = :team_id";
 $params = [":team_id" => $teamId];

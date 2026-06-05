@@ -2,6 +2,10 @@
   <input type="hidden" name="action" value="update_player">
   <input type="hidden" name="id" value="<?php echo (int)$editRecord["id"]; ?>">
   <label class="field">
+    <span><?php echo htmlspecialchars(t("team.players.external_id", "Eigene ID"), ENT_QUOTES, "UTF-8"); ?></span>
+    <input type="text" name="external_id" maxlength="120" value="<?php echo htmlspecialchars($editRecord["external_id"] ?? "", ENT_QUOTES, "UTF-8"); ?>">
+  </label>
+  <label class="field">
     <span><?php echo htmlspecialchars(t("team.players.first_name", "Vorname"), ENT_QUOTES, "UTF-8"); ?></span>
     <input type="text" name="first_name" value="<?php echo htmlspecialchars($editRecord["first_name"], ENT_QUOTES, "UTF-8"); ?>" required>
   </label>

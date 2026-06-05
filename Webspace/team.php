@@ -418,6 +418,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
     $editId = filter_var($_POST["id"] ?? null, FILTER_VALIDATE_INT);
     $firstName = trim($_POST["first_name"] ?? "");
     $lastName = trim($_POST["last_name"] ?? "");
+    $externalId = trim($_POST["external_id"] ?? "");
+    $externalId = $externalId === "" ? null : $externalId;
     $jerseyRaw = trim($_POST["jersey_number"] ?? "");
     $gender = $_POST["gender"] ?? "";
     $positions = (array)($_POST["positions"] ?? []);
@@ -455,7 +457,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       } else {
         $stmt = $pdo->prepare(
           "UPDATE players
-           SET first_name = :first_name,
+           SET external_id = :external_id,
+               first_name = :first_name,
                last_name = :last_name,
                jersey_number = :jersey_number,
                gender = :gender,
@@ -464,6 +467,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
            WHERE id = :id AND team_id = :team_id"
         );
         $stmt->execute([
+          ":external_id" => $externalId,
           ":first_name" => $firstName,
           ":last_name" => $lastName,
           ":jersey_number" => $jerseyNumber,
@@ -737,7 +741,7 @@ if (!$pageError) {
   if ($editType && ($editId || $cloneSourceId)) {
     if ($editType === "player") {
       $stmt = $pdo->prepare(
-        "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter
+        "SELECT id, external_id, first_name, last_name, jersey_number, gender, position_handler, position_cutter
          FROM players
          WHERE id = :id AND team_id = :team_id"
       );
@@ -788,7 +792,7 @@ if (!$pageError) {
   }
 
   $stmt = $pdo->prepare(
-    "SELECT id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
+    "SELECT id, external_id, first_name, last_name, jersey_number, gender, position_handler, position_cutter, created_at
      FROM players
      WHERE team_id = :team_id
      ORDER BY first_name ASC, last_name ASC"

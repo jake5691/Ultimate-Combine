@@ -126,6 +126,7 @@ return [
   "team.players.empty" => "Noch keine Spieler angelegt.",
   "team.players.create" => "Spieler anlegen",
   "team.players.save" => "Spieler speichern",
+  "team.players.external_id" => "Eigene ID",
   "team.players.first_name" => "Vorname",
   "team.players.last_name" => "Nachname",
   "team.players.jersey_number" => "Trikotnummer",
