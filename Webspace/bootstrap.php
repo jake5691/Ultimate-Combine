@@ -567,6 +567,23 @@ function uc_ensure_schema(PDO $pdo): void {
   );
 
   $pdo->exec(
+    "CREATE TABLE IF NOT EXISTS combine_entry_links (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      combine_id INT NOT NULL,
+      token_hash CHAR(64) NOT NULL UNIQUE,
+      label VARCHAR(120) NULL,
+      expires_at DATETIME NULL,
+      last_used_at DATETIME NULL,
+      revoked_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_combine_entry_links_combine (combine_id),
+      CONSTRAINT fk_combine_entry_links_combine
+        FOREIGN KEY (combine_id) REFERENCES combines(id)
+        ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $pdo->exec(
     "CREATE TABLE IF NOT EXISTS combine_results (
       id INT AUTO_INCREMENT PRIMARY KEY,
       combine_id INT NOT NULL,

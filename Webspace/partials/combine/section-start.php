@@ -42,6 +42,56 @@
                   <a class="pill-button is-muted" href="combine.php?id=<?php echo (int)$combineId; ?>&mode=start&discipline_id=<?php echo (int)$activeDisciplineId; ?>&share=entry_pdf"><?php echo htmlspecialchars(t("combine.results.pdf_download", "PDF"), ENT_QUOTES, "UTF-8"); ?></a>
                 </div>
               </details>
+              <details class="download-menu live-entry-menu"<?php echo ($createdEntryLinkUrl || $entryLinkFeedback) ? " open" : ""; ?>>
+                <summary class="pill-button is-muted"><?php echo htmlspecialchars(t("combine.live.action", "Live-Link"), ENT_QUOTES, "UTF-8"); ?></summary>
+                <div class="download-panel live-entry-panel">
+                  <p class="help"><?php echo htmlspecialchars(t("combine.live.lead", "Erstelle einen Link, über den kleine Spielergruppen ohne Login Ergebnisse am Handy eintragen können."), ENT_QUOTES, "UTF-8"); ?></p>
+                  <?php if ($entryLinkFeedback): ?>
+                    <p class="help"><?php echo htmlspecialchars($entryLinkFeedback, ENT_QUOTES, "UTF-8"); ?></p>
+                  <?php endif; ?>
+                  <?php if ($createdEntryLinkUrl): ?>
+                    <label class="field">
+                      <span><?php echo htmlspecialchars(t("combine.live.created_link", "Neuer Live-Link"), ENT_QUOTES, "UTF-8"); ?></span>
+                      <input type="text" readonly value="<?php echo htmlspecialchars($createdEntryLinkUrl, ENT_QUOTES, "UTF-8"); ?>" onclick="this.select();">
+                    </label>
+                    <p class="help"><?php echo htmlspecialchars(t("combine.live.created_once", "Kopiere den Link jetzt. Aus Sicherheitsgründen wird er später nicht erneut angezeigt."), ENT_QUOTES, "UTF-8"); ?></p>
+                  <?php endif; ?>
+                  <form class="form" method="post" action="">
+                    <input type="hidden" name="action" value="create_entry_link">
+                    <label class="field">
+                      <span><?php echo htmlspecialchars(t("combine.live.label", "Link-Name"), ENT_QUOTES, "UTF-8"); ?></span>
+                      <input type="text" name="label" maxlength="120" placeholder="<?php echo htmlspecialchars(t("combine.live.label_placeholder", "z. B. Gruppe 1"), ENT_QUOTES, "UTF-8"); ?>">
+                    </label>
+                    <button class="primary-button" type="submit"><?php echo htmlspecialchars(t("combine.live.create", "Live-Link erstellen"), ENT_QUOTES, "UTF-8"); ?></button>
+                  </form>
+                  <?php if (empty($entryLinks)): ?>
+                    <p class="help"><?php echo htmlspecialchars(t("combine.live.empty", "Noch keine aktiven Live-Links."), ENT_QUOTES, "UTF-8"); ?></p>
+                  <?php else: ?>
+                    <ul class="list live-link-list">
+                      <?php foreach ($entryLinks as $entryLink): ?>
+                        <li class="list-item">
+                          <div>
+                            <strong><?php echo htmlspecialchars($entryLink["label"] ?: t("combine.live.default_label", "Live-Erfassung"), ENT_QUOTES, "UTF-8"); ?></strong>
+                            <span class="meta">
+                              <?php echo htmlspecialchars(sprintf(t("combine.live.created_at", "Erstellt: %s"), (string)$entryLink["created_at"]), ENT_QUOTES, "UTF-8"); ?>
+                            </span>
+                            <?php if (!empty($entryLink["last_used_at"])): ?>
+                              <span class="meta">
+                                <?php echo htmlspecialchars(sprintf(t("combine.live.last_used_at", "Zuletzt genutzt: %s"), (string)$entryLink["last_used_at"]), ENT_QUOTES, "UTF-8"); ?>
+                              </span>
+                            <?php endif; ?>
+                          </div>
+                          <form method="post" action="" onsubmit="return confirm('<?php echo htmlspecialchars(t("combine.live.confirm_revoke", "Live-Link wirklich widerrufen? Geräte mit diesem Link verlieren den Zugriff."), ENT_QUOTES, "UTF-8"); ?>');">
+                            <input type="hidden" name="action" value="revoke_entry_link">
+                            <input type="hidden" name="entry_link_id" value="<?php echo (int)$entryLink["id"]; ?>">
+                            <button class="pill-button is-danger" type="submit"><?php echo htmlspecialchars(t("combine.live.revoke", "Widerrufen"), ENT_QUOTES, "UTF-8"); ?></button>
+                          </form>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                  <?php endif; ?>
+                </div>
+              </details>
               <button class="info-icon js-info" type="button" aria-label="<?php echo htmlspecialchars(t("common.explanation_prefix", "Erklärung:"), ENT_QUOTES, "UTF-8"); ?> <?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>" aria-expanded="false" data-tooltip="<?php echo htmlspecialchars(t("combine.results.csv_upload_info", "CSV mit Header: Athlet, Finale Zeit. Werte werden für die gewählte Disziplin übernommen."), ENT_QUOTES, "UTF-8"); ?>">i</button>
             </div>
           <?php endif; ?>

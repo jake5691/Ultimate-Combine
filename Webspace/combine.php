@@ -1,14 +1,11 @@
 <?php
 require_once __DIR__ . "/bootstrap.php";
 require_once __DIR__ . "/lib/combine-results-service.php";
+require_once __DIR__ . "/lib/result-entry-service.php";
 require_once __DIR__ . "/lib/ranking-service.php";
 
 function uc_normalize_value($value) {
-  $value = trim((string)$value);
-  if ($value === "") {
-    return null;
-  }
-  return str_replace(",", ".", $value);
+  return uc_result_entry_normalize_value($value);
 }
 
 function uc_value_to_float($value) {
@@ -96,6 +93,10 @@ function uc_slug($value): string {
   $value = preg_replace('/[^A-Za-z0-9]+/', '-', $value);
   $value = trim($value ?? "", "-");
   return $value === "" ? "value" : $value;
+}
+
+function uc_entry_token_hash(string $token): string {
+  return hash("sha256", $token);
 }
 
 function uc_gd_color($image, int $r, int $g, int $b) {
@@ -466,9 +467,12 @@ $assignedDisciplineIds = [];
   $assignedPlayers = [];
   $assignedDisciplines = [];
   $combineDisciplineWeights = [];
-  $combineCategoryWeights = [];
+$combineCategoryWeights = [];
 $resultsContext = null;
 $resultsByDiscipline = [];
+$entryLinks = [];
+$entryLinkFeedback = null;
+$createdEntryLinkUrl = null;
 $resultValues = [];
 $resultOriginalValues = [];
 $formDisciplineWeights = [];
@@ -694,6 +698,61 @@ if (!$pageError) {
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
   $action = $_POST["action"] ?? "";
 
+  if ($action === "create_entry_link" && !$combineError) {
+    $mode = "start";
+    if (empty($assignedPlayers) || empty($assignedDisciplines)) {
+      $entryLinkFeedback = t("combine.error.assign_before_start", "Bitte zuerst Spieler und Disziplinen zuordnen.");
+    } else {
+      try {
+        $token = bin2hex(random_bytes(32));
+        $label = trim((string)($_POST["label"] ?? ""));
+        if ($label === "") {
+          $label = t("combine.live.default_label", "Live-Erfassung");
+        }
+        $stmt = $pdo->prepare(
+          "INSERT INTO combine_entry_links (combine_id, token_hash, label)
+           VALUES (:combine_id, :token_hash, :label)"
+        );
+        $stmt->execute([
+          ":combine_id" => $combineId,
+          ":token_hash" => uc_entry_token_hash($token),
+          ":label" => $label,
+        ]);
+        $baseUrl = uc_base_url($env);
+        $createdEntryLinkUrl = $baseUrl . "/live-entry.php?token=" . rawurlencode($token);
+        $entryLinkFeedback = t("combine.live.feedback.created", "Live-Link wurde erstellt.");
+      } catch (Throwable $e) {
+        $entryLinkFeedback = t("combine.live.error.create_failed", "Live-Link konnte nicht erstellt werden.");
+      }
+    }
+  }
+
+  if ($action === "revoke_entry_link" && !$combineError) {
+    $mode = "start";
+    $entryLinkId = filter_var($_POST["entry_link_id"] ?? null, FILTER_VALIDATE_INT);
+    if ($entryLinkId) {
+      try {
+        $stmt = $pdo->prepare(
+          "UPDATE combine_entry_links
+           INNER JOIN combines ON combines.id = combine_entry_links.combine_id
+           SET combine_entry_links.revoked_at = CURRENT_TIMESTAMP
+           WHERE combine_entry_links.id = :id
+             AND combine_entry_links.combine_id = :combine_id
+             AND combines.team_id = :team_id
+             AND combine_entry_links.revoked_at IS NULL"
+        );
+        $stmt->execute([
+          ":id" => $entryLinkId,
+          ":combine_id" => $combineId,
+          ":team_id" => $teamId,
+        ]);
+        $entryLinkFeedback = t("combine.live.feedback.revoked", "Live-Link wurde widerrufen.");
+      } catch (Throwable $e) {
+        $entryLinkFeedback = t("combine.live.error.revoke_failed", "Live-Link konnte nicht widerrufen werden.");
+      }
+    }
+  }
+
   if ($action === "update_combine" && !$combineError) {
     $combineName = trim($_POST["combine_name"] ?? "");
     $eventDate = trim($_POST["event_date"] ?? "");
@@ -882,44 +941,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
       $submitted = (array)($_POST["result"] ?? []);
       $original = (array)($_POST["original"] ?? []);
 
-      $newValues = [];
-      $originalValues = [];
-      foreach ($assignedPlayers as $player) {
-        $playerId = (int)$player["id"];
-        $newValues[$playerId] = uc_normalize_value($submitted[$playerId] ?? null);
-        $originalValues[$playerId] = uc_normalize_value($original[$playerId] ?? null);
-      }
+      $resultPlayerIds = uc_result_entry_player_ids($assignedPlayers);
+      $newValues = uc_result_entry_prepare_values($resultPlayerIds, $submitted);
+      $originalValues = uc_result_entry_prepare_values($resultPlayerIds, $original);
 
       $currentValues = [];
       try {
-        $stmt = $pdo->prepare(
-          "SELECT player_id, result_value
-           FROM combine_results
-           WHERE combine_id = :combine_id AND discipline_id = :discipline_id"
+        $currentValues = uc_result_entry_load_current_values(
+          $pdo,
+          $combineId,
+          (int)$activeDisciplineId,
+          $resultPlayerIds
         );
-        $stmt->execute([
-          ":combine_id" => $combineId,
-          ":discipline_id" => $activeDisciplineId,
-        ]);
-        foreach ($stmt->fetchAll() as $row) {
-          $currentValues[(int)$row["player_id"]] = uc_normalize_value($row["result_value"]);
-        }
       } catch (Throwable $e) {
         $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
 
       if (!$startError && $action === "save_results") {
-        foreach ($assignedPlayers as $player) {
-          $playerId = (int)$player["id"];
-          $current = $currentValues[$playerId] ?? null;
-          if ($current !== $originalValues[$playerId]) {
-            $conflicts[$playerId] = [
-              "current" => $current,
-              "new" => $newValues[$playerId],
-              "original" => $originalValues[$playerId],
-            ];
-          }
-        }
+        $conflicts = uc_result_entry_find_conflicts(
+          $resultPlayerIds,
+          $newValues,
+          $originalValues,
+          $currentValues
+        );
 
         if (!empty($conflicts)) {
           $needsConfirmation = true;
@@ -929,44 +973,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !$pageError) {
 
       if (!$startError && ($action === "confirm_save_results" || empty($conflicts))) {
         try {
-          $pdo->beginTransaction();
-          $deleteStmt = $pdo->prepare(
-            "DELETE FROM combine_results
-             WHERE combine_id = :combine_id AND discipline_id = :discipline_id AND player_id = :player_id"
+          uc_result_entry_store_values(
+            $pdo,
+            $combineId,
+            (int)$activeDisciplineId,
+            $resultPlayerIds,
+            $newValues
           );
-          $upsertStmt = $pdo->prepare(
-            "INSERT INTO combine_results (combine_id, discipline_id, player_id, result_value)
-             VALUES (:combine_id, :discipline_id, :player_id, :result_value)
-             ON DUPLICATE KEY UPDATE result_value = VALUES(result_value), updated_at = CURRENT_TIMESTAMP"
-          );
-
-          foreach ($assignedPlayers as $player) {
-            $playerId = (int)$player["id"];
-            $value = $newValues[$playerId];
-            if ($value === null) {
-              $deleteStmt->execute([
-                ":combine_id" => $combineId,
-                ":discipline_id" => $activeDisciplineId,
-                ":player_id" => $playerId,
-              ]);
-            } else {
-              $upsertStmt->execute([
-                ":combine_id" => $combineId,
-                ":discipline_id" => $activeDisciplineId,
-                ":player_id" => $playerId,
-                ":result_value" => $value,
-              ]);
-            }
-          }
-
-          $pdo->commit();
           $saveNotice = t("combine.feedback.results_saved", "Ergebnisse gespeichert.");
           $resultValues = $newValues;
           $needsConfirmation = false;
         } catch (Throwable $e) {
-          if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-          }
           $startError = t("combine.error.results_save_failed", "Ergebnisse konnten nicht gespeichert werden.");
         }
       }
@@ -1185,6 +1202,25 @@ if (!$pageError && !$combineError && $mode === "start" && !$needsConfirmation &&
       } catch (Throwable $e) {
         $startError = t("combine.error.results_load_failed", "Ergebnisse konnten nicht geladen werden.");
       }
+    }
+  }
+}
+
+if (!$pageError && !$combineError) {
+  try {
+    $stmt = $pdo->prepare(
+      "SELECT id, label, expires_at, last_used_at, created_at
+       FROM combine_entry_links
+       WHERE combine_id = :combine_id
+         AND revoked_at IS NULL
+       ORDER BY created_at DESC"
+    );
+    $stmt->execute([":combine_id" => $combineId]);
+    $entryLinks = $stmt->fetchAll();
+  } catch (Throwable $e) {
+    $entryLinks = [];
+    if ($mode === "start") {
+      $entryLinkFeedback = t("combine.live.error.load_failed", "Live-Links konnten nicht geladen werden.");
     }
   }
 }
