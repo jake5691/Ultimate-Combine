@@ -11,11 +11,13 @@ function uc_ranking_relative(array $context): array {
   foreach ($disciplines as $discipline) {
     $disciplineRankings[] = uc_ranking_relative_discipline($discipline, $players, $resultsByDiscipline);
   }
+  $completedPlayerCount = uc_ranking_completed_player_count($players, $disciplines, $resultsByDiscipline);
 
   return [
     "mode" => "relative",
     "overall" => [
       "mode" => "sum",
+      "player_count" => $completedPlayerCount,
       "entries" => uc_ranking_relative_overall($players, $disciplinesByCategory, $resultsByDiscipline, $categoryWeightMap),
     ],
     "disciplines" => $disciplineRankings,
@@ -82,6 +84,7 @@ function uc_ranking_relative_discipline(array $discipline, array $players, array
     "category" => $category,
     "rating_direction" => $direction,
     "weight" => $disciplineWeight,
+    "player_count" => count($rankValues),
     "best_value" => $bestValue,
     "worst_value" => $worstValue,
     "entries" => $entries,

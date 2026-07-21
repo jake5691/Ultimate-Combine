@@ -129,3 +129,32 @@ function uc_ranking_disciplines_by_category(array $disciplines): array {
   }
   return $byCategory;
 }
+
+function uc_ranking_completed_player_count(
+  array $players,
+  array $disciplines,
+  array $resultsByDiscipline,
+  bool $requireAbsoluteScale = false
+): int {
+  $completedPlayerIds = [];
+
+  foreach ($disciplines as $discipline) {
+    if ($requireAbsoluteScale) {
+      $expectedMin = uc_ranking_float($discipline["expected_min"] ?? null);
+      $expectedMax = uc_ranking_float($discipline["expected_max"] ?? null);
+      if ($expectedMin === null || $expectedMax === null) {
+        continue;
+      }
+    }
+
+    $discId = (int)$discipline["id"];
+    foreach ($players as $player) {
+      $playerId = (int)$player["id"];
+      if (uc_ranking_float($resultsByDiscipline[$discId][$playerId] ?? null) !== null) {
+        $completedPlayerIds[$playerId] = true;
+      }
+    }
+  }
+
+  return count($completedPlayerIds);
+}

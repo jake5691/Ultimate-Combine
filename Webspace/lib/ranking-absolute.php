@@ -11,11 +11,13 @@ function uc_ranking_absolute(array $context): array {
   foreach ($disciplines as $discipline) {
     $disciplineRankings[] = uc_ranking_absolute_discipline($discipline, $players, $resultsByDiscipline);
   }
+  $completedPlayerCount = uc_ranking_completed_player_count($players, $disciplines, $resultsByDiscipline, true);
 
   return [
     "mode" => "absolute",
     "overall" => [
       "mode" => "absolute",
+      "player_count" => $completedPlayerCount,
       "entries" => uc_ranking_absolute_overall($players, $disciplinesByCategory, $resultsByDiscipline, $categoryWeightMap),
     ],
     "disciplines" => $disciplineRankings,
@@ -42,10 +44,14 @@ function uc_ranking_absolute_discipline(array $discipline, array $players, array
   $disciplineWeight = uc_ranking_weight($discipline["weight"] ?? 1);
 
   $scoreValues = [];
+  $completedCount = 0;
   $entries = [];
   foreach ($players as $player) {
     $playerId = (int)$player["id"];
     $numericValue = uc_ranking_float($resultsByDiscipline[$discId][$playerId] ?? null);
+    if ($numericValue !== null) {
+      $completedCount++;
+    }
     $points = $hasAbsoluteScale
       ? uc_ranking_absolute_points($numericValue, $expectedMin, $expectedMax, $direction)
       : null;
@@ -81,6 +87,7 @@ function uc_ranking_absolute_discipline(array $discipline, array $players, array
     "category" => $category,
     "rating_direction" => $direction,
     "weight" => $disciplineWeight,
+    "player_count" => $completedCount,
     "expected_min" => $expectedMin,
     "expected_max" => $expectedMax,
     "has_absolute_scale" => $hasAbsoluteScale,
