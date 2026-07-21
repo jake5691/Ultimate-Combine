@@ -7,6 +7,12 @@ $pageLang = $pageLang ?? ($lang ?? "de");
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?php if (!empty($pageReferrerPolicy)): ?>
+    <meta name="referrer" content="<?php echo htmlspecialchars($pageReferrerPolicy, ENT_QUOTES, "UTF-8"); ?>">
+  <?php endif; ?>
+  <?php if (!empty($pageRobots)): ?>
+    <meta name="robots" content="<?php echo htmlspecialchars($pageRobots, ENT_QUOTES, "UTF-8"); ?>">
+  <?php endif; ?>
   <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, "UTF-8"); ?></title>
   <link rel="icon" href="assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
