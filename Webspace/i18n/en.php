@@ -306,7 +306,7 @@ return [
   "live.players.change" => "Change player selection",
   "live.disciplines.title" => "Select discipline",
   "live.disciplines.empty" => "No disciplines are assigned to this combine.",
-  "live.disciplines.progress" => "%d of %d",
+  "live.disciplines.progress" => "%d of %d complete",
   "live.disciplines.complete" => "Complete",
   "combine.error.not_found" => "Combine not found.",
   "combine.error.assignments_load_failed" => "Assignments could not be loaded.",

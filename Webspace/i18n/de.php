@@ -306,7 +306,7 @@ return [
   "live.players.change" => "Spielerauswahl ändern",
   "live.disciplines.title" => "Disziplin auswählen",
   "live.disciplines.empty" => "Diesem Combine sind keine Disziplinen zugeordnet.",
-  "live.disciplines.progress" => "%d von %d",
+  "live.disciplines.progress" => "%d von %d abgeschlossen",
   "live.disciplines.complete" => "Abgeschlossen",
   "combine.error.not_found" => "Combine wurde nicht gefunden.",
   "combine.error.assignments_load_failed" => "Zuordnungen konnten nicht geladen werden.",

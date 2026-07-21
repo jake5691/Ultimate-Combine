@@ -37,7 +37,6 @@ $resultValues = [];
 $resultOriginalValues = [];
 $conflicts = [];
 $needsConfirmation = false;
-$activeDisciplineIndex = null;
 $completedDisciplineIds = [];
 $saveNotice = isset($_GET["saved"])
   ? t("live.feedback.saved", "Ergebnisse gespeichert.")
@@ -125,14 +124,6 @@ if ($entryLink && !$pageError) {
     if ((int)$discipline["id"] === (int)$activeDisciplineId) {
       $activeDiscipline = $discipline;
       break;
-    }
-  }
-  if ($activeDiscipline) {
-    foreach ($disciplines as $index => $discipline) {
-      if ((int)$discipline["id"] === (int)$activeDisciplineId) {
-        $activeDisciplineIndex = $index;
-        break;
-      }
     }
   }
   if ($activeDisciplineId && !$activeDiscipline) {
@@ -231,7 +222,7 @@ $pageLang = $lang;
 $pageReferrerPolicy = "no-referrer";
 $pageRobots = "noindex, nofollow";
 $brandText = t("live.brand", "Live-Erfassung");
-$showSpacer = false;
+$showSpacer = true;
 require __DIR__ . "/partials/head.php";
 require __DIR__ . "/partials/header-simple.php";
 ?>
@@ -300,8 +291,8 @@ require __DIR__ . "/partials/header-simple.php";
               <h2><?php echo htmlspecialchars(t("live.disciplines.title", "Disziplin auswählen"), ENT_QUOTES, "UTF-8"); ?></h2>
               <p class="help">
                 <?php echo htmlspecialchars(sprintf(t("live.players.selected", "%d Spieler ausgewählt"), count($selectedPlayerIds)), ENT_QUOTES, "UTF-8"); ?>
-                <?php if ($activeDisciplineIndex !== null): ?>
-                  &middot; <?php echo htmlspecialchars(sprintf(t("live.disciplines.progress", "%d von %d"), $activeDisciplineIndex + 1, count($disciplines)), ENT_QUOTES, "UTF-8"); ?>
+                <?php if (!empty($disciplines)): ?>
+                  &middot; <?php echo htmlspecialchars(sprintf(t("live.disciplines.progress", "%d von %d abgeschlossen"), count($completedDisciplineIds), count($disciplines)), ENT_QUOTES, "UTF-8"); ?>
                 <?php endif; ?>
               </p>
             </div>
